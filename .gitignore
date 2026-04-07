@@ -1,0 +1,15 @@
+tmeet
+.idea
+/log
+/logs
+*.log
+/dist
+
+*.enc
+master.key
+*.out
+/docs
+.codebuddy/
+.cursor/
+node_modules/
+package-lock.json

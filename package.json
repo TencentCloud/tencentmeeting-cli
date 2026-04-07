@@ -1,0 +1,23 @@
+{
+  "name": "@tencentcloud/tmeet",
+  "version": "v1.0.1",
+  "description": "腾讯会议 CLI 工具",
+  "bin": {
+    "tmeet": "./scripts/tmeet.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/cleanup.js"
+  },
+  "files": [
+    "scripts/",
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TencentCloud/tencentmeeting-cli.git"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT"
+}
