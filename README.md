@@ -18,7 +18,9 @@
 
 ## 安装
 
-### 方式一：通过 npm 安装（推荐）
+### 第一步：安装 CLI
+
+#### 方式一：通过 npm 安装（推荐）
 
 ```bash
 npm install -g @tencentcloud/tmeet
@@ -26,7 +28,9 @@ npm install -g @tencentcloud/tmeet
 
 安装完成后即可直接使用 `tmeet` 命令。
 
-### 方式二：从源码构建
+> 💡 如果提示 `npm: command not found`，说明尚未安装 Node.js。请前往 [Node.js 官网](https://nodejs.org/) 下载并安装 LTS 版本（已包含 npm）。
+
+#### 方式二：从源码构建
 
 ```bash
 git clone https://github.com/TencentCloud/tencentmeeting-cli
@@ -36,7 +40,7 @@ go build -ldflags "-X tmeet/cmd.Version=v1.0.0" -o tmeet .
 make build VERSION=v1.0.0
 ```
 
-### 安装会议cli-skill
+### 第二步：安装 CLI-SKILL
 
 ```bash
 npx skills add TencentCloud/tencentmeeting-cli -y -g

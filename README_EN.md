@@ -18,7 +18,9 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 
 ## Installation
 
-### Option 1: Install via npm (Recommended)
+### Step 1: Install CLI
+
+#### Option 1: Install via npm (Recommended)
 
 ```bash
 npm install -g @tencentcloud/tmeet
@@ -26,7 +28,9 @@ npm install -g @tencentcloud/tmeet
 
 After installation, the `tmeet` command is available directly.
 
-### Option 2: Build from Source
+> 💡 If you see `npm: command not found`, it means Node.js is not installed. Please visit the [Node.js official website](https://nodejs.org/) to download and install the LTS version (npm is included).
+
+#### Option 2: Build from Source
 
 ```bash
 git clone https://github.com/TencentCloud/tencentmeeting-cli
@@ -36,7 +40,7 @@ go build -ldflags "-X tmeet/cmd.Version=v1.0.0" -o tmeet .
 make build VERSION=v1.0.0
 ```
 
-### install meeting cli-skill
+### Step 2: Install CLI-SKILL
 
 ```bash
 npx skills add TencentCloud/tencentmeeting-cli -y -g
