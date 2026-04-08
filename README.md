@@ -21,7 +21,7 @@
 ### 方式一：通过 npm 安装（推荐）
 
 ```bash
-npm install -g tmeet
+npm install -g @tencentcloud/tmeet
 ```
 
 安装完成后即可直接使用 `tmeet` 命令。

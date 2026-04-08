@@ -21,7 +21,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 ### Option 1: Install via npm (Recommended)
 
 ```bash
-npm install -g tmeet
+npm install -g @tencentcloud/tmeet
 ```
 
 After installation, the `tmeet` command is available directly.
