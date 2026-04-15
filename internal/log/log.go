@@ -1,10 +1,18 @@
 package log
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+// formatOutput defines the output format.
+type formatOutput struct {
+	TraceId string      `json:"trace_id,omitempty"`
+	Message string      `json:"message,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+}
 
 // Infof prints informational messages.
 func Infof(cmd *cobra.Command, format string, args ...interface{}) {
@@ -12,7 +20,7 @@ func Infof(cmd *cobra.Command, format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 		return
 	}
-	cmd.Println(fmt.Sprintf(format, args...))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(format, args...))
 }
 
 // Errorf prints error messages.
@@ -21,10 +29,37 @@ func Errorf(cmd *cobra.Command, format string, args ...interface{}) {
 		fmt.Printf("Error: "+format+"\n", args...)
 		return
 	}
-	cmd.Println("Error:", fmt.Sprintf(format, args...))
+	_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Error:", fmt.Sprintf(format, args...))
 }
 
-// GetFormat 从根命令的 PersistentFlags 中读取 --format 值，默认返回 "json"
+// FormatPrint prints data in the specified format.
+func FormatPrint(cmd *cobra.Command, traceId, message, data string) {
+	fo := &formatOutput{
+		TraceId: traceId,
+		Message: message,
+	}
+	dataMap := make(map[string]interface{})
+	err := json.Unmarshal([]byte(data), &dataMap)
+	if err != nil {
+		fo.Data = data
+	} else {
+		fo.Data = dataMap
+	}
+
+	var b []byte
+	f := GetFormat(cmd)
+	switch f {
+	case "json-pretty":
+		b, _ = json.MarshalIndent(fo, "", "  ")
+	case "json":
+		fallthrough
+	default:
+		b, _ = json.Marshal(fo)
+	}
+	Infof(cmd, string(b))
+}
+
+// GetFormat gets the format.
 func GetFormat(cmd *cobra.Command) string {
 	f, err := cmd.Root().PersistentFlags().GetString("format")
 	if err != nil || f == "" {

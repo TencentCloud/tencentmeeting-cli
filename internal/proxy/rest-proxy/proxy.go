@@ -13,10 +13,7 @@ import (
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
-	"tmeet/internal/log"
 	"tmeet/internal/utils/retry"
-
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -150,36 +147,4 @@ func header(openId, machineId, version, os, agent, model string) thttp.RequestOp
 	x.Set("Tmeet-Open-Source", OpenSourceCLI)
 	x.Set("Tmeet-Cli-Ver", version)
 	return thttp.WithRequestHeader(x)
-}
-
-// Print 根据 cmd 的 --format 标志格式化输出响应，供子命令直接调用
-func Print(cmd *cobra.Command, rsp *ProxyRsp) string {
-	return PrettyPrint(rsp, log.GetFormat(cmd))
-}
-
-// PrettyPrint formats and prints the response.
-// format: "json" (default, compact) | "json-pretty" (indented)
-func PrettyPrint(rsp *ProxyRsp, format string) string {
-	prettyMap := make(map[string]interface{})
-	prettyMap["trace_id"] = rsp.TraceId
-	prettyMap["message"] = rsp.Message
-
-	data := make(map[string]interface{})
-	err := json.Unmarshal([]byte(rsp.Data), &data)
-	if err != nil {
-		prettyMap["data"] = rsp.Data
-	} else {
-		prettyMap["data"] = data
-	}
-
-	var b []byte
-	switch format {
-	case "json-pretty":
-		b, _ = json.MarshalIndent(prettyMap, "", "  ")
-	case "json":
-		fallthrough
-	default:
-		b, _ = json.Marshal(prettyMap)
-	}
-	return string(b)
 }
