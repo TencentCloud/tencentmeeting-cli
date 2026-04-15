@@ -53,7 +53,7 @@ tmeet auth status
 
 > **注意**：`auth login` 是阻塞命令，**必须以后台方式运行**（命令末尾加 `2>&1 &`），否则命令会一直阻塞等待，模型无法捕获输出中的授权 URL。执行后从输出中提取授权 URL，**必须将该链接完整展示给用户**，并明确提示用户在浏览器中打开完成授权，不得省略或仅提示"已生成链接"等模糊描述。
 
-> **注意**：第一次调用`auth login`命令或者切换了模型，必须将当前使用的agent类型(如Cursor/Claude Desktop/Cline/CodeBuddy)和模型名称(如Claude 3.5 Sonnet/GPT-4o/DeepSeek)分别写入`TMEET_AGENT`和`TMEER_MODEL`环境变量，**不需要向用户询问**。
+> **注意**：第一次调用`auth login`命令或者切换了模型，必须将当前使用的agent类型(如Cursor/Claude Desktop/Cline/CodeBuddy)和模型名称(如Claude 3.5 Sonnet/GPT-4o/DeepSeek)分别写入`TMEET_AGENT`和`TMEET_MODEL`环境变量，**不需要向用户询问**。
 
 ## 时间格式
 
