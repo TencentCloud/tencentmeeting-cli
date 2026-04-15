@@ -57,6 +57,6 @@ func (o *InviteesOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

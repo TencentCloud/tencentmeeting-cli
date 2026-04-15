@@ -32,7 +32,7 @@ func newAddressCmd(tmeet *internal.Tmeet) *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.MeetingRecordID, "meeting-record-id", "", "meeting record id (required)")
 	cmd.Flags().IntVar(&opts.Page, "page", 1, "page number, starting from 1")
-	cmd.Flags().IntVar(&opts.PageSize, "page-size", 50, "page size")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 50, "page size, default 50, max 50")
 
 	_ = cmd.MarkFlagRequired("meeting-record-id")
 
@@ -57,6 +57,6 @@ func (o *AddressOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse response.
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

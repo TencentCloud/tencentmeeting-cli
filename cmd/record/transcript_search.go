@@ -64,6 +64,6 @@ func (o *TranscriptsSearchOptions) Run(cmd *cobra.Command, args []string) error 
 	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
 		"start_time": utils.HHMMSSConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

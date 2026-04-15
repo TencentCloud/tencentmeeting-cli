@@ -85,9 +85,15 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 
 	// Parse response, recursively convert timestamp fields to ISO8601 format.
 	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
-		"start_time": utils.TimestampConverter,
-		"end_time":   utils.TimestampConverter,
+		"start_time":               utils.TimestampConverter,
+		"end_time":                 utils.TimestampConverter,
+		"meeting_info_list.status": utils.MeetingStatusConverter,
+		"meeting_type":             utils.MeetingTypeConverter,
+		"recurring_type":           utils.MeetingRecurringTypeConverter,
+		"time_zone":                utils.Base64DecodeConverter,
+		"until_date":               utils.TimestampConverter,
+		"until_type":               utils.MeetingRecurringUntilTypeConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

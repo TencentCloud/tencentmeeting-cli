@@ -58,9 +58,10 @@ func (o *TranscriptsParagraphsOptions) Run(cmd *cobra.Command, args []string) er
 
 	// Parse response.
 	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
-		"start_time": utils.HHMMSSConverter,
-		"end_time":   utils.HHMMSSConverter,
+		"start_time":   utils.HHMMSSConverter,
+		"end_time":     utils.HHMMSSConverter,
+		"audio_detect": utils.RecordAudioDetectConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }
