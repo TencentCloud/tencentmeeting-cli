@@ -1,15 +1,42 @@
 # Changelog
 
-本文件记录 tmeet 的所有重要变更，遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范。
+All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
-## [Unreleased]
+## [v1.0.1] - 2026-04-07
 
 ### Added
-- OAuth2 设备码授权登录/登出
-- 会议管理：创建、查询、更新、取消、受邀成员管理
-- 录制管理：列表查询、下载地址、智能纪要、转写功能
-- 参会报告：参会人列表、等候室记录
-- AES-256-GCM 加密凭证存储，明文不落盘
-- 跨平台支持（macOS / Linux / Windows）
-- 文件锁并发安全保护
-- 符号链接攻击防护
+
+Initial release of the `tmeet` CLI tool for Tencent Meeting (WeMeet).
+
+#### Authentication (`tmeet auth`)
+- `auth login` — Log in to tmeet via OAuth2 device-code flow
+- `auth logout` — Log out from tmeet
+- `auth status` — Show current authentication status
+
+#### Meeting Management (`tmeet meeting`)
+- `meeting create` — Create a new meeting (supports recurring meetings)
+- `meeting get` — Get meeting details by meeting ID or meeting code
+- `meeting list` — List upcoming meetings
+- `meeting list-ended` — List ended meetings
+- `meeting update` — Update an existing meeting
+- `meeting cancel` — Cancel a meeting
+- `meeting invitees-list` — Get the invitees list of a meeting
+
+#### Recording Management (`tmeet record`)
+- `record list` — List meeting recordings
+- `record address` — Get recording download addresses
+- `record smart-minutes` — Get AI-generated smart minutes from a recording
+- `record transcript-get` — Get transcript details
+- `record transcript-paragraphs` — Get transcript paragraphs
+- `record transcript-search` — Search transcript content by keyword
+
+#### Meeting Reports (`tmeet report`)
+- `report participants` — Get the participants list of a meeting
+- `report waiting-room-log` — Get the waiting room members log
+
+#### Other Features
+- AES-256-GCM encrypted credential storage (no plaintext on disk)
+- Cross-platform support (macOS / Linux / Windows)
+- File-lock based concurrent access protection
+- Symlink attack prevention
+- Output format support: `json` (default) and `json-pretty`
