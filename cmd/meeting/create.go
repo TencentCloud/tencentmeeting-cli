@@ -26,7 +26,7 @@ type CreateOptions struct {
 	AutoInWaitingRoom bool   // Whether to enable waiting room, default false.
 	RecurringType     int    // Recurring meeting config (required when meetingType=1). Recurrence type, default 0. 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly
 	UntilType         int    // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
-	UntilCount        int    // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 500. Default 7.
+	UntilCount        int    // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
 	UntilDate         string // Recurring meeting config (required when meetingType=1). End date, ISO 8601, e.g. 2026-03-12T15:00+08:00
 }
 
@@ -50,7 +50,7 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().IntVar(&opts.MeetingType, "meeting-type", 0, "meeting type: 0-normal, 1-recurring")
 	cmd.Flags().IntVar(&opts.OnlyUserJoinType, "join-type", 0, "join restriction: 1-all members, 2-invited only, 3-internal only")
 	cmd.Flags().BoolVar(&opts.AutoInWaitingRoom, "waiting-room", false, "enable waiting room")
-	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0, "recurring type (meeting-type=1): 0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly, 5-custom")
+	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0, "recurring type (meeting-type=1): 0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly")
 	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0, "recurring end type (meeting-type=1): 0-by date, 1-by count")
 	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7, "recurring count (meeting-type=1, max: 500 for daily/weekdays/weekly, 50 for biweekly/monthly)")
 	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "recurring end date (meeting-type=1) e.g. 2026-03-12T15:00+08:00)")
@@ -126,6 +126,6 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 		"start_time": utils.TimestampConverter,
 		"end_time":   utils.TimestampConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

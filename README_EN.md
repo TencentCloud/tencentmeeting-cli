@@ -184,20 +184,20 @@ tmeet auth status
 tmeet meeting create --subject <title> --start <start-time> --end <end-time> [options]
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--subject` | string | ✅ | — | Meeting subject/title |
-| `--start` | string | ✅ | — | Meeting start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
-| `--end` | string | ✅ | — | Meeting end time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
-| `--password` | string | — | — | Meeting password (4–6 digits) |
-| `--timezone` | string | — | — | Timezone, refer to Oracle-TimeZone standard, e.g. `Asia/Shanghai` |
-| `--meeting-type` | int | — | `0` | Meeting type: `0`-regular meeting, `1`-recurring meeting |
-| `--join-type` | int | — | `0` | Join restriction: `1`-all members, `2`-invited members only, `3`-internal members only |
-| `--waiting-room` | bool | — | `false` | Enable waiting room: `true`-enable, `false`-disable |
-| `--recurring-type` | int | — | `0` | Recurrence type (when `--meeting-type=1`): `0`-daily, `1`-weekdays, `2`-weekly, `3`-biweekly, `4`-monthly, `5`-custom |
-| `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count |
-| `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 500 for biweekly/monthly |
-| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00` |
+| Parameter | Type | Required | Default | Description                                                                                               |
+|-----------|------|:--------:|---------|-----------------------------------------------------------------------------------------------------------|
+| `--subject` | string | ✅ | — | Meeting subject/title                                                                                     |
+| `--start` | string | ✅ | — | Meeting start time, ISO 8601, e.g. `2026-03-12T14:00+08:00`                                               |
+| `--end` | string | ✅ | — | Meeting end time, ISO 8601, e.g. `2026-03-12T15:00+08:00`                                                 |
+| `--password` | string | — | — | Meeting password (4–6 digits)                                                                             |
+| `--timezone` | string | — | — | Timezone, refer to Oracle-TimeZone standard, e.g. `Asia/Shanghai`                                         |
+| `--meeting-type` | int | — | `0` | Meeting type: `0`-regular meeting, `1`-recurring meeting                                                  |
+| `--join-type` | int | — | `0` | Join restriction: `1`-all members, `2`-invited members only, `3`-internal members only                    |
+| `--waiting-room` | bool | — | `false` | Enable waiting room: `true`-enable, `false`-disable                                                       |
+| `--recurring-type` | int | — | `0` | Recurrence type (when `--meeting-type=1`): `0`-daily, `1`-weekdays, `2`-weekly, `3`-biweekly, `4`-monthly |
+| `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
+| `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
+| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
 
 **Examples:**
 
@@ -254,21 +254,21 @@ Only pass the fields you want to modify; unspecified fields remain unchanged.
 tmeet meeting update --meeting-id <meeting-id> [options]
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--meeting-id` | string | ✅ | — | Meeting ID |
-| `--subject` | string | — | — | Meeting subject/title |
-| `--start` | string | — | — | Meeting start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
-| `--end` | string | — | — | Meeting end time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
-| `--password` | string | — | — | Meeting password (4–6 digits) |
-| `--timezone` | string | — | — | Timezone, e.g. `Asia/Shanghai` |
-| `--meeting-type` | int | — | `0` | Meeting type: `0`-regular meeting, `1`-recurring meeting |
-| `--join-type` | int | — | `0` | Join restriction: `1`-all members, `2`-invited members only, `3`-internal members only |
-| `--waiting-room` | bool | — | `false` | Enable waiting room |
-| `--recurring-type` | int | — | `0` | Recurrence type (when `--meeting-type=1`): `0`-daily, `1`-weekdays, `2`-weekly, `3`-biweekly, `4`-monthly, `5`-custom |
-| `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count |
-| `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 500 for biweekly/monthly |
-| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00` |
+| Parameter | Type | Required | Default | Description                                                                                               |
+|-----------|------|:--------:|---------|-----------------------------------------------------------------------------------------------------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID                                                                                                |
+| `--subject` | string | — | — | Meeting subject/title                                                                                     |
+| `--start` | string | — | — | Meeting start time, ISO 8601, e.g. `2026-03-12T14:00+08:00`                                               |
+| `--end` | string | — | — | Meeting end time, ISO 8601, e.g. `2026-03-12T14:00+08:00`                                                 |
+| `--password` | string | — | — | Meeting password (4–6 digits)                                                                             |
+| `--timezone` | string | — | — | Timezone, e.g. `Asia/Shanghai`                                                                            |
+| `--meeting-type` | int | — | `0` | Meeting type: `0`-regular meeting, `1`-recurring meeting                                                  |
+| `--join-type` | int | — | `0` | Join restriction: `1`-all members, `2`-invited members only, `3`-internal members only                    |
+| `--waiting-room` | bool | — | `false` | Enable waiting room                                                                                       |
+| `--recurring-type` | int | — | `0` | Recurrence type (when `--meeting-type=1`): `0`-daily, `1`-weekdays, `2`-weekly, `3`-biweekly, `4`-monthly |
+| `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
+| `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
+| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
 
 **Example:**
 
@@ -411,7 +411,7 @@ tmeet record list (--start <start-time> --end <end-time> | --meeting-id <id> | -
 | `--meeting-id` | string | one of three | — | Meeting ID |
 | `--meeting-code` | string | one of three | — | Meeting code |
 | `--page` | int | — | `1` | Page number, starting from 1 |
-| `--page-size` | int | — | `10` | Page size |
+| `--page-size` | int | — | `10` | Page size, max 20 |
 
 **Examples:**
 
@@ -441,7 +441,7 @@ tmeet record address --meeting-record-id <record-id> [options]
 |-----------|------|:--------:|---------|-------------|
 | `--meeting-record-id` | string | ✅ | — | Meeting recording ID |
 | `--page` | int | — | `1` | Page number, starting from 1 |
-| `--page-size` | int | — | `50` | Page size |
+| `--page-size` | int | — | `50` | Page size, max 50 |
 
 **Example:**
 
@@ -570,13 +570,22 @@ tmeet report waiting-room-log --meeting-id <meeting-id> [options]
 |-----------|------|:--------:|---------|-------------|
 | `--meeting-id` | string | ✅ | — | Meeting ID |
 | `--page` | int | — | `1` | Page number, default 1 |
-| `--page-size` | int | — | `20` | Page size, default 20 |
+| `--page-size` | int | — | `20` | Page size, default 20, max 50 |
 
 **Example:**
 
 ```bash
 tmeet report waiting-room-log --meeting-id "6953553464429888300" --page 1 --page-size 50
 ```
+
+---
+
+## Security & Risk Notice (Please Read Before Use)
+
+---
+**After the Tencent Meeting CLI tool is connected to AI Agents such as OpenClaw and granted your authorization, the AI will gain access to your Tencent Meeting data (including but not limited to your detailed user information, meeting management and queries, recordings, smart minutes, and other file exports), and will perform operations on your behalf within the authorized scope. Although the tool has security protections in place, the AI may still cause data leakage, unauthorized operations, or other unintended consequences due to model hallucinations, prompt injection, poisoning attacks, uncontrollable execution deviations, and other risks. Please use this tool with caution and comply with your organization's internal data security policies to avoid data loss or leakage. If you suspect a breach or need to disable access, immediately run `tmeet auth logout`.**
+
+**By installing and using this CLI, you acknowledge that you have fully understood and accepted the above risks and voluntarily assume the associated responsibilities.**
 
 ---
 

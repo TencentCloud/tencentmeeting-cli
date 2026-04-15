@@ -1,4 +1,4 @@
-package utils
+package enumerate
 
 // InstanceType represents the user's terminal device type.
 type InstanceType int

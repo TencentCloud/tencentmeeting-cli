@@ -71,6 +71,6 @@ func (o *TranscriptsGetOptions) Run(cmd *cobra.Command, args []string) error {
 		"start_time": utils.HHMMSSConverter,
 		"end_time":   utils.HHMMSSConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

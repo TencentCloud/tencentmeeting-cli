@@ -18,7 +18,7 @@ TARGETS := \
 	windows/amd64/Windows-x86_64
 
 # ── 默认目标 ──────────────────────────────────────────────────────────────────
-.PHONY: install clean build sync-version
+.PHONY: clean build sync-version
 
 # ── 编译 ──────────────────────────────────────────────────────────────────────
 build:

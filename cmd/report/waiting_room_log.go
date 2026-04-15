@@ -32,7 +32,7 @@ func newWaitingRoomCmd(tmeet *internal.Tmeet) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.MeetingId, "meeting-id", "", "meeting id (required)")
-	cmd.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size, default 20")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size, default 20, max 50")
 	cmd.Flags().IntVar(&opts.Page, "page", 1, "page number, default 1")
 
 	_ = cmd.MarkFlagRequired("meeting-id")
@@ -65,7 +65,8 @@ func (o *WaitingRoomOptions) Run(cmd *cobra.Command, args []string) error {
 		"schedule_end_time":   utils.TimestampConverter,
 		"instanceid":          utils.InstanceIdConverter,
 		"user_name":           utils.Base64DecodeConverter,
+		"subject":             utils.Base64DecodeConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

@@ -73,9 +73,10 @@ func (o *ListEndedOptions) Run(cmd *cobra.Command, args []string) error {
 
 	// 解析响应，递归转换时间戳字段为 ISO8601 格式
 	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
-		"start_time": utils.TimestampConverter,
-		"end_time":   utils.TimestampConverter,
+		"start_time":   utils.TimestampConverter,
+		"end_time":     utils.TimestampConverter,
+		"meeting_type": utils.MeetingTypeConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

@@ -30,7 +30,7 @@ func GetSystemInfo() *SystemInfo {
 	cacheFile := filepath.Join(config.GetConfigDir(), machineIDFile)
 
 	agent := os.Getenv("TMEET_AGENT")
-	model := os.Getenv("TMEER_MODEL")
+	model := os.Getenv("TMEET_MODEL")
 
 	// 1. Try to read from local file first.
 	if id, err := readMachineIDFromFile(cacheFile); err == nil && id != "" {

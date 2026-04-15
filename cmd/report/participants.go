@@ -92,7 +92,9 @@ func (o *ParticipantsOptions) Run(cmd *cobra.Command, args []string) error {
 		"schedule_end_time":   utils.TimestampConverter,
 		"instanceid":          utils.InstanceIdConverter,
 		"user_name":           utils.Base64DecodeConverter,
+		"subject":             utils.Base64DecodeConverter,
+		"user_role":           utils.MeetingUserRoleConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

@@ -38,7 +38,7 @@ func newListCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().StringVar(&opts.StartTime, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
 	cmd.Flags().StringVar(&opts.EndTime, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
 	cmd.Flags().IntVar(&opts.Page, "page", 1, "page number, starting from 1")
-	cmd.Flags().IntVar(&opts.PageSize, "page-size", 10, "page size")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 10, "page size, default 10, max 20")
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "meeting id, one of the following groups is required(--start + --end or --meeting-id or --meeting-code)")
 	cmd.Flags().StringVar(&opts.MeetingCode, "meeting-code", "", "meeting code, one of the following groups is required(--start + --end or --meeting-id or --meeting-code)")
 
@@ -102,7 +102,9 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 		"media_start_time":  utils.TimestampConverter,
 		"record_start_time": utils.TimestampConverter,
 		"record_end_time":   utils.TimestampConverter,
+		"state":             utils.RecordStateConverter,
+		"record_type":       utils.RecordTypeConverter,
 	}))
-	log.Infof(cmd, restProxy.Print(cmd, rsp))
+	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }
