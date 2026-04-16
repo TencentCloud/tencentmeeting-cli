@@ -54,7 +54,9 @@ npx skills add TencentCloud/tencentmeeting-cli -y -g
 tmeet auth login
 ```
 
-This outputs an authorization URL. Open it in your browser to complete the QR code authorization. The CLI automatically polls for the result (5-minute timeout) and saves the credentials encrypted locally.
+This automatically attempts to open the system default browser to the authorization URL. If no default browser is available, it prints the URL for you to open manually. The CLI polls for the result automatically (5-minute timeout) and saves the credentials encrypted locally.
+
+> To disable auto-opening the browser, use the `--no-browser` flag: `tmeet auth login --no-browser`
 
 ### 2. Create a Meeting
 
@@ -145,10 +147,14 @@ tmeet [--format json] [-V]
 Login and complete OAuth2 authorization, saving credentials encrypted locally.
 
 ```bash
-tmeet auth login
+tmeet auth login [options]
 ```
 
-> No parameters. Follow the prompt to complete QR code authorization in your browser.
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--no-browser` | bool | — | `false` | Disable auto-opening the browser. `false` (default) attempts to open the system default browser to the authorization URL automatically; `true` only prints the authorization URL and requires the user to open it manually. |
+
+After execution, the authorization URL is printed. The CLI polls for the authorization result automatically (timeout: 5 minutes) and saves the credentials encrypted locally.
 
 ---
 
