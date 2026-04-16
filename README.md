@@ -54,7 +54,9 @@ npx skills add TencentCloud/tencentmeeting-cli -y -g
 tmeet auth login
 ```
 
-执行后会输出授权 URL，在浏览器中打开完成扫码授权，CLI 自动轮询结果（超时 5 分钟），凭证加密保存到本地。
+执行后会自动尝试打开系统默认浏览器跳转到授权 URL；若无默认浏览器，则输出授权 URL，手动在浏览器中打开完成扫码授权。CLI 自动轮询结果（超时 5 分钟），凭证加密保存到本地。
+
+> 如需禁用自动打开浏览器，可使用 `--no-browser` 参数：`tmeet auth login --no-browser`
 
 ### 2. 创建会议
 
@@ -145,10 +147,14 @@ tmeet [--format json] [-V]
 登录并完成 OAuth2 授权，将凭证加密保存到本地。
 
 ```bash
-tmeet auth login
+tmeet auth login [选项]
 ```
 
-> 无参数。执行后按提示在浏览器中完成扫码授权即可。
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--no-browser` | bool | — | `false` | 禁用自动打开浏览器。`false`（默认）会尝试自动打开系统默认浏览器跳转到授权 URL；`true` 则仅输出授权 URL，需用户手动在浏览器中打开 |
+
+执行后会输出授权 URL，CLI 自动轮询授权结果（超时 5 分钟），凭证加密保存到本地。
 
 ---
 
