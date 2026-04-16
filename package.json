@@ -1,6 +1,6 @@
 {
   "name": "@tencentcloud/tmeet",
-  "version": "v1.0.2",
+  "version": "v1.0.3",
   "description": "腾讯会议 CLI 工具",
   "bin": {
     "tmeet": "./scripts/tmeet.js"

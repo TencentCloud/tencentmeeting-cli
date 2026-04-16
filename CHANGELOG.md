@@ -2,6 +2,24 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.3] - 2026-04-16
+
+### Added
+
+- **Auto-open browser on `auth login`**: After obtaining the OAuth2 authorization URL, `tmeet auth login` now automatically attempts to open the system default browser to the authorization page, eliminating the need for users to manually copy and paste the URL
+- **New `--no-browser` flag for `auth login`**: Added `--no-browser` option to disable auto-opening the browser; when set, only the authorization URL is printed (preserving the original behavior)
+- **Cross-platform browser opening** (`internal/core/browser`): New platform-specific implementations:
+  - macOS (`browser_darwin.go`): Uses `open` command
+  - Windows (`browser_windows.go`): Uses `rundll32 url.dll,FileProtocolHandler`
+  - Linux (`browser_other.go`): Uses `xdg-open` with graphical environment detection (`DISPLAY` / `WAYLAND_DISPLAY`)
+- Unit tests for browser package using `fakeExecCommand` pattern to mock system commands
+
+### Changed
+
+- Updated `README.md` / `README_EN.md` auth login documentation to describe auto-open browser behavior and the new `--no-browser` flag
+- Updated `SKILL.md` with `--no-browser` usage example and Hermes agent-specific note for environments without a default browser
+- Updated `tmeet-auth.md` parameter table to document the `--no-browser` option
+
 ## [v1.0.2] - 2026-04-15
 
 ### Added
