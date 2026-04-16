@@ -42,9 +42,6 @@ metadata:
 # 登录（必须后台运行，以便立即捕获授权 URL）
 tmeet auth login 2>&1 &
 
-# 登录（禁用自动打开浏览器，仅输出授权 URL）
-tmeet auth login --no-browser 2>&1 &
-
 # 登出（清除本地凭证）
 tmeet auth logout
 
