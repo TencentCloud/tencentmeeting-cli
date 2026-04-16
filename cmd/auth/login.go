@@ -7,6 +7,7 @@ import (
 	"tmeet/internal"
 	"tmeet/internal/auth"
 	"tmeet/internal/config"
+	"tmeet/internal/core/browser"
 	"tmeet/internal/core/filelock"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
@@ -17,7 +18,8 @@ import (
 
 // LoginOptions holds the login options.
 type LoginOptions struct {
-	tmeet *internal.Tmeet
+	tmeet     *internal.Tmeet
+	NoBrowser bool // login without browser, true to disable auto-open browser
 }
 
 // newLoginCmd is the login command.
@@ -35,6 +37,8 @@ func newLoginCmd(tmeet *internal.Tmeet) *cobra.Command {
 		},
 	}
 	cmd.Annotations = map[string]string{"skipPreCheck": "true"}
+
+	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "disable auto-opening the browser, only print the authorization URL")
 
 	return cmd
 }
@@ -61,6 +65,11 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 	log.Infof(cmd, "")
 	log.Infof(cmd, "waiting for authorization...")
 	log.Infof(cmd, "")
+
+	if !o.NoBrowser {
+		// Try to open the default browser automatically
+		_ = browser.Open(authorizationLocation)
+	}
 
 	// Poll for authorization result.
 	authTokenData, err := tmeetAuth.PollingOauth2Result(cmd.Context(), authCode)
