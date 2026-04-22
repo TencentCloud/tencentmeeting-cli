@@ -1,4 +1,4 @@
-# tmeet
+# tencentmeeting-cli
 
 [English](README_EN.md) | 中文
 
