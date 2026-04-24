@@ -13,6 +13,7 @@
 - 📅 **会议管理** — 创建、查询、更新、取消会议，支持周期性会议，管理受邀成员
 - 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、转写详情与搜索
 - 📊 **参会报告** — 查询参会人列表、等候室成员记录
+- 🛠️ **问题排查** — 导出本地日志，支持按时间范围过滤，打包为 zip 文件
 - 🔒 **安全存储** — 凭证使用 AES-256-GCM 加密，明文不落盘
 - 🖥️ **跨平台** — 支持 macOS、Linux、Windows
 
@@ -131,9 +132,11 @@ tmeet [--format json] [-V]
 │   ├── transcript-get        # 获取转写详情
 │   ├── transcript-paragraphs # 获取转写段落列表
 │   └── transcript-search     # 搜索转写内容
-└── report
-    ├── participants   # 获取参会人列表
-    └── waiting-room-log # 获取等候室成员列表
+├── report
+│   ├── participants      # 获取参会人列表
+│   └── waiting-room-log  # 获取等候室成员列表
+└── tshoot
+    └── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
 ```
 
 ---
@@ -582,6 +585,46 @@ tmeet report waiting-room-log --meeting-id <会议ID> [选项]
 
 ```bash
 tmeet report waiting-room-log --meeting-id "6953553464429888300" --page 1 --page-size 50
+```
+
+---
+
+### tshoot — 问题排查
+
+#### `tshoot log` — 导出本地日志
+
+将本地日志打包为 zip 文件，输出到 `~/tmeet_ts_{datetime}.zip`，可用于问题排查。支持按时间范围过滤，不传时间参数则导出全部日志。
+
+```bash
+tmeet tshoot log [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--start` | string | 与 `--end` 同时使用 | — | 日志查询开始时间，ISO 8601，如 `2026-03-12T14:00+08:00` |
+| `--end` | string | 与 `--start` 同时使用 | — | 日志查询结束时间，ISO 8601，如 `2026-03-12T15:00+08:00` |
+| `--upload` | bool | 否 | `false` | 上传日志到服务器，需要登录 |
+
+> `--start` 和 `--end` 必须同时传入或同时不传。
+
+**示例：**
+
+```bash
+# 导出全部日志
+tmeet tshoot log
+
+# 导出指定时间范围内的日志
+tmeet tshoot log \
+  --start "2026-04-10T00:00+08:00" \
+  --end "2026-04-10T23:59+08:00"
+
+# 导出日志并上传到服务器（需要登录）
+tmeet tshoot log --upload
+```
+
+输出示例：
+```
+output log saved to: ~/tmeet_ts_20260410_153000.zip
 ```
 
 ---

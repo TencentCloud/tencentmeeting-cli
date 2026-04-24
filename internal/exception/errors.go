@@ -70,6 +70,8 @@ var (
 	RefreshTokenFailedError = NewTmeetError(ClientCodeRefreshTokenFailed, "refresh token failed, please use 'tmeet auth login', and try again")
 	// RestBusinessError rest business error
 	RestBusinessError = NewTmeetError(ClientCodeRestBusiness, "rest business error")
+	// UploadToCosError upload to cos failed
+	UploadToCosError = NewTmeetError(ClientUploadToCos, "upload to cos failed")
 
 	// GetAuthCodeError indicates failure to obtain auth_code.
 	GetAuthCodeError = NewTmeetError(ClientCodeGetAuthCode, "get auth_code failed, please try later")

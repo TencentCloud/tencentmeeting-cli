@@ -6,7 +6,7 @@ import (
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
 
@@ -77,6 +77,6 @@ func (o *ListEndedOptions) Run(cmd *cobra.Command, args []string) error {
 		"end_time":     utils.TimestampConverter,
 		"meeting_type": utils.MeetingTypeConverter,
 	}))
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

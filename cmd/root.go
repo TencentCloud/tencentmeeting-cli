@@ -2,15 +2,20 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"tmeet/cmd/auth"
 	"tmeet/cmd/meeting"
 	"tmeet/cmd/record"
 	"tmeet/cmd/report"
+	"tmeet/cmd/tshoot"
 	"tmeet/internal"
 	"tmeet/internal/common"
 	"tmeet/internal/config"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
+	"tmeet/internal/output"
+
+	"github.com/spf13/pflag"
 
 	"github.com/spf13/cobra"
 )
@@ -23,18 +28,30 @@ var Version = "dev"
 func Execute() int {
 	tmeet, err := internal.NewTmeet()
 	if err != nil {
-		log.Errorf(nil, fmt.Sprintf("failed to initialize Tmeet: %v", err))
+		output.PrintErrorf(nil, fmt.Sprintf("failed to initialize Tmeet: %v", err))
 		return 1
 	}
 
-	rootCmd := &cobra.Command{
-		Use:               common.CLI,
-		Short:             "tmeet CLI",
-		Long:              `tmeet CLI — OAuth authorization, API calls`,
-		Version:           Version,
-		PersistentPreRunE: preCheck,
-		SilenceUsage:      true,
+	// Initialise the file logging system. Logs are written to ~/.tmeet/logs/.
+	// Errors here are non-fatal; the CLI continues without file logging.
+	if logErr := log.Init(config.GetConfigDir(), log.LevelInfo); logErr == nil {
+		defer log.Close()
 	}
+
+	rootCmd := &cobra.Command{
+		Use:     common.CLI,
+		Short:   "tmeet CLI",
+		Long:    `tmeet CLI — OAuth authorization, API calls`,
+		Version: Version,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			cobra.OnFinalize(func() {
+				commandOperationLog(cmd, args)
+			})
+			return preCheck(cmd, args)
+		},
+		SilenceUsage: true,
+	}
+	rootCmd.SetContext(tmeet.TCtx)
 	tmeet.CLIVersion = Version
 	// Supports -V uppercase short flag for version query.
 	rootCmd.Flags().BoolP("version", "V", false, "version for tmeet")
@@ -49,6 +66,8 @@ func Execute() int {
 	rootCmd.AddCommand(report.NewBaseCmd(tmeet))
 	// Add subcommand: record
 	rootCmd.AddCommand(record.NewBaseCmd(tmeet))
+	// Add subcommand: tshoot
+	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
 	if err != nil {
 		return 1
@@ -60,6 +79,13 @@ func preCheck(cmd *cobra.Command, args []string) error {
 	if cmd.Annotations["skipPreCheck"] == "true" {
 		return nil
 	}
+	if preCheckFlag := cmd.Annotations["skipPreCheckFlag"]; preCheckFlag != "" {
+		flagValue, _ := cmd.Flags().GetBool(preCheckFlag) // ignore this err, it can downgrade
+		if !flagValue {
+			// flag is false, skip preCheck
+			return nil
+		}
+	}
 
 	// Validate local user information.
 	usr, err := config.GetUserConfig()
@@ -70,4 +96,12 @@ func preCheck(cmd *cobra.Command, args []string) error {
 		return exception.GetUserConfigEmptyError
 	}
 	return nil
+}
+
+func commandOperationLog(cmd *cobra.Command, args []string) {
+	cmdStr := cmd.CommandPath() + " " + strings.Join(args, " ")
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		cmdStr += " --" + f.Name + " " + f.Value.String()
+	})
+	log.Infof(cmd.Context(), "command: %s", cmdStr)
 }

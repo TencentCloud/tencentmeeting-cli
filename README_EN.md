@@ -13,6 +13,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 - 📅 **Meeting Management** — Create, query, update, and cancel meetings; supports recurring meetings and invitee management
 - 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, transcript details and search
 - 📊 **Attendance Reports** — Query participant lists and waiting room member records
+- 🛠️ **Troubleshooting** — Export local logs with optional time range filter, packaged as a zip file
 - 🔒 **Secure Storage** — Credentials encrypted with AES-256-GCM, no plaintext stored on disk
 - 🖥️ **Cross-Platform** — Supports macOS, Linux, and Windows
 
@@ -131,9 +132,11 @@ tmeet [--format json] [-V]
 │   ├── transcript-get        # Get transcript details
 │   ├── transcript-paragraphs # Get transcript paragraph list
 │   └── transcript-search     # Search transcript content
-└── report
-    ├── participants   # Get participant list
-    └── waiting-room-log # Get waiting room member list
+├── report
+│   ├── participants   # Get participant list
+│   └── waiting-room-log # Get waiting room member list
+└── tshoot
+    └── log            # Export local logs (supports time range filter, optional --upload to server)
 ```
 
 ---
@@ -582,6 +585,46 @@ tmeet report waiting-room-log --meeting-id <meeting-id> [options]
 
 ```bash
 tmeet report waiting-room-log --meeting-id "6953553464429888300" --page 1 --page-size 50
+```
+
+---
+
+### tshoot — Troubleshooting
+
+#### `tshoot log` — Export Local Logs
+
+Packages local logs into a zip file and saves it to `~/tmeet_ts_{datetime}.zip`, useful for troubleshooting. Supports optional time range filtering; if no time parameters are provided, all logs are exported.
+
+```bash
+tmeet tshoot log [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--start` | string | used with `--end` | — | Log query start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
+| `--end` | string | used with `--start` | — | Log query end time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
+| `--upload` | bool | No | `false` | Upload log to server, login required |
+
+> `--start` and `--end` must be provided together or both omitted.
+
+**Examples:**
+
+```bash
+# Export all logs
+tmeet tshoot log
+
+# Export logs within a specific time range
+tmeet tshoot log \
+  --start "2026-04-10T00:00+08:00" \
+  --end "2026-04-10T23:59+08:00"
+
+# Upload log to server (login required)
+tmeet tshoot log --upload
+```
+
+Output example:
+```
+output log saved to: ~/tmeet_ts_20260410_153000.zip
 ```
 
 ---

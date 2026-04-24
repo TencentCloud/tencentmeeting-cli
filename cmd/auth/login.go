@@ -11,6 +11,7 @@ import (
 	"tmeet/internal/core/filelock"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
+	"tmeet/internal/output"
 	"tmeet/internal/utils/retry"
 
 	"github.com/spf13/cobra"
@@ -56,15 +57,16 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 	tmeetAuth := auth.NewTmeetAuth(o.tmeet)
 	authorizationLocation, authCode, err := tmeetAuth.GeneralOauth2Address(cmd.Context())
 	if err != nil {
+		log.Errorf(cmd.Context(), "get authorization url failed: %v", err)
 		return err
 	}
-	log.Infof(cmd, "")
-	log.Infof(cmd, "Please open the following URL in your browser to authorize")
-	log.Infof(cmd, "")
-	log.Infof(cmd, "authorize url: %s", authorizationLocation)
-	log.Infof(cmd, "")
-	log.Infof(cmd, "waiting for authorization...")
-	log.Infof(cmd, "")
+	output.PrintInfof(cmd, "")
+	output.PrintInfof(cmd, "Please open the following URL in your browser to authorize")
+	output.PrintInfof(cmd, "")
+	output.PrintInfof(cmd, "authorize url: %s", authorizationLocation)
+	output.PrintInfof(cmd, "")
+	output.PrintInfof(cmd, "waiting for authorization...")
+	output.PrintInfof(cmd, "")
 
 	if !o.NoBrowser {
 		// Try to open the default browser automatically
@@ -74,6 +76,7 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 	// Poll for authorization result.
 	authTokenData, err := tmeetAuth.PollingOauth2Result(cmd.Context(), authCode)
 	if err != nil {
+		log.Errorf(cmd.Context(), "polling authorization result failed: %v", err)
 		return err
 	}
 
@@ -88,6 +91,7 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 	err = retry.Do(cmd.Context(), func(ctx context.Context) error {
 		err = config.SaveUserConfig(userConfig)
 		if err != nil {
+			log.Errorf(ctx, "save user config failed: %v", err)
 			return exception.AuthorizationFailedError
 		}
 		return nil
@@ -97,6 +101,6 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log.Infof(cmd, "Login successful. Start managing your meetings using tmeet.")
+	output.PrintInfof(cmd, "Login successful. Start managing your meetings using tmeet.")
 	return nil
 }

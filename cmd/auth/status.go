@@ -7,6 +7,7 @@ import (
 	"tmeet/internal/config"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
+	"tmeet/internal/output"
 
 	"github.com/spf13/cobra"
 )
@@ -35,27 +36,29 @@ func newStatusCmd(tmeet *internal.Tmeet) *cobra.Command {
 func (o *StatusOptions) Run(cmd *cobra.Command, args []string) error {
 	userConfig, err := config.GetUserConfig()
 	if err != nil {
-		return exception.GetUserConfigUnknownError.With("failed to read user config: %w", err)
+		log.Errorf(cmd.Context(), "failed to read user config: %v", err)
+		return exception.GetUserConfigUnknownError.With("failed to read user config: %v", err)
 	}
 	if userConfig == nil {
-		log.Infof(cmd, "Not logged in. Please use 'tmeet auth login' to authenticate.")
+		output.PrintInfof(cmd, "Not logged in. Please use 'tmeet auth login' to authenticate.")
 		return nil
 	}
 
 	now := time.Now().Unix()
 
 	// Show login status.
-	log.Infof(cmd, "Logged in")
-	log.Infof(cmd, "  OpenId:  %s", userConfig.OpenId)
+	output.PrintInfof(cmd, "Logged in")
+	output.PrintInfof(cmd, "  OpenId:  %s", userConfig.OpenId)
 
 	// AccessToken expiry status.
 	if userConfig.Expires > 0 {
 		expiresTime := time.Unix(userConfig.Expires, 0)
 		if now >= userConfig.Expires {
-			log.Infof(cmd, "  AccessToken:  expired (at %s)", expiresTime.Format(time.DateTime))
+			output.PrintInfof(cmd, "  AccessToken:  expired (at %s)", expiresTime.Format(time.DateTime))
 		} else {
 			remaining := time.Duration(userConfig.Expires-now) * time.Second
-			log.Infof(cmd, "  AccessToken:  valid (expires at %s, remaining %s)", expiresTime.Format(time.DateTime), formatDuration(remaining))
+			output.PrintInfof(cmd, "  AccessToken:  valid (expires at %s, remaining %s)",
+				expiresTime.Format(time.DateTime), formatDuration(remaining))
 		}
 	}
 
@@ -63,10 +66,11 @@ func (o *StatusOptions) Run(cmd *cobra.Command, args []string) error {
 	if userConfig.RefreshTokenExpires > 0 {
 		refreshExpiresTime := time.Unix(userConfig.RefreshTokenExpires, 0)
 		if now >= userConfig.RefreshTokenExpires {
-			log.Infof(cmd, "  RefreshToken: expired (at %s)", refreshExpiresTime.Format(time.DateTime))
+			output.PrintInfof(cmd, "  RefreshToken: expired (at %s)", refreshExpiresTime.Format(time.DateTime))
 		} else {
 			remaining := time.Duration(userConfig.RefreshTokenExpires-now) * time.Second
-			log.Infof(cmd, "  RefreshToken: valid (expires at %s, remaining %s)", refreshExpiresTime.Format(time.DateTime), formatDuration(remaining))
+			output.PrintInfof(cmd, "  RefreshToken: valid (expires at %s, remaining %s)",
+				refreshExpiresTime.Format(time.DateTime), formatDuration(remaining))
 		}
 	}
 

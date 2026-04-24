@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
 
@@ -62,6 +62,6 @@ func (o *TranscriptsParagraphsOptions) Run(cmd *cobra.Command, args []string) er
 		"end_time":     utils.HHMMSSConverter,
 		"audio_detect": utils.RecordAudioDetectConverter,
 	}))
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

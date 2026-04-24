@@ -6,7 +6,7 @@ import (
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
 
@@ -95,6 +95,6 @@ func (o *ParticipantsOptions) Run(cmd *cobra.Command, args []string) error {
 		"subject":             utils.Base64DecodeConverter,
 		"user_role":           utils.MeetingUserRoleConverter,
 	}))
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

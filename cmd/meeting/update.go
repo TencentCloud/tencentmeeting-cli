@@ -6,7 +6,7 @@ import (
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
 
@@ -105,8 +105,7 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 		if o.UntilDate != "" {
 			untilDate, err := utils.ISO8601ToTimeStamp(o.UntilDate)
 			if err != nil {
-				log.Errorf(cmd, "--until-date format error: %v", err)
-				return nil
+				return exception.InvalidArgsError.With("--until-date format error: %v", err)
 			}
 			recurringRule["until_date"] = untilDate
 		}
@@ -138,6 +137,6 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 		"start_time": utils.TimestampConverter,
 		"end_time":   utils.TimestampConverter,
 	}))
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

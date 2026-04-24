@@ -33,6 +33,8 @@ const (
 	ClientCodeRefreshTokenFailed = 2005
 	// ClientCodeRestBusiness rest business error
 	ClientCodeRestBusiness = 2006
+	// ClientUploadToCos upload to cos error
+	ClientUploadToCos = 2007
 
 	// ClientCodeGetAuthCode get auth_code failed error
 	ClientCodeGetAuthCode = 3000
