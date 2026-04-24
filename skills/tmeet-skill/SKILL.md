@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
 version: 1.0.0
-description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写）、会议报告（参会人/等候室）。当用户需要通过命令行操作腾讯会议时使用本技能。"
+description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写）、会议报告（参会人/等候室）、问题排查（导出本地日志）。当用户需要通过命令行操作腾讯会议时使用本技能。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -93,9 +93,11 @@ tmeet
 │   ├── transcript-get        # 获取转写详情（分页）
 │   ├── transcript-paragraphs # 获取转写段落列表
 │   └── transcript-search     # 搜索转写内容
-└── report
-    ├── participants      # 获取参会人列表
-    └── waiting-room-log  # 获取等候室成员列表
+├── report
+│   ├── participants      # 获取参会人列表
+│   └── waiting-room-log  # 获取等候室成员列表
+└── tshoot
+    └── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
 ```
 
 ## 子命令详情
@@ -104,6 +106,7 @@ tmeet
 - 会议管理：[`references/tmeet-meeting.md`](references/tmeet-meeting.md)
 - 录制管理：[`references/tmeet-record.md`](references/tmeet-record.md)
 - 会议报告：[`references/tmeet-report.md`](references/tmeet-report.md)
+- 问题排查：[`references/tmeet-tshoot.md`](references/tmeet-tshoot.md)
 
 ## 安全规则
 
