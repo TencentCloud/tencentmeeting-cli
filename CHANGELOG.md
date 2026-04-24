@@ -2,6 +2,37 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.4] - 2026-04-24
+
+### Added
+
+- **New `tshoot log` command** (`cmd/tshoot/`): Autonomous log-based troubleshooting support
+  - `tshoot log` — Query and package local log files for self-service troubleshooting
+  - `--start` / `--end` — Filter logs by ISO 8601 time range
+  - `--upload` — Package and upload logs to the server (login required); returns a `log_id`
+  - Without `--upload`, logs are packaged into a zip file and saved to the user's home directory
+  - Supports pre-filtering by date in file names + precise filtering by in-line timestamps
+  - Upload flow: fetch upload token → PUT file to COS → notify server of upload completion
+- **New file-based logging module** (`internal/log/`):
+  - `logging.go` — Structured file logging with four levels: DEBUG / INFO / WARN / ERROR
+  - Daily log rotation with 10 MB per-file size limit and auto-incrementing sequence numbers
+  - Automatic cleanup of log files older than 7 days
+  - Asynchronous writes via background goroutine; callers are never blocked
+  - Multi-process safety: atomic writes with `O_APPEND` + cross-process file lock for rotation
+  - `trace_id.go` — TraceID generator (8-char timestamp + 4-char PID + 20-char random hex), propagated via context
+- **New `CalcFileInfo` utility** (`internal/utils/file.go`): Compute file size, SHA256, and MD5 in a single pass
+- **New error code** `ClientUploadToCos (2007)` and `UploadToCosError` error definition (`internal/exception/`)
+- Unit tests for logging module, TraceID generator, and file utility functions
+
+### Changed
+
+- **Refactored `log` package → `output` package**: Renamed `internal/log/log.go` to `internal/output/print.go`; package name changed from `log` to `output`. All 16 call sites across `cmd/auth/`, `cmd/meeting/`, `cmd/record/`, `cmd/report/` updated with the new import path
+- **Enhanced `cmd/root.go`**: Initialize file logging system (`log.Init`) with `defer log.Close()`; register `tshoot` subcommand group; add `commandOperationLog()` to record operation logs after command execution; inject TraceID into command context via `rootCmd.SetContext()`
+- **Enhanced `internal/tmeet.go`**: Inject TraceID via `context.WithValue` in `NewTmeet()`; add `TCtx` field
+- **Enhanced REST proxy** (`internal/proxy/rest-proxy/proxy.go`): Add file logging for HTTP requests and responses
+- Updated `README.md` / `README_EN.md` with `tshoot log` command usage instructions
+- Updated `skills/tmeet-skill/` with new `tmeet-tshoot.md` reference documentation
+
 ## [v1.0.3] - 2026-04-16
 
 ### Added
