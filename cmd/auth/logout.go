@@ -6,6 +6,7 @@ import (
 	"tmeet/internal/config"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
+	"tmeet/internal/output"
 	"tmeet/internal/utils/retry"
 
 	"github.com/spf13/cobra"
@@ -36,8 +37,9 @@ func (o *LogoutOptions) Run(cmd *cobra.Command, args []string) error {
 		return config.ClearUserConfig()
 	}, retry.DefaultOptions)
 	if err != nil {
+		log.Errorf(cmd.Context(), "Logout failed: %v", err)
 		return exception.LogoutFailedError
 	}
-	log.Infof(cmd, "Logout success, welcome to use it again.")
+	output.PrintInfof(cmd, "Logout success, welcome to use it again.")
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
+	"tmeet/internal/log"
 	"tmeet/internal/utils/retry"
 )
 
@@ -67,7 +68,12 @@ func RequestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 		return nil
 	}, opts)
 
-	return rsp, err
+	if err != nil {
+		// restapi common err log
+		log.Errorf(ctx, "restapi proxy err: %v", err)
+		return nil, err
+	}
+	return rsp, nil
 }
 
 func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req *thttp.Request) (*ProxyRsp, error) {

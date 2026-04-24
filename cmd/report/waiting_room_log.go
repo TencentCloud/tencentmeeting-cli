@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
 
@@ -67,6 +67,6 @@ func (o *WaitingRoomOptions) Run(cmd *cobra.Command, args []string) error {
 		"user_name":           utils.Base64DecodeConverter,
 		"subject":             utils.Base64DecodeConverter,
 	}))
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }

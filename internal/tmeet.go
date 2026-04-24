@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"os"
 	"tmeet/internal/common"
 	"tmeet/internal/config"
@@ -8,10 +9,12 @@ import (
 	"tmeet/internal/core/serializable"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
+	"tmeet/internal/log"
 )
 
 // Tmeet is the Tencent Meeting client.
 type Tmeet struct {
+	TCtx       context.Context
 	RestClient thttp.Client
 	CGIClient  thttp.Client
 	SystemInfo *common.SystemInfo
@@ -21,6 +24,8 @@ type Tmeet struct {
 
 // NewTmeet creates a new Tmeet instance.
 func NewTmeet() (*Tmeet, error) {
+	ctx := context.WithValue(context.Background(), log.CtxTraceIDKey, log.GenerateTraceID())
+
 	// Create the config directory.
 	configDir := config.GetConfigDir()
 	if err := os.MkdirAll(configDir, 0700); err != nil {
@@ -60,6 +65,7 @@ func NewTmeet() (*Tmeet, error) {
 	}
 
 	return &Tmeet{
+		TCtx:       ctx,
 		RestClient: customClt,
 		CGIClient:  normalClt,
 		SystemInfo: systemInfo,

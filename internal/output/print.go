@@ -1,4 +1,4 @@
-package log
+package output
 
 import (
 	"encoding/json"
@@ -14,8 +14,8 @@ type formatOutput struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// Infof prints informational messages.
-func Infof(cmd *cobra.Command, format string, args ...interface{}) {
+// PrintInfof prints informational messages.
+func PrintInfof(cmd *cobra.Command, format string, args ...interface{}) {
 	if cmd == nil {
 		fmt.Printf(format+"\n", args...)
 		return
@@ -23,8 +23,8 @@ func Infof(cmd *cobra.Command, format string, args ...interface{}) {
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(format, args...))
 }
 
-// Errorf prints error messages.
-func Errorf(cmd *cobra.Command, format string, args ...interface{}) {
+// PrintErrorf prints error messages.
+func PrintErrorf(cmd *cobra.Command, format string, args ...interface{}) {
 	if cmd == nil {
 		fmt.Printf("Error: "+format+"\n", args...)
 		return
@@ -56,7 +56,7 @@ func FormatPrint(cmd *cobra.Command, traceId, message, data string) {
 	default:
 		b, _ = json.Marshal(fo)
 	}
-	Infof(cmd, string(b))
+	PrintInfof(cmd, string(b))
 }
 
 // GetFormat gets the format.

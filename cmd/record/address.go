@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
-	"tmeet/internal/log"
+	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 
 	"github.com/spf13/cobra"
@@ -57,6 +57,6 @@ func (o *AddressOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse response.
-	log.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
 	return nil
 }
