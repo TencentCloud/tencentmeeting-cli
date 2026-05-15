@@ -95,6 +95,7 @@ All commands support the following global flags:
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--format` | — | `json` | Output format: `json` (compact) \| `json-pretty` (indented) |
+| `--compact` | — | `false` | Compact output mode: keeps only key fields and filters out redundant ones to reduce response size; recommended for query/list commands |
 | `--version` | `-V` | — | Show version number |
 
 **Examples:**
@@ -105,14 +106,61 @@ tmeet -V
 
 # Output response in indented format
 tmeet meeting get --meeting-id "6953553464429888300" --format json-pretty
+
+# Output query results in compact mode (only key fields)
+tmeet record list --meeting-id "6953553464429888300" --compact
 ```
+
+---
+
+## Pagination
+
+Starting from `v1.0.5`, all list/query commands that support pagination use a unified **`--page-token` + `--page-size`** model. The legacy `--page` / `--pos` / `--pid` / `--size` / `--limit` flags are marked as **deprecated** — they still work for backward compatibility but are discouraged and may be removed in a future release.
+
+**Unified usage:**
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--page-token` | string | Pagination cursor. **Omit on the first request**; for subsequent pages, pass the `next_page_token` returned by the previous response |
+| `--page-size` | int | Items per page. Defaults and upper limits vary by command (see per-command docs below) |
+
+**Typical pagination flow:**
+
+```bash
+# 1) First request (no page-token)
+tmeet record list --meeting-id "6953553464429888300" --page-size 30
+
+# 2) Take next_page_token from the response and request the next page
+tmeet record list \
+  --meeting-id "6953553464429888300" \
+  --page-size 30 \
+  --page-token "<next_page_token>"
+
+# 3) Repeat until next_page_token is empty (last page reached)
+```
+
+**`--page-size` defaults / maximums per command:**
+
+| Command | Default | Max | Legacy flag (deprecated) |
+|---------|:-------:|:---:|-------------------------|
+| `meeting list` |   20    | 20 | — |
+| `meeting list-ended` |   30    | 30 | `--page` |
+| `meeting invitees-list` |   30    | 30 | `--pos` |
+| `record list` |   30    | 30 | `--page` |
+| `record address` |   30    | 30 | `--page` |
+| `report participants` |   100   | 100 | `--pos` / `--size` |
+| `report waiting-room-log` |   100   | 100 | `--page` |
+
+> `record transcript-get` / `record transcript-paragraphs` / `record transcript-search` do not support the new `--page-token` based pagination.
+>
+> Compatibility: when `--page-token` is not provided but a legacy flag (e.g. `--page`, `--pos`) is set, the CLI falls back to the legacy mode (`page_type=0`); otherwise the new mode (`page_type=1`) is used.
 
 ---
 
 ## Command Overview
 
 ```
-tmeet [--format json] [-V]
+tmeet [--format json|json-pretty] [--compact] [-V]
 ├── auth
 │   ├── login          # OAuth authorization login
 │   ├── logout         # Logout and clear credentials
@@ -335,6 +383,8 @@ tmeet meeting list [options]
 | `--start` | string | — | — | Pagination start time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
 | `--end` | string | — | — | Pagination end time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
 | `--show-all-sub` | int | — | `0` | Show all sub-meetings: `0`-no, `1`-yes |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `20` | Page size, default 20, max 20 |
 
 **Examples:**
 
@@ -344,6 +394,9 @@ tmeet meeting list \
   --start "2026-04-01T00:00+08:00" \
   --end "2026-04-30T23:59+08:00" \
   --show-all-sub 1
+
+# Fetch the next page
+tmeet meeting list --page-token "<next_page_token>" --page-size 20
 ```
 
 ---
@@ -360,8 +413,9 @@ tmeet meeting list-ended [options]
 |-----------|------|:--------:|---------|-------------|
 | `--start` | string | — | — | Query start time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
 | `--end` | string | — | — | Query end time, ISO 8601, e.g. `2026-03-12T15:00+08:00` |
-| `--page` | int | — | `1` | Page number, starting from 1 |
-| `--page-size` | int | — | `10` | Page size, default 10, max 20 |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+| `--page` | int | — | — | ⚠️ **Deprecated**: page number (starting from 1); use `--page-token` instead |
 
 **Examples:**
 
@@ -371,11 +425,11 @@ tmeet meeting list-ended \
   --start "2026-04-01T00:00+08:00" \
   --end "2026-04-30T23:59+08:00"
 
-# Paginated query
+# Paginated query using page-token
 tmeet meeting list-ended \
   --start "2026-04-01T00:00+08:00" \
   --end "2026-04-30T23:59+08:00" \
-  --page 2 --page-size 20
+  --page-token "<next_page_token>" --page-size 30
 ```
 
 ---
@@ -389,13 +443,19 @@ tmeet meeting invitees-list --meeting-id <meeting-id> [options]
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
 | `--meeting-id` | string | ✅ | — | Meeting ID |
-| `--pos` | int | — | `0` | Starting position for paginated invitee list query |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+| `--pos` | int | — | — | ⚠️ **Deprecated**: starting position; use `--page-token` instead |
 
 **Examples:**
 
 ```bash
 tmeet meeting invitees-list --meeting-id "6953553464429888300"
-tmeet meeting invitees-list --meeting-id "6953553464429888300" --pos 20
+
+# Fetch the next page
+tmeet meeting invitees-list \
+  --meeting-id "6953553464429888300" \
+  --page-token "<next_page_token>" --page-size 30
 ```
 
 ---
@@ -419,8 +479,9 @@ tmeet record list (--start <start-time> --end <end-time> | --meeting-id <id> | -
 | `--end` | string | one of three | — | Query end time, ISO 8601, e.g. `2026-03-12T14:00+08:00` (used with `--start`) |
 | `--meeting-id` | string | one of three | — | Meeting ID |
 | `--meeting-code` | string | one of three | — | Meeting code |
-| `--page` | int | — | `1` | Page number, starting from 1 |
-| `--page-size` | int | — | `10` | Page size, max 20 |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+| `--page` | int | — | — | ⚠️ **Deprecated**: page number (starting from 1); use `--page-token` instead |
 
 **Examples:**
 
@@ -429,7 +490,7 @@ tmeet record list (--start <start-time> --end <end-time> | --meeting-id <id> | -
 tmeet record list \
   --start "2026-04-01T00:00+08:00" \
   --end "2026-04-30T23:59+08:00" \
-  --page 1 --page-size 20
+  --page-token "<next_page_token>" --page-size 30
 
 # Query by meeting ID
 tmeet record list --meeting-id "6953553464429888300"
@@ -449,13 +510,19 @@ tmeet record address --meeting-record-id <record-id> [options]
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
 | `--meeting-record-id` | string | ✅ | — | Meeting recording ID |
-| `--page` | int | — | `1` | Page number, starting from 1 |
-| `--page-size` | int | — | `50` | Page size, max 50 |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+| `--page` | int | — | — | ⚠️ **Deprecated**: page number (starting from 1); use `--page-token` instead |
 
-**Example:**
+**Examples:**
 
 ```bash
 tmeet record address --meeting-record-id "record_abc123"
+
+# Fetch the next page
+tmeet record address \
+  --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>" --page-size 30
 ```
 
 ---
@@ -490,13 +557,16 @@ tmeet record transcript-get --record-file-id <file-id> [options]
 |-----------|------|:--------:|---------|-------------|
 | `--record-file-id` | string | ✅ | — | Recording file ID |
 | `--meeting-id` | string | — | — | Meeting ID |
-| `--pid` | string | — | — | Starting paragraph ID for query |
+| `--pid` | string | — | — | Starting paragraph ID |
 | `--limit` | string | — | — | Number of paragraphs to query |
 
-**Example:**
+**Examples:**
 
 ```bash
-tmeet record transcript-get --record-file-id "file_abc123" --pid "para_001" --limit "50"
+tmeet record transcript-get --record-file-id "file_abc123"
+
+# Specify starting paragraph and count
+tmeet record transcript-get --record-file-id "file_abc123" --pid "<paragraph_id>" --limit "30"
 ```
 
 ---
@@ -512,10 +582,15 @@ tmeet record transcript-paragraphs --record-file-id <file-id> [options]
 | `--record-file-id` | string | ✅ | — | Recording file ID |
 | `--meeting-id` | string | — | — | Meeting ID |
 
-**Example:**
+**Examples:**
 
 ```bash
 tmeet record transcript-paragraphs --record-file-id "file_abc123"
+
+# Specify meeting ID
+tmeet record transcript-paragraphs \
+  --record-file-id "file_abc123" \
+  --meeting-id "6953553464429888300"
 ```
 
 ---
@@ -548,23 +623,30 @@ tmeet record transcript-search --record-file-id "file_abc123" --text "quarterly 
 tmeet report participants --meeting-id <meeting-id> [options]
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--meeting-id` | string | ✅ | — | Meeting ID |
-| `--sub-meeting-id` | string | — | — | Sub-meeting ID for recurring meetings |
-| `--pos` | int | — | `0` | Starting position for paginated participant list query |
-| `--size` | int | — | `20` | Number of participants to fetch, max 100 per page |
-| `--start` | string | — | — | Query start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
-| `--end` | string | — | — | Query end time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
+| Parameter | Type | Required | Default | Description                                                                                 |
+|-----------|------|:--------:|---------|---------------------------------------------------------------------------------------------|
+| `--meeting-id` | string | ✅ | —       | Meeting ID                                                                                  |
+| `--sub-meeting-id` | string | — | —       | Sub-meeting ID for recurring meetings                                                       |
+| `--start` | string | — | —       | Query start time, ISO 8601, e.g. `2026-03-12T14:00+08:00`                                   |
+| `--end` | string | — | —       | Query end time, ISO 8601, e.g. `2026-03-12T14:00+08:00`                                     |
+| `--page-token` | string | — | —       | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `100`   | Page size, default 100, max 100                                                             |
+| `--pos` | int | — | —       | ⚠️ **Deprecated**: starting position; use `--page-token` instead                            |
+| `--size` | int | — | —       | ⚠️ **Deprecated**: items per page; use `--page-size` instead                                |
 
 **Examples:**
 
 ```bash
-tmeet report participants --meeting-id "6953553464429888300" --size 50
+tmeet report participants --meeting-id "6953553464429888300" --page-size 50
 tmeet report participants \
   --meeting-id "6953553464429888300" \
   --start "2026-04-10T10:00+08:00" \
   --end "2026-04-10T11:00+08:00"
+
+# Fetch the next page
+tmeet report participants \
+  --meeting-id "6953553464429888300" \
+  --page-token "<next_page_token>" --page-size 50
 ```
 
 ---
@@ -575,16 +657,22 @@ tmeet report participants \
 tmeet report waiting-room-log --meeting-id <meeting-id> [options]
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--meeting-id` | string | ✅ | — | Meeting ID |
-| `--page` | int | — | `1` | Page number, default 1 |
-| `--page-size` | int | — | `20` | Page size, default 20, max 50 |
+| Parameter | Type | Required | Default | Description                                                                                 |
+|-----------|------|:--------:|---------|---------------------------------------------------------------------------------------------|
+| `--meeting-id` | string | ✅ | —       | Meeting ID                                                                                  |
+| `--page-token` | string | — | —       | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `100`   | Page size, default 100, max 100                                                             |
+| `--page` | int | — | —       | ⚠️ **Deprecated**: page number; use `--page-token` instead                                  |
 
-**Example:**
+**Examples:**
 
 ```bash
-tmeet report waiting-room-log --meeting-id "6953553464429888300" --page 1 --page-size 50
+tmeet report waiting-room-log --meeting-id "6953553464429888300" --page-size 50
+
+# Fetch the next page
+tmeet report waiting-room-log \
+  --meeting-id "6953553464429888300" \
+  --page-token "<next_page_token>" --page-size 50
 ```
 
 ---
