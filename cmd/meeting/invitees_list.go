@@ -31,6 +31,7 @@ func newInviteesCmd(tmeet *internal.Tmeet) *cobra.Command {
 		RunE: middleWare.Chain(
 			opts.Run,
 			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdMeetingInviteList)),
+			middleWare.WithCompact(tmeet),
 		),
 	}
 
@@ -80,6 +81,7 @@ func (o *InviteesOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())))
 	return nil
 }
