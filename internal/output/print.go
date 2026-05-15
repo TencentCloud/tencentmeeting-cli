@@ -3,7 +3,6 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -33,15 +32,24 @@ func PrintErrorf(cmd *cobra.Command, format string, args ...interface{}) {
 }
 
 // FormatPrint prints data in the specified format.
-func FormatPrint(cmd *cobra.Command, traceId, message, data string) {
+func FormatPrint(cmd *cobra.Command, traceId, message, data string, opts ...Option) {
+	// get options
+	optMsg := &optionsMsg{
+		cmd:     cmd,
+		data:    data,
+		traceId: traceId,
+		message: message,
+	}
+	getOptions(optMsg, opts...)
+
 	fo := &formatOutput{
-		TraceId: traceId,
-		Message: message,
+		TraceId: optMsg.traceId,
+		Message: optMsg.message,
 	}
 	dataMap := make(map[string]interface{})
-	err := json.Unmarshal([]byte(data), &dataMap)
+	err := json.Unmarshal([]byte(optMsg.data), &dataMap)
 	if err != nil {
-		fo.Data = data
+		fo.Data = optMsg.data
 	} else {
 		fo.Data = dataMap
 	}
