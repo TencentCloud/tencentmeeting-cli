@@ -3,6 +3,8 @@ package record
 import (
 	"net/http"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -26,9 +28,11 @@ func newTranscriptGetCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "transcript-get",
 		Short: "get transcript detail",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdRecordTranscriptGet)),
+			middleWare.WithCompact(tmeet),
+		),
 	}
 
 	cmd.Flags().StringVar(&opts.RecordFileID, "record-file-id", "", "record file id (required)")
@@ -66,11 +70,12 @@ func (o *TranscriptsGetOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Parse response.
-	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
+	convertMap := map[string]utils.FieldConverter{
 		"start_time": utils.HHMMSSConverter,
 		"end_time":   utils.HHMMSSConverter,
-	}))
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithConvert(convertMap))
 	return nil
 }

@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -15,7 +17,9 @@ import (
 type InviteesOptions struct {
 	tmeet     *internal.Tmeet
 	MeetingID string // Meeting ID
-	Pos       int    // Starting position value for paginated retrieval of invited members
+	Pos       int    // Starting position value for paginated retrieval of invited members, deprecated use PageToken instead
+	PageToken string // Page token for pagination
+	PageSize  int    // Page size for pagination, max 30
 }
 
 // newInviteesCmd gets meeting invitees.
@@ -24,17 +28,23 @@ func newInviteesCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "invitees-list",
 		Short: "get meeting invitees",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdMeetingInviteList)),
+		),
 	}
 
 	// 填充参数
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "meeting ID (required)")
-	cmd.Flags().IntVar(&opts.Pos, "pos", 0, "pos starting position value for retrieving the list of invited members in pagination.")
+	cmd.Flags().IntVar(&opts.Pos, "pos", -1, ""+
+		"pos starting position value for retrieving the list of invited members in pagination. (deprecated, use --page-token instead)")
+	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 30, "page size for pagination, max 30, default 30")
 
-	// 设置必填参数
+	// mark required
 	_ = cmd.MarkFlagRequired("meeting-id")
+	// mark deprecated
+	_ = cmd.Flags().MarkDeprecated("pos", "use --page-token instead")
 
 	return cmd
 }
@@ -43,7 +53,20 @@ func (o *InviteesOptions) Run(cmd *cobra.Command, args []string) error {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("userid", o.tmeet.UserConfig.OpenId)
 	queryParams.Set("instanceid", "1") // PC, fixed value
-	queryParams.Set("pos", strconv.FormatInt(int64(o.Pos), 10))
+
+	// pagination compatibility
+	pageValue, pageType := cmdutil.ChoosePosOrToken(o.Pos, o.PageToken)
+	queryParams.Set("page_type", strconv.Itoa(pageType))
+	if pageType == cmdutil.PageTypeOld {
+		queryParams.Set("pos", pageValue)
+	} else {
+		queryParams.Set("page_token", pageValue)
+		pageSize, err := cmdutil.ClampingPageSize(cmd, o.PageSize, cmdutil.PageSizeMaxMeetings)
+		if err != nil {
+			return err
+		}
+		queryParams.Set("page_size", strconv.Itoa(pageSize))
+	}
 
 	req := &thttp.Request{
 		ApiURI:      "/v1/meetings/{meeting_id}/invitees",

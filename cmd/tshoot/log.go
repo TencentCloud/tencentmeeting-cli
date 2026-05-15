@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -46,7 +47,7 @@ func newLogCmd(tmeet *internal.Tmeet) *cobra.Command {
 			return opts.Run(cmd, args)
 		},
 	}
-	cmd.Annotations = map[string]string{"skipPreCheckFlag": "upload"}
+	cmdutil.InjectSkipPreCheckFlagAnnotation(cmd, "upload")
 
 	cmd.Flags().StringVar(&opts.StartTime, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
 	cmd.Flags().StringVar(&opts.EndTime, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
@@ -72,7 +73,7 @@ func (o *LogOptions) Run(cmd *cobra.Command, args []string) error {
 		return exception.InvalidArgsError.With("failed to read log directory: %v", err)
 	}
 
-	zipPath, totalLines, err := o.packLogs(logDir, logFiles, logPrefix, logTimeFormat, timeRange)
+	zipPath, totalLines, err := o.packLogs(logDir, logFiles, logTimeFormat, timeRange)
 	if err != nil {
 		tmeetLog.Errorf(o.tmeet.TCtx, "failed to pack logs: %v", err)
 		return exception.InvalidArgsError.With("failed to pack logs: %v", err)
@@ -178,7 +179,7 @@ type logFileContent struct {
 
 // packLogs packs filtered log lines into a zip file and returns the zip path and total line count.
 // If no lines match, no zip is created and an empty path with 0 is returned.
-func (o *LogOptions) packLogs(logDir string, logFiles []string, logPrefix, logTimeFormat string, tr timeRange) (string, int, error) {
+func (o *LogOptions) packLogs(logDir string, logFiles []string, logTimeFormat string, tr timeRange) (string, int, error) {
 	// Collect all content first to avoid creating an empty zip.
 	var contents []logFileContent
 	totalLines := 0
@@ -322,7 +323,7 @@ func (o *LogOptions) uploadToServer(ctx context.Context, zipPath string) (string
 	}
 	cosFileMD5 := base64.StdEncoding.EncodeToString(md5Bytes)
 
-	tokenData, err := o.fetchUploadToken(ctx, zipPath, fileHash, cosFileMD5, uint64(fileSize))
+	tokenData, err := o.fetchUploadToken(ctx, fileHash, cosFileMD5, uint64(fileSize))
 	if err != nil {
 		return "", err
 	}
@@ -339,7 +340,7 @@ func (o *LogOptions) uploadToServer(ctx context.Context, zipPath string) (string
 }
 
 // fetchUploadToken requests an upload credential from the server.
-func (o *LogOptions) fetchUploadToken(ctx context.Context, zipPath, fileHash, fileMD5 string, fileSize uint64) (*uploadTokenRsp, error) {
+func (o *LogOptions) fetchUploadToken(ctx context.Context, fileHash, fileMD5 string, fileSize uint64) (*uploadTokenRsp, error) {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("file_size", strconv.FormatUint(fileSize, 10))
 	queryParams.Set("file_hash", fileHash)

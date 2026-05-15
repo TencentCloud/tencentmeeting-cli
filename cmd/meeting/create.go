@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
 	"tmeet/internal/output"
@@ -36,9 +38,10 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create meeting",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdMeetingCreate)),
+		),
 	}
 
 	// Fill in parameters.
@@ -121,11 +124,11 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Parse response, recursively convert timestamp fields to ISO8601 format.
-	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
+	convertMap := map[string]utils.FieldConverter{
 		"start_time": utils.TimestampConverter,
 		"end_time":   utils.TimestampConverter,
-	}))
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithConvert(convertMap))
 	return nil
 }

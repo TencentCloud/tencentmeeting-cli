@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
 	"tmeet/internal/output"
@@ -37,9 +39,10 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "update meeting",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdMeetingUpdate)),
+		),
 	}
 
 	// 填充参数
@@ -132,11 +135,11 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// 解析响应，递归转换时间戳字段为 ISO8601 格式
-	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
+	convertMap := map[string]utils.FieldConverter{
 		"start_time": utils.TimestampConverter,
 		"end_time":   utils.TimestampConverter,
-	}))
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithConvert(convertMap))
 	return nil
 }

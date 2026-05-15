@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -16,8 +18,9 @@ import (
 type WaitingRoomOptions struct {
 	tmeet     *internal.Tmeet
 	MeetingId string // Meeting ID
-	PageSize  int    // Page size, default 20
-	Page      int    // Page number, default 1
+	PageSize  int    // Page size
+	Page      int    // Page number, deprecated use PageToken instead
+	PageToken string // Page token
 }
 
 // newWaitingRoomCmd gets the waiting room members list.
@@ -26,16 +29,22 @@ func newWaitingRoomCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "waiting-room-log",
 		Short: "get waiting room members",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdReportWaitingRoomLog)),
+			middleWare.WithCompact(tmeet),
+		),
 	}
 
 	cmd.Flags().StringVar(&opts.MeetingId, "meeting-id", "", "meeting id (required)")
-	cmd.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size, default 20, max 50")
-	cmd.Flags().IntVar(&opts.Page, "page", 1, "page number, default 1")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 100, "page size, default 100, max 100")
+	cmd.Flags().IntVar(&opts.Page, "page", 0, "page number, (deprecated, use --page-token instead)")
+	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token")
 
+	// mark required flags
 	_ = cmd.MarkFlagRequired("meeting-id")
+	// mark deprecated flags
+	_ = cmd.Flags().MarkDeprecated("page", "use --page-token instead")
 
 	return cmd
 }
@@ -44,8 +53,20 @@ func (o *WaitingRoomOptions) Run(cmd *cobra.Command, args []string) error {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("operator_id", o.tmeet.UserConfig.OpenId)
 	queryParams.Set("operator_id_type", "2") // OpenId
-	queryParams.Set("page", strconv.Itoa(o.Page))
-	queryParams.Set("page_size", strconv.Itoa(o.PageSize))
+
+	// pagination compatibility
+	pageValue, pageType := cmdutil.ChoosePageOrToken(o.Page, o.PageToken)
+	queryParams.Set("page_type", strconv.Itoa(pageType))
+	if pageType == cmdutil.PageTypeOld {
+		queryParams.Set("page", pageValue)
+	} else {
+		queryParams.Set("page_token", pageValue)
+	}
+	pageSize, err := cmdutil.ClampingPageSize(cmd, o.PageSize, cmdutil.PageSizeMaxReports)
+	if err != nil {
+		return err
+	}
+	queryParams.Set("page_size", strconv.Itoa(pageSize))
 
 	req := &thttp.Request{
 		ApiURI:      "/v1/meeting/{meeting_id}/waiting-room",
@@ -57,8 +78,7 @@ func (o *WaitingRoomOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// 解析响应，递归转换时间戳字段为 ISO8601 格式
-	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
+	convertMap := map[string]utils.FieldConverter{
 		"join_time":           utils.TimestampConverter,
 		"left_time":           utils.TimestampConverter,
 		"schedule_start_time": utils.TimestampConverter,
@@ -66,7 +86,9 @@ func (o *WaitingRoomOptions) Run(cmd *cobra.Command, args []string) error {
 		"instanceid":          utils.InstanceIdConverter,
 		"user_name":           utils.Base64DecodeConverter,
 		"subject":             utils.Base64DecodeConverter,
-	}))
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithConvert(convertMap))
 	return nil
 }

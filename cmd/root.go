@@ -57,6 +57,10 @@ func Execute() int {
 	rootCmd.Flags().BoolP("version", "V", false, "version for tmeet")
 	// All subcommands inherit the --format flag, supporting json (default, compact) | json-pretty (indented).
 	rootCmd.PersistentFlags().String("format", "json", "output format: json(compact)|json-pretty(indented)")
+	// All subcommands inherit the --compact flag; when true,
+	// the response packet results print only a few necessary fields.
+	rootCmd.PersistentFlags().Bool("compact", false,
+		"compact output: the response packet results print only a few necessary fields")
 
 	// Add subcommand: auth
 	rootCmd.AddCommand(auth.NewBaseCmd(tmeet))

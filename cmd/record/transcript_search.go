@@ -3,6 +3,8 @@ package record
 import (
 	"net/http"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -25,15 +27,18 @@ func newTranscriptSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "transcript-search",
 		Short: "search transcript content",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdRecordTranscriptSearch)),
+			middleWare.WithCompact(tmeet),
+		),
 	}
 
 	cmd.Flags().StringVar(&opts.RecordFileID, "record-file-id", "", "record file id (required)")
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "meeting id")
 	cmd.Flags().StringVar(&opts.Text, "text", "", "search text (required)")
 
+	// mark required flags
 	_ = cmd.MarkFlagRequired("record-file-id")
 	_ = cmd.MarkFlagRequired("text")
 
@@ -60,10 +65,11 @@ func (o *TranscriptsSearchOptions) Run(cmd *cobra.Command, args []string) error 
 		return err
 	}
 
-	// Parse response.
-	rsp.Data = string(utils.ConvertFields([]byte(rsp.Data), 10, map[string]utils.FieldConverter{
+	convertMap := map[string]utils.FieldConverter{
 		"start_time": utils.HHMMSSConverter,
-	}))
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithConvert(convertMap))
 	return nil
 }

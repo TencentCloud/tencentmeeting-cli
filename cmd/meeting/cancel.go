@@ -3,6 +3,8 @@ package meeting
 import (
 	"net/http"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -24,9 +26,10 @@ func newCancelCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cancel",
 		Short: "cancel meeting",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdMeetingCancel)),
+		),
 	}
 
 	// 填充参数

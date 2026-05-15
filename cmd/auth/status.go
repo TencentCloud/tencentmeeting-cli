@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
 	"tmeet/internal/config"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
@@ -28,7 +29,7 @@ func newStatusCmd(tmeet *internal.Tmeet) *cobra.Command {
 			return opts.Run(cmd, args)
 		},
 	}
-	cmd.Annotations = map[string]string{"skipPreCheck": "true"}
+	cmdutil.InjectSkipPreCheckAnnotation(cmd)
 
 	return cmd
 }

@@ -3,6 +3,8 @@ package record
 import (
 	"net/http"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -19,14 +21,16 @@ type SmartMinutesOptions struct {
 }
 
 // newSmartMinutesCmd gets smart minutes.
-func newSmartMinutesCmd(tm *internal.Tmeet) *cobra.Command {
-	opts := &SmartMinutesOptions{tmeet: tm}
+func newSmartMinutesCmd(tmeet *internal.Tmeet) *cobra.Command {
+	opts := &SmartMinutesOptions{tmeet: tmeet}
 	cmd := &cobra.Command{
 		Use:   "smart-minutes",
 		Short: "get smart minutes from record",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdRecordSmartMinutes)),
+			middleWare.WithCompact(tmeet),
+		),
 	}
 
 	cmd.Flags().StringVar(&opts.RecordFileId, "record-file-id", "", "record file id (required)")
@@ -59,6 +63,7 @@ func (o *SmartMinutesOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data)
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())))
 	return nil
 }

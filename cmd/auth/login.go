@@ -6,6 +6,7 @@ import (
 	"time"
 	"tmeet/internal"
 	"tmeet/internal/auth"
+	"tmeet/internal/cmdutil"
 	"tmeet/internal/config"
 	"tmeet/internal/core/browser"
 	"tmeet/internal/core/filelock"
@@ -37,7 +38,7 @@ func newLoginCmd(tmeet *internal.Tmeet) *cobra.Command {
 			})
 		},
 	}
-	cmd.Annotations = map[string]string{"skipPreCheck": "true"}
+	cmdutil.InjectSkipPreCheckAnnotation(cmd)
 
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "disable auto-opening the browser, only print the authorization URL")
 
