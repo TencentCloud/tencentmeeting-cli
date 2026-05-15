@@ -26,11 +26,11 @@ tmeet record list \
   --start "2026-04-01T00:00:00+08:00" \
   --end "2026-04-30T23:59:59+08:00"
 
-# 分页查询
+# 分页查询（使用 page-token翻下一页）
 tmeet record list \
   --meeting-id "100000000" \
-  --page 2 \
-  --page-size 20
+  --page-token "<next_page_token>" \
+  --page-size 30
 ```
 
 ### 参数
@@ -40,8 +40,9 @@ tmeet record list \
 | `--meeting-id <id>` | 至少一组 | — | 会议 ID                                          |
 | `--meeting-code <code>` | 至少一组 | — | 会议码                                            |
 | `--start <time>` + `--end <time>` | 至少一组 | — | 时间范围（ISO 8601，含时区，建议 `--start` 与 `--end` 同时提供） |
-| `--page <n>` | 否 | `1` | 页码，从 `1` 开始                                    |
-| `--page-size <n>` | 否 | `10` | 每页数量，最大20                                      |
+| `--page-token <token>` | 否 | — | 分页游标，首页不传；后续翻页传入上一次响应的 `next_page_token` |
+| `--page-size <n>` | 否 | `30` | 每页数量，默认 30，最大 30 |
+| `--page <n>` | 否 | — | ⚠️ **已弃用**：页码（从 1 开始），请改用 `--page-token` |
 
 > `--meeting-id`、`--meeting-code`、`--start + --end` 三组**至少提供一组**，多组可叠加使用以缩小查询范围。
 
@@ -53,11 +54,11 @@ tmeet record list \
 # 获取录制文件下载地址
 tmeet record address --meeting-record-id "record_abc123"
 
-# 分页获取
+# 分页获取（翻下一页）
 tmeet record address \
   --meeting-record-id "record_abc123" \
-  --page 1 \
-  --page-size 50
+  --page-token "<next_page_token>" \
+  --page-size 30
 ```
 
 ### 参数
@@ -65,8 +66,9 @@ tmeet record address \
 | 参数 | 必填 | 默认值 | 说明                             |
 |------|------|--------|--------------------------------|
 | `--meeting-record-id <id>` | ✅ | — | 会议录制 ID（从 `record list` 结果中获取） |
-| `--page <n>` | 否 | `1` | 页码，从 `1` 开始                    |
-| `--page-size <n>` | 否 | `50` | 每页数量，最大50                      |
+| `--page-token <token>` | 否 | — | 分页游标，首页不传；后续翻页传入上一次响应的 `next_page_token` |
+| `--page-size <n>` | 否 | `30` | 每页数量，默认 30，最大 30 |
+| `--page <n>` | 否 | — | ⚠️ **已弃用**：页码（从 1 开始），请改用 `--page-token` |
 
 ---
 
@@ -103,22 +105,22 @@ tmeet record smart-minutes \
 # 获取转写详情
 tmeet record transcript-get --record-file-id "file_abc123"
 
-# 指定会议 ID 和分页参数
+# 指定起始段落 ID 与查询段落数
 tmeet record transcript-get \
   --record-file-id "file_abc123" \
   --meeting-id "100000000" \
-  --pid "paragraph_001" \
-  --limit "50"
+  --pid "<paragraph_id>" \
+  --limit "30"
 ```
 
 ### 参数
 
-| 参数 | 必填 | 说明 |
-|------|------|------|
-| `--record-file-id <id>` | ✅ | 录制文件 ID |
-| `--meeting-id <id>` | 否 | 会议 ID |
-| `--pid <id>` | 否 | 查询起始段落 ID（用于分页） |
-| `--limit <n>` | 否 | 查询段落数量 |
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--record-file-id <id>` | ✅ | — | 录制文件 ID |
+| `--meeting-id <id>` | 否 | — | 会议 ID |
+| `--pid <id>` | 否 | — | 查询的起始段落 ID |
+| `--limit <n>` | 否 | — | 查询的段落数 |
 
 ---
 
@@ -136,10 +138,10 @@ tmeet record transcript-paragraphs \
 
 ### 参数
 
-| 参数 | 必填 | 说明 |
-|------|------|------|
-| `--record-file-id <id>` | ✅ | 录制文件 ID |
-| `--meeting-id <id>` | 否 | 会议 ID |
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--record-file-id <id>` | ✅ | — | 录制文件 ID |
+| `--meeting-id <id>` | 否 | — | 会议 ID |
 
 ---
 
@@ -179,7 +181,7 @@ tmeet record transcript-search \
 
 3. 获取智能纪要 / 转写内容
    tmeet record smart-minutes --record-file-id <record_file_id>
-   tmeet record transcript-paragraphs --record-file-id <record_file_id>
+   tmeet record transcript-get --record-file-id <record_file_id>
    tmeet record transcript-search --record-file-id <record_file_id> --text "关键词"
 ```
 

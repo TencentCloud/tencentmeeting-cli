@@ -170,10 +170,10 @@ tmeet meeting get --meeting-code "123456789"
 
 ---
 
-## list — 获取会议列表
+## list — 获取待开始/进行中的会议列表
 
 ```bash
-# 查询所有会议列表（不限时间范围）
+# 查询所有待开始/进行中的会议列表（不限时间范围）
 tmeet meeting list
 
 # 按时间范围查询
@@ -183,6 +183,9 @@ tmeet meeting list \
 
 # 展示所有子会议
 tmeet meeting list --show-all-sub 1
+
+# 分页查询（翻下一页）
+tmeet meeting list --page-token "<next_page_token>" --page-size 20
 ```
 
 ### 参数
@@ -192,6 +195,8 @@ tmeet meeting list --show-all-sub 1
 | `--start <time>` | 否 | — | 查询起始时间（ISO 8601，含时区） |
 | `--end <time>` | 否 | — | 查询结束时间（ISO 8601，含时区） |
 | `--show-all-sub <n>` | 否 | `0` | 展示所有子会议：`0`-不展示，`1`-展示 |
+| `--page-token <token>` | 否 | — | 分页游标，首页不传；后续翻页传入上一次响应的 `next_page_token` |
+| `--page-size <n>` | 否 | `20` | 每页数量，默认 20，最大 20 |
 
 ---
 
@@ -206,12 +211,12 @@ tmeet meeting list-ended \
   --start "2026-04-01T00:00:00+08:00" \
   --end "2026-04-30T23:59:59+08:00"
 
-# 分页查询
+# 分页查询（使用 page-token）
 tmeet meeting list-ended \
   --start "2026-04-01T00:00:00+08:00" \
   --end "2026-04-30T23:59:59+08:00" \
-  --page 2 \
-  --page-size 20
+  --page-token "<next_page_token>" \
+  --page-size 30
 ```
 
 ### 参数
@@ -220,8 +225,9 @@ tmeet meeting list-ended \
 |------|------|--------|------|
 | `--start <time>` | 否 | — | 查询起始时间（ISO 8601，含时区） |
 | `--end <time>` | 否 | — | 查询结束时间（ISO 8601，含时区） |
-| `--page <n>` | 否 | `1` | 页码，从 `1` 开始 |
-| `--page-size <n>` | 否 | `10` | 每页数量，最大 `20` |
+| `--page-token <token>` | 否 | — | 分页游标，首页不传；后续翻页传入上一次响应的 `next_page_token` |
+| `--page-size <n>` | 否 | `30` | 每页数量，默认 30，最大 30 |
+| `--page <n>` | 否 | — | ⚠️ **已弃用**：页码（从 1 开始），请改用 `--page-token` |
 
 ---
 
@@ -231,8 +237,11 @@ tmeet meeting list-ended \
 # 获取会议受邀者列表
 tmeet meeting invitees-list --meeting-id "100000000"
 
-# 分页获取（从第 20 条开始）
-tmeet meeting invitees-list --meeting-id "100000000" --pos 20
+# 分页获取（翻下一页）
+tmeet meeting invitees-list \
+  --meeting-id "100000000" \
+  --page-token "<next_page_token>" \
+  --page-size 30
 ```
 
 ### 参数
@@ -240,7 +249,9 @@ tmeet meeting invitees-list --meeting-id "100000000" --pos 20
 | 参数 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--meeting-id <id>` | ✅ | — | 会议 ID |
-| `--pos <n>` | 否 | `0` | 分页起始位置 |
+| `--page-token <token>` | 否 | — | 分页游标，首页不传；后续翻页传入上一次响应的 `next_page_token` |
+| `--page-size <n>` | 否 | `30` | 每页数量，默认 30，最大 30 |
+| `--pos <n>` | 否 | — | ⚠️ **已弃用**：分页起始位置，请改用 `--page-token` |
 
 ---
 
