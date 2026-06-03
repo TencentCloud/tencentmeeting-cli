@@ -16,6 +16,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.AddCommand(
 		// Get meeting log
 		newLogCmd(tmeet),
+		// Report troubleshooting feedback
+		newFeedbackCmd(tmeet),
 	)
 
 	return cmd
