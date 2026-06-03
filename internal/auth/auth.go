@@ -11,6 +11,7 @@ import (
 	"tmeet/internal/core/filelock"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
+	"tmeet/internal/log"
 )
 
 const authorizationTimeout = 5 * time.Minute
@@ -91,6 +92,7 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context) error {
 		// Refresh the token.
 		tokenData, err := w.refreshAuthToken(ctx)
 		if err != nil {
+			log.Errorf(ctx, "refresh token failed: %v", err)
 			// Delete local config.
 			_ = config.ClearUserConfig()
 			return exception.RefreshTokenFailedError

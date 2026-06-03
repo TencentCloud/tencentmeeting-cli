@@ -74,6 +74,7 @@ func Execute() int {
 	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
 	if err != nil {
+		log.Errorf(rootCmd.Context(), "execute failed: %v", err)
 		return 1
 	}
 	return 0
