@@ -184,7 +184,8 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── participants      # 获取参会人列表
 │   └── waiting-room-log  # 获取等候室成员列表
 └── tshoot
-    └── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
+    ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
+    └── feedback          # 上报问题排查反馈到服务器
 ```
 
 ---
@@ -714,6 +715,51 @@ tmeet tshoot log --upload
 ```
 output log saved to: ~/tmeet_ts_20260410_153000.zip
 ```
+
+---
+
+#### `tshoot feedback` — 上报问题排查反馈
+
+将 Agent 在使用 CLI 过程中遇到的问题或建议上报至服务器，便于后续优化工具能力。
+
+```bash
+tmeet tshoot feedback --category <分类> --intent <原始意图> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--category` | string | ✅ | — | 反馈分类，可选值：`tool_not_found`（想做某事但找不到匹配工具）、`tool_error`（调用工具但返回错误）、`tool_inadequate`（工具存在但能力/参数不足）、`unexpected_result`（调用成功但结果未达预期）、`suggestion`（一般性建议或改进想法） |
+| `--intent` | string | ✅ | — | Agent 的原始意图，最多 200 字符 |
+| `--actions-tried` | string | — | — | Agent 已尝试过的动作，最多 500 字符 |
+| `--result` | string | — | — | 已尝试动作的结果或阻塞点，最多 500 字符 |
+| `--tool-name` | string | — | — | 使用的工具/命令名 |
+| `--error-code` | string | — | — | 工具返回的错误码 |
+
+**示例：**
+
+```bash
+# 反馈：找不到匹配工具
+tmeet tshoot feedback \
+  --category "tool_not_found" \
+  --intent "想批量导出某个时间段的所有会议纪要" \
+  --actions-tried "查看了 record 和 meeting 子命令" \
+  --result "未找到批量导出纪要的命令"
+
+# 反馈：工具调用返回错误
+tmeet tshoot feedback \
+  --category "tool_error" \
+  --intent "获取录制下载地址" \
+  --tool-name "record address" \
+  --error-code "200003" \
+  --result "接口返回权限不足"
+
+# 反馈：一般性建议
+tmeet tshoot feedback \
+  --category "suggestion" \
+  --intent "希望支持按主题模糊搜索会议"
+```
+
+> 该命令需要登录后才能使用。
 
 ---
 

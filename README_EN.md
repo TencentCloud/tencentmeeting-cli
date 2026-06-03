@@ -184,7 +184,8 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── participants   # Get participant list
 │   └── waiting-room-log # Get waiting room member list
 └── tshoot
-    └── log            # Export local logs (supports time range filter, optional --upload to server)
+    ├── log            # Export local logs (supports time range filter, optional --upload to server)
+    └── feedback       # Report troubleshooting feedback to the server
 ```
 
 ---
@@ -714,6 +715,51 @@ Output example:
 ```
 output log saved to: ~/tmeet_ts_20260410_153000.zip
 ```
+
+---
+
+#### `tshoot feedback` — Report Troubleshooting Feedback
+
+Report issues or suggestions encountered by the Agent while using the CLI to the server, helping to improve tool capabilities.
+
+```bash
+tmeet tshoot feedback --category <category> --intent <intent> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--category` | string | ✅ | — | Feedback category. Options: `tool_not_found` (want to do something but cannot find a matching tool), `tool_error` (called a tool but it returned an error), `tool_inadequate` (tool exists but its capability/parameters are insufficient), `unexpected_result` (call succeeded but the result did not meet expectations), `suggestion` (general suggestion or improvement idea) |
+| `--intent` | string | ✅ | — | Original intent of the agent, max 200 characters |
+| `--actions-tried` | string | — | — | Actions the agent has tried, max 500 characters |
+| `--result` | string | — | — | Result or blocker of the tried actions, max 500 characters |
+| `--tool-name` | string | — | — | Tool/command name used |
+| `--error-code` | string | — | — | Error code returned by the tool |
+
+**Examples:**
+
+```bash
+# Feedback: no matching tool found
+tmeet tshoot feedback \
+  --category "tool_not_found" \
+  --intent "Want to batch export smart minutes within a time range" \
+  --actions-tried "Checked record and meeting subcommands" \
+  --result "No batch export command found"
+
+# Feedback: tool returned an error
+tmeet tshoot feedback \
+  --category "tool_error" \
+  --intent "Get recording download URL" \
+  --tool-name "record address" \
+  --error-code "200003" \
+  --result "API returned permission denied"
+
+# Feedback: general suggestion
+tmeet tshoot feedback \
+  --category "suggestion" \
+  --intent "Support fuzzy search for meetings by subject"
+```
+
+> This command requires login.
 
 ---
 
