@@ -2,6 +2,7 @@ package record
 
 import (
 	"net/http"
+
 	"tmeet/internal"
 	"tmeet/internal/cmdutil"
 	middleWare "tmeet/internal/cmdutil/middleware"
@@ -42,6 +43,7 @@ func newSmartMinutesCmd(tmeet *internal.Tmeet) *cobra.Command {
 	return cmd
 }
 
+// Run run cmd
 func (o *SmartMinutesOptions) Run(cmd *cobra.Command, args []string) error {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("operator_id", o.tmeet.UserConfig.OpenId)
