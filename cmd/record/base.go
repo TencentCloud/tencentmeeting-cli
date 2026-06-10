@@ -26,6 +26,10 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newTranscriptParagraphsCmd(tmeet),
 		// Search transcript content
 		newTranscriptSearchCmd(tmeet),
+		// Preview record permission application
+		newPermissionApplyPrepareCmd(tmeet),
+		// Commit record permission application
+		newPermissionApplyCommitCmd(tmeet),
 	)
 
 	return cmd
