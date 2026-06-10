@@ -2,6 +2,23 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.7] - 2026-06-10
+
+### Added
+
+- **New `record permission-apply-prepare` command** (`cmd/record/permission_apply_prepare.go`): When `record address` / `record smart-minutes` / `record transcript-*` fail due to missing permission, this command fetches the approval preview (approval text, meeting topic, recording owner, request notes, etc.) so the agent can show it to the user for confirmation before any write call.
+  - `--meeting-record-id` (required) — Meeting recording ID
+  - `--meeting-id` (optional) — Meeting ID
+- **New `record permission-apply-commit` command** (`cmd/record/permission_apply_commit.go`): Submits the recording-permission approval after user confirmation; returns `unique_id` / `status` / `approval_url` / `share_text`. Classified as a **write operation** and listed in the SKILL dangerous-operations table.
+  - `--meeting-record-id` (required) — Must match the value used in `prepare`
+  - `--meeting-id` (optional) — Meeting ID
+- **Non-retryable server error mechanism** (`internal/exception/`): Introduced `ServerCodeRecordNotExist (500277)` together with `notRetryCodeMap` / `IsNotRetryCode(code)`; added a new client-side error `NotRetryRequestError` and error code `ClientNotRetryRequest (2008)`.
+
+### Changed
+
+- **REST proxy retry policy** (`internal/proxy/rest-proxy/proxy.go`): `RetryIf` now also excludes `NotRetryRequestError` in addition to `TokenExpiredError`; server-side business errors that hit `IsNotRetryCode` are surfaced as `NotRetryRequestError` immediately, avoiding pointless retries on cases such as "recording does not exist".
+- **Documentation sync**: `README.md` / `README_EN.md` command tree and command reference updated with the two new permission-apply commands; `skills/tmeet-skill/SKILL.md` bumped to `1.0.3` with a "recording permission apply" capability note and `record permission-apply-commit` added to the dangerous-operations list requiring user confirmation; `skills/tmeet-skill/references/tmeet-record.md` adds the "permission apply workflow" (prepare → user confirm → commit → show `approval_url`) and error-handling guidance.
+
 ## [v1.0.6] - 2026-06-03
 
 ### Added
