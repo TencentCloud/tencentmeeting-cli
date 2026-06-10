@@ -174,12 +174,14 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── list-ended     # List ended meetings
 │   └── invitees-list  # List meeting invitees
 ├── record
-│   ├── list           # Query recording list
-│   ├── address        # Get recording file download URL
-│   ├── smart-minutes  # Get smart minutes
-│   ├── transcript-get        # Get transcript details
-│   ├── transcript-paragraphs # Get transcript paragraph list
-│   └── transcript-search     # Search transcript content
+│   ├── list                     # Query recording list
+│   ├── address                  # Get recording file download URL
+│   ├── smart-minutes            # Get smart minutes
+│   ├── transcript-get           # Get transcript details
+│   ├── transcript-paragraphs    # Get transcript paragraph list
+│   ├── transcript-search        # Search transcript content
+│   ├── permission-apply-prepare # Preview record permission application (before commit)
+│   └── permission-apply-commit  # Commit record permission application (after user confirmation)
 ├── report
 │   ├── participants   # Get participant list
 │   └── waiting-room-log # Get waiting room member list
@@ -613,6 +615,70 @@ tmeet record transcript-search --record-file-id <file-id> --text <keyword> [opti
 ```bash
 tmeet record transcript-search --record-file-id "file_abc123" --text "quarterly goals"
 ```
+
+---
+
+#### `record permission-apply-prepare` — Preview Record Permission Application
+
+Call this command before applying for record permission to fetch the approval text / meeting subject / record owner info. **Show the preview to the user for confirmation**, then call `record permission-apply-commit` to actually submit the application.
+
+```bash
+tmeet record permission-apply-prepare --meeting-record-id <record-id> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-record-id` | string | ✅ | — | Meeting record ID |
+| `--meeting-id` | string | — | — | Meeting ID |
+
+**Example:**
+
+```bash
+tmeet record permission-apply-prepare --meeting-record-id "record_abc123"
+```
+
+Key fields in response `data`:
+
+| Field | Description |
+|-------|-------------|
+| `preview.meeting_record_id` | Meeting record ID |
+| `preview.approval_name` | Approval type text |
+| `preview.subject` | Meeting subject |
+| `preview.file_owner` | Record owner name |
+| `preview.apply_note` | Permission application note |
+| `preview.applicant` | Applicant name |
+| `expires_in` | Expiration time in seconds |
+
+---
+
+#### `record permission-apply-commit` — Commit Record Permission Application
+
+**Write operation**: Call this command after `permission-apply-prepare` returns a preview and the user has confirmed the application. This formally kicks off the permission approval workflow.
+
+```bash
+tmeet record permission-apply-commit --meeting-record-id <record-id> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-record-id` | string | ✅ | — | Meeting record ID |
+| `--meeting-id` | string | — | — | Meeting ID |
+
+**Example:**
+
+```bash
+tmeet record permission-apply-commit --meeting-record-id "record_abc123"
+```
+
+Key fields in response `data`:
+
+| Field | Description |
+|-------|-------------|
+| `unique_id` | Application ID |
+| `status` | Approval status |
+| `message` | Approval status description |
+| `approval_url` | Approval URL |
+| `share_text` | Application description text |
 
 ---
 

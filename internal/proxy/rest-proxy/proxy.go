@@ -50,9 +50,10 @@ func RequestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 
 	var rsp *ProxyRsp
 	opts := retry.DefaultOptions
-	// Stop retrying immediately on token expiry to avoid pointless retries.
+	// Stop retrying immediately on token expiry or non-retryable business errors to avoid pointless retries.
 	opts.RetryIf = func(err error) bool {
-		return !exception.Is(err, exception.TokenExpiredError)
+		return !exception.Is(err, exception.TokenExpiredError) &&
+			!exception.Is(err, exception.NotRetryRequestError)
 	}
 
 	err := retry.Do(ctx, func(ctx context.Context) error {
@@ -97,10 +98,15 @@ func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 	if rsp.StatusCode != http.StatusOK {
 		proxyError := &ProxyError{}
 		if marshalErr := json.Unmarshal(rsp.RawBody, proxyError); marshalErr == nil {
-			if proxyError.ErrorInfo != nil &&
-				proxyError.ErrorInfo.NewErrorCode == exception.ServerCodeTokenExpired {
-				// Token invalid/expired, prompt user to re-login.
-				return nil, exception.TokenExpiredError
+			if proxyError.ErrorInfo != nil {
+				if proxyError.ErrorInfo.NewErrorCode == exception.ServerCodeTokenExpired {
+					// Token invalid/expired, prompt user to re-login.
+					return nil, exception.TokenExpiredError
+				}
+				if exception.IsNotRetryCode(int(proxyError.ErrorInfo.NewErrorCode)) {
+					return nil, exception.NotRetryRequestError.With(
+						"request failed, http status:%d, business err: %s, trace:%s", rsp.StatusCode, string(rsp.RawBody), traceId)
+				}
 			}
 		}
 		return nil, exception.RestBusinessError.With("request failed, http status:%d, business err: %s, trace:%s", rsp.StatusCode, string(rsp.RawBody), traceId)

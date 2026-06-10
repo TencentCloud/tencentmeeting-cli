@@ -35,6 +35,8 @@ const (
 	ClientCodeRestBusiness = 2006
 	// ClientUploadToCos upload to cos error
 	ClientUploadToCos = 2007
+	// ClientNotRetryRequest not retry request error
+	ClientNotRetryRequest = 2008
 
 	// ClientCodeGetAuthCode get auth_code failed error
 	ClientCodeGetAuthCode = 3000

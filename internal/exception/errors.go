@@ -72,6 +72,8 @@ var (
 	RestBusinessError = NewTmeetError(ClientCodeRestBusiness, "rest business error")
 	// UploadToCosError upload to cos failed
 	UploadToCosError = NewTmeetError(ClientUploadToCos, "upload to cos failed")
+	// NotRetryRequestError not retry request error
+	NotRetryRequestError = NewTmeetError(ClientNotRetryRequest, "not retry request error")
 
 	// GetAuthCodeError indicates failure to obtain auth_code.
 	GetAuthCodeError = NewTmeetError(ClientCodeGetAuthCode, "get auth_code failed, please try later")
