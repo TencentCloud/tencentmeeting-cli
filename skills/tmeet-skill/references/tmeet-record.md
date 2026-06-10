@@ -170,6 +170,74 @@ tmeet record transcript-search \
 
 ---
 
+## permission-apply-prepare — 预览录制权限申请
+
+当调用 `record address` / `record smart-minutes` / `record transcript-*` 等命令返回 **无权限** 错误时，先调用本命令拉取审批文案、会议主题、录制所有者等预览信息，**展示给用户二次确认后**，再调用 `record permission-apply-commit` 真正提交申请。
+
+```bash
+# 预览录制权限申请信息
+tmeet record permission-apply-prepare --meeting-record-id "record_abc123"
+
+# 同时指定会议 ID
+tmeet record permission-apply-prepare \
+  --meeting-record-id "record_abc123" \
+  --meeting-id "100000000"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-record-id <id>` | ✅ | — | 会议录制 ID |
+| `--meeting-id <id>` | 否 | — | 会议 ID |
+
+### 响应关键字段
+
+| 字段 | 说明 |
+|------|------|
+| `preview.meeting_record_id` | 会议录制 ID |
+| `preview.approval_name` | 申请类型文案 |
+| `preview.subject` | 会议标题 |
+| `preview.file_owner` | 录制所有者名称 |
+| `preview.apply_note` | 权限申请备注信息 |
+| `preview.applicant` | 申请人名称 |
+| `expires_in` | 过期时间（秒），超过后需重新 prepare |
+
+---
+
+## permission-apply-commit — 提交录制权限申请
+
+> **写操作 · 必须二次确认**：本命令会正式发起审批流程。**必须先调用 `permission-apply-prepare` 拉取预览信息**，将申请类型 / 会议标题 / 录制所有者 / 申请备注等关键字段完整展示给用户，**待用户明确同意后再调用本命令**。
+
+```bash
+# 提交录制权限申请
+tmeet record permission-apply-commit --meeting-record-id "record_abc123"
+
+# 同时指定会议 ID
+tmeet record permission-apply-commit \
+  --meeting-record-id "record_abc123" \
+  --meeting-id "100000000"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-record-id <id>` | ✅ | — | 会议录制 ID（必须与 `permission-apply-prepare` 一致）|
+| `--meeting-id <id>` | 否 | — | 会议 ID |
+
+### 响应关键字段
+
+| 字段 | 说明 |
+|------|------|
+| `unique_id` | 申请 ID |
+| `status` | 审批状态 |
+| `message` | 审批状态描述 |
+| `approval_url` | 审批链接（可展示给用户跟踪审批进度）|
+| `share_text` | 申请说明描述（可分享给审批人）|
+
+---
+
 ## 典型工作流
 
 ```
@@ -185,6 +253,26 @@ tmeet record transcript-search \
    tmeet record transcript-search --record-file-id <record_file_id> --text "关键词"
 ```
 
+### 无录制权限时的申请流程
+
+当 `record address` / `record smart-minutes` / `record transcript-*` 等命令返回 **无权限** 错误时，按以下流程发起权限申请：
+
+```
+1. 调用 prepare 获取预览信息
+   tmeet record permission-apply-prepare --meeting-record-id <meeting_record_id>
+
+2. 将 preview 中的「申请类型 / 会议标题 / 录制所有者 / 备注 / 申请人」完整展示给用户，
+   并明确询问是否同意发起权限申请；
+
+3. 收到用户明确确认（"确认"/"是"/"yes" 等肯定指令）后，再调用 commit 提交申请：
+   tmeet record permission-apply-commit --meeting-record-id <meeting_record_id>
+
+4. 将 commit 响应中的 approval_url 展示给用户跟踪审批进度；
+   若用户未明确确认或表示取消，则终止流程，不得调用 commit。
+```
+
+> **重要**：`permission-apply-commit` 为写操作，**严禁在未经用户确认时直接执行**。`prepare` 返回的 `expires_in` 过期后，需重新调用 `prepare` 拉取最新预览再确认提交。
+
 ## 常见错误
 
 | 错误现象 | 原因 | 解决方案 |
@@ -193,6 +281,7 @@ tmeet record transcript-search \
 | `--start format error` | 时间格式不合法（如缺少时区） | 改用 `2026-03-12T14:00:00+08:00` 格式 |
 | `--record-file-id is required` | 缺少必填参数 | 先通过 `record list` + `record address` 获取 |
 | `--text is required` | 搜索缺少关键词 | 补充 `--text` |
+| `record address` / `smart-minutes` / `transcript-*` 返回无权限 | 当前用户对该录制无访问权限 | 先 `permission-apply-prepare` 预览，经用户确认后再 `permission-apply-commit` 申请 |
 
 ## 参考
 

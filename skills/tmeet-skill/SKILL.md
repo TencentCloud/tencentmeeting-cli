@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
-version: 1.0.2
-description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写）、会议报告（参会人/等候室）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
+version: 1.0.3
+description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -166,12 +166,14 @@ tmeet
 │   ├── list-ended     # 获取已结束会议列表
 │   └── invitees-list  # 获取会议受邀者列表
 ├── record
-│   ├── list                  # 查询录制列表
-│   ├── address               # 获取录制文件下载地址
-│   ├── smart-minutes         # 获取智能纪要
-│   ├── transcript-get        # 获取转写详情
-│   ├── transcript-paragraphs # 获取转写段落列表
-│   └── transcript-search     # 搜索转写内容
+│   ├── list                     # 查询录制列表
+│   ├── address                  # 获取录制文件下载地址
+│   ├── smart-minutes            # 获取智能纪要
+│   ├── transcript-get           # 获取转写详情
+│   ├── transcript-paragraphs    # 获取转写段落列表
+│   ├── transcript-search        # 搜索转写内容
+│   ├── permission-apply-prepare # 预览录制权限申请信息（申请前确认）
+│   └── permission-apply-commit  # 提交录制权限申请（用户确认后执行）
 ├── report
 │   ├── participants      # 获取参会人列表
 │   └── waiting-room-log  # 获取等候室成员列表
@@ -199,6 +201,7 @@ tmeet
   | `meeting cancel` | 取消会议，不可恢复 |
   | `meeting update` | 修改会议信息（时间、主题等），影响所有参会人 |
   | `auth logout` | 清除本地登录凭证 |
+  | `record permission-apply-commit` | 正式提交录制权限申请，会触发审批流程（必须先执行 `record permission-apply-prepare` 并向用户展示申请信息确认）|
 
   **确认流程**：
   1. 向用户展示即将执行的操作及关键信息（使用 `meeting_code` 会议号标识会议，不得展示 `meeting_id`）；
