@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
 	"tmeet/internal"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/log"
@@ -41,6 +42,10 @@ const (
 	ApiCmdRecordTranscriptParagraphs = "record_transcript_paragraphs"
 	// ApiCmdRecordTranscriptSearch apiCmd record_transcript_search
 	ApiCmdRecordTranscriptSearch = "record_transcript_search"
+	// ApiCmdRecordPermissionApplyPrepare apiCmd record_permission_apply_prepare
+	ApiCmdRecordPermissionApplyPrepare = "record_permission_apply_prepare"
+	// ApiCmdRecordPermissionApplyCommit apiCmd record_permission_apply_commit
+	ApiCmdRecordPermissionApplyCommit = "record_permission_apply_commit"
 
 	// ApiCmdReportParticipants apiCmd report_participants
 	ApiCmdReportParticipants = "report_participants"
