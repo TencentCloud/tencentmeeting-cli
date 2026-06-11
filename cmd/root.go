@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"tmeet/cmd/auth"
+	"tmeet/cmd/contact"
+	"tmeet/cmd/control"
 	"tmeet/cmd/meeting"
 	"tmeet/cmd/record"
 	"tmeet/cmd/report"
@@ -47,6 +49,7 @@ func Execute() int {
 			cobra.OnFinalize(func() {
 				commandOperationLog(cmd, args)
 			})
+			injectCmdPathIntoTmeet(tmeet, cmd)
 			return preCheck(cmd, args)
 		},
 		SilenceUsage: true,
@@ -66,10 +69,14 @@ func Execute() int {
 	rootCmd.AddCommand(auth.NewBaseCmd(tmeet))
 	// Add subcommand: meeting
 	rootCmd.AddCommand(meeting.NewBaseCmd(tmeet))
+	// Add subcommand: contact
+	rootCmd.AddCommand(contact.NewBaseCmd(tmeet))
 	// Add subcommand: report
 	rootCmd.AddCommand(report.NewBaseCmd(tmeet))
 	// Add subcommand: record
 	rootCmd.AddCommand(record.NewBaseCmd(tmeet))
+	// Add subcommand: control
+	rootCmd.AddCommand(control.NewBaseCmd(tmeet))
 	// Add subcommand: tshoot
 	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
@@ -109,4 +116,8 @@ func commandOperationLog(cmd *cobra.Command, args []string) {
 		cmdStr += " --" + f.Name + " " + f.Value.String()
 	})
 	log.Infof(cmd.Context(), "command: %s", cmdStr)
+}
+
+func injectCmdPathIntoTmeet(tmeet *internal.Tmeet, cmd *cobra.Command) {
+	tmeet.CmdPath = cmd.CommandPath()
 }

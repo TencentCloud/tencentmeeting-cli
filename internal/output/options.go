@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"tmeet/internal/utils"
 
 	"github.com/spf13/cobra"
@@ -45,5 +46,21 @@ func WithCompact(compactFields []string) Option {
 func WithConvert(convertFields map[string]utils.FieldConverter) Option {
 	return func(msg *optionsMsg) {
 		msg.data = string(utils.ConvertFields([]byte(msg.data), 10, convertFields))
+	}
+}
+
+// WithContactSearchLogic defines the contact search logic.
+func WithContactSearchLogic() Option {
+	return func(msg *optionsMsg) {
+		dataMap := make(map[string]interface{})
+		err := json.Unmarshal([]byte(msg.data), &dataMap)
+		if err != nil {
+			// do nothing
+			return
+		}
+		if dataUsers, ok := dataMap["users"].([]interface{}); ok && len(dataUsers) == 1 {
+			// if the users only one, we need to keep the field open_id only
+			msg.data = string(utils.KeepFields([]byte(msg.data), 10, []string{"open_id"}))
+		}
 	}
 }
