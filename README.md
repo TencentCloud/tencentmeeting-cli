@@ -13,6 +13,7 @@
 - 📅 **会议管理** — 创建、查询、更新、取消会议，支持周期性会议，管理受邀成员
 - 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、转写详情与搜索
 - 📊 **参会报告** — 查询参会人列表、等候室成员记录
+- 👥 **通讯录** — 按用户名/职位/部门检索企业通讯录成员
 - 🛠️ **问题排查** — 导出本地日志，支持按时间范围过滤，打包为 zip 文件
 - 🔒 **安全存储** — 凭证使用 AES-256-GCM 加密，明文不落盘
 - 🖥️ **跨平台** — 支持 macOS、Linux、Windows
@@ -172,7 +173,14 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── get            # 获取会议详情
 │   ├── list           # 获取进行中/即将开始的会议列表
 │   ├── list-ended     # 获取已结束的会议列表
-│   └── invitees-list  # 获取会议受邀者列表
+│   ├── invitees-list    # 获取会议受邀者列表
+│   ├── invitees-add     # 添加会议受邀者
+│   ├── invitees-remove  # 移除会议受邀者
+│   └── invitees-replace # 替换会议受邀者列表
+├── contact
+│   ├── search         # 搜索企业通讯录成员
+│   ├── lookup-by-email # 通过邮箱反查用户信息
+│   └── lookup-by-phone # 通过手机号反查用户信息
 ├── record
 │   ├── list           # 查询录制列表
 │   ├── address        # 获取录制文件下载地址
@@ -185,6 +193,9 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── report
 │   ├── participants      # 获取参会人列表
 │   └── waiting-room-log  # 获取等候室成员列表
+├── control
+│   ├── call           # 呼叫成员入会（会中邀请呼叫）
+│   └── kick           # 将成员踢出会议（会中踢人）
 └── tshoot
     ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
     └── feedback          # 上报问题排查反馈到服务器
@@ -463,6 +474,82 @@ tmeet meeting invitees-list \
 
 ---
 
+#### `meeting invitees-add` — 添加受邀成员
+
+向已存在的会议中追加受邀成员。受邀成员通过用户 `open_id` 指定，可通过 `contact search` 命令查询获得。
+
+```bash
+tmeet meeting invitees-add --meeting-id <会议ID> --invitees <open_id列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--invitees` | strings | ✅ | — | 待添加的受邀成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+**示例：**
+
+```bash
+# 通过英文逗号分隔传入多个 open_id
+tmeet meeting invitees-add \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2"
+
+# 重复传入 --invitees 参数
+tmeet meeting invitees-add \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1" \
+  --invitees "open_id2"
+```
+
+---
+
+#### `meeting invitees-remove` — 移除受邀成员
+
+从已存在的会议中移除指定的受邀成员。
+
+```bash
+tmeet meeting invitees-remove --meeting-id <会议ID> --invitees <open_id列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--invitees` | strings | ✅ | — | 待移除的受邀成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+**示例：**
+
+```bash
+tmeet meeting invitees-remove \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2"
+```
+
+---
+
+#### `meeting invitees-replace` — 替换受邀成员列表
+
+使用新的成员列表整体替换会议当前的受邀成员列表（未在 `--invitees` 中的成员将被移除）。
+
+```bash
+tmeet meeting invitees-replace --meeting-id <会议ID> --invitees <open_id列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--invitees` | strings | ✅ | — | 替换后的受邀成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+**示例：**
+
+```bash
+tmeet meeting invitees-replace \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2,open_id3"
+```
+
+---
+
 ### record — 录制管理
 
 #### `record list` — 查询录制列表
@@ -682,6 +769,85 @@ tmeet record permission-apply-commit --meeting-record-id "record_abc123"
 
 ---
 
+### contact — 通讯录
+
+#### `contact search` — 搜索企业通讯录成员
+
+按用户名搜索企业通讯录成员，支持通过职位或部门进一步过滤搜索结果。
+
+```bash
+tmeet contact search --username <用户名> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--username` | string | ✅ | — | 要搜索的用户名 |
+| `--job-title` | string | — | — | 当用户名搜索结果过多时，用于过滤的职位名称 |
+| `--department-name` | string | — | — | 当用户名搜索结果过多时，用于过滤的部门名称 |
+
+**示例：**
+
+```bash
+# 按用户名搜索
+tmeet contact search --username "张三"
+
+# 用户名 + 职位过滤
+tmeet contact search --username "张三" --job-title "工程师"
+
+# 用户名 + 部门过滤
+tmeet contact search --username "张三" --department-name "研发部"
+```
+
+---
+
+#### `contact lookup-by-email` — 通过邮箱反查用户信息
+
+通过邮箱地址反查用户详细信息，支持批量查询多个邮箱。
+
+```bash
+tmeet contact lookup-by-email --emails <邮箱地址列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--emails` | []string | ✅ | — | 邮箱地址列表，多个邮箱用逗号分隔或重复使用该参数，最多50个<br>例如：--emails user1@example.com,user2@example.com 或 --emails user1@example.com --emails user2@example.com |
+
+**示例：**
+
+```bash
+# 查询单个邮箱
+tmeet contact lookup-by-email --emails "user@example.com"
+
+# 批量查询多个邮箱
+tmeet contact lookup-by-email --emails "user1@example.com,user2@example.com,user3@example.com"
+```
+
+---
+
+#### `contact lookup-by-phone` — 通过手机号反查用户信息
+
+通过手机号反查用户详细信息，支持批量查询多个手机号。
+
+```bash
+tmeet contact lookup-by-phone --phones <手机号列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--phones` | []string | ✅ | — | 手机号列表，多个手机号用逗号分隔或重复使用该参数，最多50个<br>例如：--phones 13800138000,13900139000 或 --phones 13800138000 --phones 13900139000 |
+
+**示例：**
+
+```bash
+# 查询单个手机号
+tmeet contact lookup-by-phone --phones "13800138000"
+
+# 批量查询多个手机号
+tmeet contact lookup-by-phone --phones "13800138000,13900139000,13700137000"
+```
+
+---
+
 ### report — 参会报告
 
 #### `report participants` — 查询参会人列表
@@ -740,6 +906,82 @@ tmeet report waiting-room-log --meeting-id "6953553464429888300" --page-size 50
 tmeet report waiting-room-log \
   --meeting-id "6953553464429888300" \
   --page-token "<next_page_token>" --page-size 50
+```
+
+---
+
+### control — 会中控制
+
+会中控制相关命令，用于在会议进行中对参会成员执行呼叫、踢出等管理操作。受邀成员通过用户 `open_id` 指定，可通过 `contact search` 命令查询获得。
+
+#### `control call` — 呼叫成员入会
+
+会中邀请呼叫，向指定成员发起入会呼叫。
+
+```bash
+tmeet control call --meeting-id <会议ID> --users <open_id列表>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--users` | strings | ✅ | — | 待呼叫的成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 20 个 |
+
+**示例：**
+
+```bash
+# 通过英文逗号分隔传入多个 open_id
+tmeet control call \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1,open_id2"
+
+# 重复传入 --users 参数
+tmeet control call \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1" \
+  --users "open_id2"
+```
+
+---
+
+#### `control kick` — 踢出会议成员
+
+会中踢人，将指定成员从会议中踢出。
+
+```bash
+tmeet control kick --meeting-id <会议ID> [--users <open_id列表>] [--sip-users <ms_open_id列表>] [--pstn-users <ms_open_id列表>] [--allow-rejoin]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--users` | strings | 三选一 | — | 待踢出的普通成员 `open_id` 列表（不包含 Sip/Pstn 设备），支持英文逗号分隔或重复传入该参数 |
+| `--sip-users` | strings | 三选一 | — | 待踢出的 Sip 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
+| `--pstn-users` | strings | 三选一 | — | 待踢出的 Pstn 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
+| `--allow-rejoin` | bool | ❌ | `false` | 被踢出的成员是否允许重新加入会议；不传则默认 `false`（不允许重新入会） |
+
+> `--users` / `--sip-users` / `--pstn-users` **三者至少必填一种**，且**三者总数合计最多 20 个**。
+
+**示例：**
+
+```bash
+# 踢出普通成员
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1,open_id2"
+
+# 同时踢出普通成员、Sip 设备、Pstn 设备（三者合计不超过 20）
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1" \
+  --sip-users "ms_open_id_sip1" \
+  --pstn-users "ms_open_id_pstn1"
+
+# 允许被踢成员重新入会
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --allow-rejoin \
+  --users "open_id1,open_id2"
 ```
 
 ---

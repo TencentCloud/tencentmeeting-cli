@@ -28,6 +28,12 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newListEndedCmd(tmeet),
 		// List meeting invitees
 		newInviteesCmd(tmeet),
+		// Add meeting invitees
+		newInviteesAddCmd(tmeet),
+		// Remove meeting invitees
+		newInviteesRemoveCmd(tmeet),
+		// Replace meeting invitees
+		newInviteesReplaceCmd(tmeet),
 	)
 	return cmd
 }

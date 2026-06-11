@@ -255,6 +255,97 @@ tmeet meeting invitees-list \
 
 ---
 
+## invitees-add — 添加受邀成员
+
+> ⚠️ **写操作，执行前请确认用户意图。被邀请者会收到会议通知。**
+> ⚠️ **成功后必须按本文档末尾《成员变更后的回复模板》输出结果；「已邀请成员」**仅限展示通讯录姓名**，严禁直接展示 `open_id` / `userid` / `ms_open_id` / 花名 / 邮箱前缀等任何内部标识。
+
+向已存在的会议中追加受邀成员。受邀成员通过用户 `open_id` 指定，可通过 `contact search` 命令查询获得。
+
+```bash
+# 通过英文逗号分隔传入多个 open_id
+tmeet meeting invitees-add \
+  --meeting-id "100000000" \
+  --invitees "open_id1,open_id2"
+
+# 重复传入 --invitees 参数
+tmeet meeting invitees-add \
+  --meeting-id "100000000" \
+  --invitees "open_id1" \
+  --invitees "open_id2"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-id <id>` | ✅ | — | 会议 ID |
+| `--invitees <list>` | ✅ | — | 待添加的受邀成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+---
+
+## invitees-remove — 移除受邀成员
+
+> ⚠️ **写操作，执行前请确认用户意图。**
+> ⚠️ **成功后必须按本文档末尾《成员变更后的回复模板》输出结果；「已邀请成员」**仅限展示通讯录姓名**，严禁直接展示 `open_id` / `userid` / `ms_open_id` / 花名 / 邮箱前缀等任何内部标识。
+
+从已存在的会议中移除指定的受邀成员。
+
+```bash
+tmeet meeting invitees-remove \
+  --meeting-id "100000000" \
+  --invitees "open_id1,open_id2"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-id <id>` | ✅ | — | 会议 ID |
+| `--invitees <list>` | ✅ | — | 待移除的受邀成员 `open_id` 列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+---
+
+## invitees-replace — 替换受邀成员列表
+
+> ⚠️ **高风险写操作：会以传入的列表整体覆盖当前受邀成员列表，未在 `--invitees` 中的成员会被移除。执行前必须向用户明确列出最终列表并获得确认。**
+> ⚠️ **成功后必须按本文档末尾《成员变更后的回复模板》输出结果；「已邀请成员」**仅限展示通讯录姓名**，严禁直接展示 `open_id` / `userid` / `ms_open_id` / 花名 / 邮箱前缀等任何内部标识。
+
+```bash
+tmeet meeting invitees-replace \
+  --meeting-id "100000000" \
+  --invitees "open_id1,open_id2,open_id3"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-id <id>` | ✅ | — | 会议 ID |
+| `--invitees <list>` | ✅ | — | 替换后的受邀成员 `open_id` 完整列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+---
+
+## 成员变更后的回复模板（适用于 invitees-add / invitees-remove / invitees-replace）
+
+以上三个命令成功执行后，**必须**按下列模板回复用户，**字段顺序固定、不得增删**：
+
+- **会议主题**：<subject>
+- **会议时间**：<start> ~ <end>（含时区）
+- **会议号**：<meeting_code>（严禁展示 meeting_id）
+- **入会链接**：<join_url>
+- **已邀请成员**：<姓名1>、<姓名2>、…
+
+### 「已邀请成员」展示规则（强约束）
+
+1. **必须以通讯录中的姓名展示**（如 `张三`）；**严禁**直接展示 `open_id` / `userid` / `ms_open_id` / 花名（如 `zhangsan`） / 邮箱前缀等任何内部标识。
+2. **信息不足时的兑底动作**：若手头没有 `open_id → 姓名` 映射，先调用 `meeting invitees-list --meeting-id <id>` 拉取变更后的完整受邀列表，再依次使用 `contact search`（仅在该场景下允许，遵循 SKILL.md 中的「通讯录搜索仅限特定场景使用」规则）将每个 `open_id` 解析为姓名后再回复。
+3. **解析失败的兑底**：某个 `open_id` 无法解析为姓名时，标注为 `未知成员`，**禁止**回退到打印 `open_id` 本身。
+4. **仅在用户明确要求**“展示 ID / 原始字段”时，才可附带展示 `open_id`。
+5. **基础字段补齐**：会议主题 / 会议号 / 入会链接 若变更接口未返回，使用 `meeting get --meeting-id <id>` 补齐，不得遗漏字段或用 `-` / `N/A` 占位。
+
+---
+
 ## 常见错误
 
 | 错误现象 | 原因 | 解决方案 |

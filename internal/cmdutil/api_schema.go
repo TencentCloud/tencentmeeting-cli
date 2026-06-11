@@ -23,6 +23,12 @@ const (
 	ApiCmdMeetingGetByCode = "meeting_get_by_code"
 	// ApiCmdMeetingInviteList apiCmd meeting_invite_list
 	ApiCmdMeetingInviteList = "meeting_invite_list"
+	// ApiCmdMeetingInviteAdd apiCmd meeting_invite_add
+	ApiCmdMeetingInviteAdd = "meeting_invite_add"
+	// ApiCmdMeetingInviteRemove apiCmd meeting_invite_remove
+	ApiCmdMeetingInviteRemove = "meeting_invite_remove"
+	// ApiCmdMeetingInviteReplace apiCmd meeting_invite_replace
+	ApiCmdMeetingInviteReplace = "meeting_invite_replace"
 	// ApiCmdMeetingList apiCmd meeting_list
 	ApiCmdMeetingList = "meeting_list"
 	// ApiCmdMeetingListEnded apiCmd meeting_list_ended
@@ -51,6 +57,18 @@ const (
 	ApiCmdReportParticipants = "report_participants"
 	// ApiCmdReportWaitingRoomLog apiCmd report_waiting_room_log
 	ApiCmdReportWaitingRoomLog = "report_waiting_room_log"
+
+	// ApiCmdContactSearch apiCmd contact_search
+	ApiCmdContactSearch = "contact_search"
+	// ApiCmdContactLookupByPhone apiCmd contact_lookup_by_phone
+	ApiCmdContactLookupByPhone = "contact_lookup_by_phone"
+	// ApiCmdContactLookupByEmail apiCmd contact_lookup_by_email
+	ApiCmdContactLookupByEmail = "contact_lookup_by_email"
+
+	// ApiCmdControlCall apiCmd control_call
+	ApiCmdControlCall = "control_call"
+	// ApiCmdControlKick apiCmd control_kick
+	ApiCmdControlKick = "control_kick"
 )
 
 // APISchema defines the api schema.

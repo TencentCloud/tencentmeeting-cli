@@ -9,7 +9,6 @@ tmeet
 master.key
 *.out
 /docs
-.codebuddy/
-.cursor/
+
 node_modules/
 package-lock.json

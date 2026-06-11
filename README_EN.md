@@ -13,6 +13,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 - 📅 **Meeting Management** — Create, query, update, and cancel meetings; supports recurring meetings and invitee management
 - 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, transcript details and search
 - 📊 **Attendance Reports** — Query participant lists and waiting room member records
+- 👥 **Contacts** — Search enterprise contact members by username, job title, or department
 - 🛠️ **Troubleshooting** — Export local logs with optional time range filter, packaged as a zip file
 - 🔒 **Secure Storage** — Credentials encrypted with AES-256-GCM, no plaintext stored on disk
 - 🖥️ **Cross-Platform** — Supports macOS, Linux, and Windows
@@ -172,7 +173,14 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── get            # Get meeting details
 │   ├── list           # List ongoing or upcoming meetings
 │   ├── list-ended     # List ended meetings
-│   └── invitees-list  # List meeting invitees
+│   ├── invitees-list    # List meeting invitees
+│   ├── invitees-add     # Add meeting invitees
+│   ├── invitees-remove  # Remove meeting invitees
+│   └── invitees-replace # Replace meeting invitees list
+├── contact
+│   ├── search         # Search enterprise contact members
+│   ├── lookup-by-email # Look up user information by email address
+│   └── lookup-by-phone # Look up user information by phone number
 ├── record
 │   ├── list                     # Query recording list
 │   ├── address                  # Get recording file download URL
@@ -185,6 +193,9 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── report
 │   ├── participants   # Get participant list
 │   └── waiting-room-log # Get waiting room member list
+├── control
+│   ├── call           # Call members into the meeting (in-meeting invite call)
+│   └── kick           # Kick members out of the meeting (in-meeting kick-out)
 └── tshoot
     ├── log            # Export local logs (supports time range filter, optional --upload to server)
     └── feedback       # Report troubleshooting feedback to the server
@@ -463,6 +474,82 @@ tmeet meeting invitees-list \
 
 ---
 
+#### `meeting invitees-add` — Add Meeting Invitees
+
+Add invitees to an existing meeting. Invitees are specified by user `open_id`, which can be obtained via the `contact search` command.
+
+```bash
+tmeet meeting invitees-add --meeting-id <meeting-id> --invitees <open-id-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--invitees` | strings | ✅ | — | List of invitee `open_id`s to add. Supports comma-separated values or repeating the flag, max 100 |
+
+**Examples:**
+
+```bash
+# Pass multiple open_ids separated by commas
+tmeet meeting invitees-add \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2"
+
+# Repeat the --invitees flag
+tmeet meeting invitees-add \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1" \
+  --invitees "open_id2"
+```
+
+---
+
+#### `meeting invitees-remove` — Remove Meeting Invitees
+
+Remove specified invitees from an existing meeting.
+
+```bash
+tmeet meeting invitees-remove --meeting-id <meeting-id> --invitees <open-id-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--invitees` | strings | ✅ | — | List of invitee `open_id`s to remove. Supports comma-separated values or repeating the flag, max 100 |
+
+**Example:**
+
+```bash
+tmeet meeting invitees-remove \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2"
+```
+
+---
+
+#### `meeting invitees-replace` — Replace Meeting Invitees List
+
+Replace the meeting's current invitee list with a new list (invitees not present in `--invitees` will be removed).
+
+```bash
+tmeet meeting invitees-replace --meeting-id <meeting-id> --invitees <open-id-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--invitees` | strings | ✅ | — | New invitee `open_id` list to replace the existing one. Supports comma-separated values or repeating the flag, max 100 |
+
+**Example:**
+
+```bash
+tmeet meeting invitees-replace \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2,open_id3"
+```
+
+---
+
 ### record — Recording Management
 
 #### `record list` — Query Recording List
@@ -682,6 +769,85 @@ Key fields in response `data`:
 
 ---
 
+### contact — Contacts
+
+#### `contact search` — Search Enterprise Contact Members
+
+Search enterprise contact members by username, with optional filtering by job title or department to refine results.
+
+```bash
+tmeet contact search --username <username> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--username` | string | ✅ | — | Username to search |
+| `--job-title` | string | — | — | Job title used to filter results when the username search returns too many matches |
+| `--department-name` | string | — | — | Department name used to filter results when the username search returns too many matches |
+
+**Examples:**
+
+```bash
+# Search by username
+tmeet contact search --username "John"
+
+# Username + job title filter
+tmeet contact search --username "John" --job-title "Engineer"
+
+# Username + department filter
+tmeet contact search --username "John" --department-name "R&D"
+```
+
+---
+
+#### `contact lookup-by-email` — Look Up User Information by Email Address
+
+Look up user details by email address, supporting batch queries for multiple emails.
+
+```bash
+tmeet contact lookup-by-email --emails <email-address-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--emails` | []string | ✅ | — | Email address list, multiple emails can be comma-separated or the flag can be repeated, max 50<br>Example: --emails user1@example.com,user2@example.com or --emails user1@example.com --emails user2@example.com |
+
+**Examples:**
+
+```bash
+# Look up a single email address
+tmeet contact lookup-by-email --emails "user@example.com"
+
+# Batch look up multiple email addresses
+tmeet contact lookup-by-email --emails "user1@example.com,user2@example.com,user3@example.com"
+```
+
+---
+
+#### `contact lookup-by-phone` — Look Up User Information by Phone Number
+
+Look up user details by phone number, supporting batch queries for multiple phone numbers.
+
+```bash
+tmeet contact lookup-by-phone --phones <phone-number-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--phones` | []string | ✅ | — | Phone number list, multiple phone numbers can be comma-separated or the flag can be repeated, max 50<br>Example: --phones 13800138000,13900139000 or --phones 13800138000 --phones 13900139000 |
+
+**Examples:**
+
+```bash
+# Look up a single phone number
+tmeet contact lookup-by-phone --phones "13800138000"
+
+# Batch look up multiple phone numbers
+tmeet contact lookup-by-phone --phones "13800138000,13900139000,13700137000"
+```
+
+---
+
 ### report — Attendance Reports
 
 #### `report participants` — Get Participant List
@@ -740,6 +906,82 @@ tmeet report waiting-room-log --meeting-id "6953553464429888300" --page-size 50
 tmeet report waiting-room-log \
   --meeting-id "6953553464429888300" \
   --page-token "<next_page_token>" --page-size 50
+```
+
+---
+
+### control — In-Meeting Control
+
+In-meeting control commands for managing participants during an ongoing meeting, including calling members in and kicking members out. Members are specified by user `open_id`, which can be obtained via the `contact search` command.
+
+#### `control call` — Call Members into the Meeting
+
+In-meeting invite call: send a join-meeting call to the specified members.
+
+```bash
+tmeet control call --meeting-id <meeting-id> --users <open-id-list>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--users` | strings | ✅ | — | List of `open_id`s of members to call. Supports comma-separated values or repeating the flag, max 20 |
+
+**Examples:**
+
+```bash
+# Pass multiple open_ids separated by commas
+tmeet control call \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1,open_id2"
+
+# Repeat the --users flag
+tmeet control call \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1" \
+  --users "open_id2"
+```
+
+---
+
+#### `control kick` — Kick Members Out of the Meeting
+
+In-meeting kick-out: remove the specified members from the ongoing meeting.
+
+```bash
+tmeet control kick --meeting-id <meeting-id> [--users <open-id-list>] [--sip-users <ms-open-id-list>] [--pstn-users <ms-open-id-list>] [--allow-rejoin]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--users` | strings | one of three | — | List of `open_id`s of regular members to kick out (excluding Sip/Pstn devices). Supports comma-separated values or repeating the flag |
+| `--sip-users` | strings | one of three | — | List of `ms_open_id`s of Sip devices to kick out. Supports comma-separated values or repeating the flag |
+| `--pstn-users` | strings | one of three | — | List of `ms_open_id`s of Pstn devices to kick out. Supports comma-separated values or repeating the flag |
+| `--allow-rejoin` | bool | ❌ | `false` | Whether kicked-out members are allowed to rejoin the meeting. Defaults to `false` (rejoin disallowed) when not provided |
+
+> At least one of `--users` / `--sip-users` / `--pstn-users` is required, and the **total number of all three combined must not exceed 20**.
+
+**Example:**
+
+```bash
+# Kick regular members
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1,open_id2"
+
+# Kick regular members, Sip devices, and Pstn devices together (total <= 20)
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --users "open_id1" \
+  --sip-users "ms_open_id_sip1" \
+  --pstn-users "ms_open_id_pstn1"
+
+# Allow kicked-out members to rejoin
+tmeet control kick \
+  --meeting-id "6953553464429888300" \
+  --allow-rejoin \
+  --users "open_id1,open_id2"
 ```
 
 ---

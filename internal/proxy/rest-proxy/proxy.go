@@ -79,8 +79,14 @@ func RequestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 
 func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req *thttp.Request) (*ProxyRsp, error) {
 	opts := []thttp.RequestOptionFunc{
-		header(tmeet.UserConfig.OpenId, tmeet.SystemInfo.MachineID, tmeet.CLIVersion,
-			tmeet.SystemInfo.OS, tmeet.SystemInfo.Agent, tmeet.SystemInfo.Model),
+		header(ctx,
+			tmeet.UserConfig.OpenId,
+			tmeet.SystemInfo.MachineID,
+			tmeet.CLIVersion,
+			tmeet.SystemInfo.OS,
+			tmeet.SystemInfo.Agent,
+			tmeet.SystemInfo.Model,
+			tmeet.CmdPath),
 		authenticator(tmeet.UserConfig.OpenId, tmeet.UserConfig.AccessToken),
 	}
 
@@ -152,11 +158,13 @@ func authenticator(openId, accessToken string) thttp.RequestOptionFunc {
 }
 
 // header builds the common request headers.
-func header(openId, machineId, version, os, agent, model string) thttp.RequestOptionFunc {
+func header(ctx context.Context, openId, machineId, version,
+	os, agent, model, cmdPath string) thttp.RequestOptionFunc {
 	x := http.Header{}
 	x.Set("Tmeet-Unique-ID", fmt.Sprintf("%s*%s", openId, machineId))
 	x.Set("Tmeet-Device-Info", fmt.Sprintf("%s;%s;%s", os, agent, model))
 	x.Set("Tmeet-Open-Source", OpenSourceCLI)
 	x.Set("Tmeet-Cli-Ver", version)
+	x.Set("Tmeet-Trace", fmt.Sprintf("%s;%s", cmdPath, ctx.Value(log.CtxTraceIDKey)))
 	return thttp.WithRequestHeader(x)
 }

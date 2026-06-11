@@ -103,7 +103,7 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 		}
 		params["recurring_rule"] = recurringRule
 	}
-	// setting参数
+	// setting param
 	settings := make(map[string]interface{}, 0)
 	if o.OnlyUserJoinType > 0 {
 		settings["only_user_join_type"] = o.OnlyUserJoinType

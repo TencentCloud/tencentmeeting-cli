@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
-version: 1.0.3
-description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
+version: 1.0.4
+description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室）、通讯录（按用户名/手机号/邮箱搜索成员）、会中控制（呼叫成员入会/踢出会议成员）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -158,13 +158,20 @@ tmeet
 │   ├── logout         # 登出并清除凭证
 │   └── status         # 查看当前登录状态及 Token 有效期
 ├── meeting
-│   ├── create         # 创建会议（支持普通/周期性）
-│   ├── update         # 更新会议信息
-│   ├── cancel         # 取消会议
-│   ├── get            # 获取会议详情
-│   ├── list           # 获取会议列表（进行中/未开始）
-│   ├── list-ended     # 获取已结束会议列表
-│   └── invitees-list  # 获取会议受邀者列表
+│   ├── create            # 创建会议（支持普通/周期性）
+│   ├── update            # 更新会议信息
+│   ├── cancel            # 取消会议
+│   ├── get               # 获取会议详情
+│   ├── list              # 获取会议列表（进行中/未开始）
+│   ├── list-ended        # 获取已结束会议列表
+│   ├── invitees-list     # 获取会议受邀者列表
+│   ├── invitees-add      # 添加会议受邀者
+│   ├── invitees-remove   # 移除会议受邀者
+│   └── invitees-replace  # 替换会议受邀者列表
+├── contact
+│   ├── search         # 搜索企业通讯录成员（按用户名/职位/部门，仅用于会议邀请和呼叫入会场景）
+│   ├── lookup-by-phone # 按手机号查找用户
+│   └── lookup-by-email # 按邮箱查找用户
 ├── record
 │   ├── list                     # 查询录制列表
 │   ├── address                  # 获取录制文件下载地址
@@ -177,6 +184,9 @@ tmeet
 ├── report
 │   ├── participants      # 获取参会人列表
 │   └── waiting-room-log  # 获取等候室成员列表
+├── control
+│   ├── call              # 呼叫成员入会（会中邀请呼叫）
+│   └── kick              # 踢出会议成员（会中踢人）
 └── tshoot
     ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
     └── feedback          # 反馈工具缺失/失败/能力不足等问题至平台（Agent 自助上报）
@@ -188,6 +198,8 @@ tmeet
 - 会议管理：[`references/tmeet-meeting.md`](references/tmeet-meeting.md)
 - 录制管理：[`references/tmeet-record.md`](references/tmeet-record.md)
 - 会议报告：[`references/tmeet-report.md`](references/tmeet-report.md)
+- 通讯录：[`references/tmeet-contact.md`](references/tmeet-contact.md)
+- 会中控制：[`references/tmeet-control.md`](references/tmeet-control.md)
 - 问题排查：[`references/tmeet-tshoot.md`](references/tmeet-tshoot.md)
 
 ## 安全规则
@@ -200,6 +212,10 @@ tmeet
   |------|---------|
   | `meeting cancel` | 取消会议，不可恢复 |
   | `meeting update` | 修改会议信息（时间、主题等），影响所有参会人 |
+  | `meeting invitees-remove` | 从会议中移除受邀成员 |
+  | `meeting invitees-replace` | 整体替换会议受邀成员列表（未在新列表中的成员会被移除） |
+  | `control call` | 主动呼叫成员入会，会向目标成员发起会议邀请通话，对其产生实际打扰 |
+  | `control kick` | 将成员踢出会议，立即生效，被踢成员需要重新申请入会；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
   | `auth logout` | 清除本地登录凭证 |
   | `record permission-apply-commit` | 正式提交录制权限申请，会触发审批流程（必须先执行 `record permission-apply-prepare` 并向用户展示申请信息确认）|
 
@@ -211,10 +227,29 @@ tmeet
 
 - **必填参数缺失时，必须向用户确认补充，禁止自行填充**：若执行命令所需的必填参数未由用户提供，**不得自行推断或填充默认值**，必须明确告知用户缺少哪些参数并请求补充，待用户提供后再执行命令。
 
+- **通讯录搜索仅限特定场景使用**：`contact search` **仅可用于“会议邀请”（如 `meeting invitees-add`、`meeting invitees-replace`）、“呼叫成员入会”（`control call`），以及“为成员变更操作的回复回填受邀人姓名”三类场景**，用于将用户名解析为对应的 `openId` 或将 `openId` 反查为姓名以展示给用户。**严禁在其他场景下调用 `contact search`**（例如：仅为查看某人部门/职位、查询联系方式、好奇某人信息等与会议邀请/呼叫/受邀人姓名展示无关的场景），不得将通讯录作为通用人员信息查询接口使用。
+
+- **会中踢人（`control kick`）的成员来源硬约束**：`control kick` 的 `--users` / `--sip-users` / `--pstn-users` 参数值（即 `open_id` / `ms_open_id`）**必须从 `tmeet report participants` 返回的会中参会人列表中获取**，**严禁使用 `contact search` / `contact lookup-by-phone` / `contact lookup-by-email` 等通讯录查询结果作为踢人来源**。原因：通讯录返回的是组织成员名录，并不代表他们已加入当前会议；且踢人需要区分普通成员 / Sip / Pstn 三类身份，这些信息只有 `report participants` 能准确提供。正确调用顺序：`tmeet report participants` → 按姓名等描述筛选出目标参会人 → 向用户确认 → `tmeet control kick`。
+
+- **多结果必须由用户确认，禁止自行猜测**：当任一查询/搜索类命令返回 **多条候选结果**（典型如 `contact search` 命中多名同名/同部门成员）时，**严禁**模型基于职位、部门、入职时间、匹配度等任何维度自行选择某一条继续后续操作（如 `meeting invitees-add`、`control call`、`control kick` 等）。必须将候选项的关键信息以清晰列表形式展示给用户（`contact search` 场景下严格按上一条规则仅展示姓名/部门/职位），并明确询问"请确认要选择哪一项"，待用户明确指定后再继续执行。即便其中某条结果看起来"明显更匹配"，也必须等待用户确认，不得跳过该步骤。
+
 ## 响应处理规则
 
 - **只展示关键信息**：在用户没有明确要求的前提下，仅展示与用户问题直接相关的核心字段，不得输出冗余字段。
 - **禁止擅自聚合或排序**：未经用户要求，不得对返回结果进行任何聚合统计或排序操作，按原始结果如实呈现。
+- **会议成员变更操作的回复模板（强约束）**：执行 `meeting invitees-add` / `meeting invitees-remove` / `meeting invitees-replace` 成功后，回复**必须**严格按以下模板组织字段，且仅展示这些字段：
+
+  - **会议主题**
+  - **会议时间**（开始时间 ~ 结束时间，含时区）
+  - **会议号**（`meeting_code`，**严禁**展示 `meeting_id`）
+  - **入会链接**（`join_url`）
+  - **已邀请成员**（操作完成后**当前完整**的受邀成员列表）
+
+  「已邀请成员」展示规则（严格遵守）：
+  1. **必须展示通讯录中的姓名**（如 `张三`），**严禁**直接展示 `open_id` / `userid` / `ms_open_id` / 花名 / 邮箱前缀等任何内部标识；
+  2. 若手头没有 `open_id → 姓名` 的映射，**先调用 `meeting invitees-list` 获取最新受邀列表**，再用 `contact search`（仅在该场景下允许）将 `open_id` 解析为姓名；若某个 `open_id` 解析失败，标注为 `未知成员`，**禁止回退到打印 `open_id`**；
+  3. 当且仅当用户**明确**要求“展示 ID / 原始字段”时，才可附带展示 `open_id`；
+  4. 会议主题、会议号、入会链接等基础字段若响应未直接返回，应通过 `meeting get --meeting-id` 补齐，不得遗漏字段或用 `-` / `N/A` 占位。
 
 ## 自动反馈规则
 

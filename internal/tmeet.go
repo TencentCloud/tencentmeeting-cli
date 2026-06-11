@@ -21,6 +21,7 @@ type Tmeet struct {
 	SystemInfo *common.SystemInfo
 	UserConfig *config.UserConfig
 	CLIVersion string
+	CmdPath    string
 }
 
 // NewTmeet creates a new Tmeet instance.
