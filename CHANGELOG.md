@@ -2,6 +2,23 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.9] - 2026-06-12
+
+### Added
+
+- **`meeting create` now supports inviting participants at creation time** (`cmd/meeting/create.go`): A new `--invitees` flag accepts an `open_id` list (comma-separated or repeated, max 100), reusing v1.0.8's `cmdutil.PackageApiInviteesUsers` for dedup and upper-bound checks.
+- **`meeting update` now supports mutating the invitee list as part of the update call** (`cmd/meeting/update.go`): Added the `--invitees` + `--invitees-type` flag pair, supporting `add` / `remove` / `replace` strategies; both flags must be set together. Complements the v1.0.8 `meeting invitees-add/remove/replace` subcommands by avoiding a second round-trip when the meeting body and the invitee list change in the same operation.
+
+### Changed
+
+- **REST proxy error handling and retry policy adjusted** (`internal/proxy/rest-proxy/proxy.go`): HTTP `408` / `504` gateway timeouts are now classified as `NetworkError` to trigger retries; all other non-200 responses (except token expiration) are uniformly classified as `NotRetryRequestError` and no longer retried. The "should-retry" decision shifts from a server-business-code allowlist to the more conservative "anything other than a network error is not retried", reducing the risk of write operations (calls, kicks, invitee mutations) being silently replayed.
+- **README and SKILL references synced for the new invitation flags** (`README.md` / `README_EN.md` / `skills/tmeet-skill/references/tmeet-meeting.md`): Parameter tables and examples for `--invitees` / `--invitees-type` added to the `meeting create` / `meeting update` sections.
+- **SKILL bumped to 1.0.5** (`skills/tmeet-skill/SKILL.md`).
+
+### Removed
+
+- **Removed the "specific business-code non-retry" allowlist mechanism introduced in v1.0.7** (`internal/exception/server_code.go`): Deleted the `ServerCodeRecordNotExist (500277)` constant, the `notRetryCodeMap`, and the `IsNotRetryCode` function; their semantics are now subsumed by the broader "non-200 is never retried" policy above.
+
 ## [v1.0.8] - 2026-06-11
 
 ### Added
