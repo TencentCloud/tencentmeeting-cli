@@ -269,6 +269,7 @@ tmeet meeting create --subject <title> --start <start-time> --end <end-time> [op
 | `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
 | `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
 | `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
+| `--invitees` | strings | — | — | Invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. `--invitees open_id1,open_id2`) |
 
 **Examples:**
 
@@ -290,6 +291,13 @@ tmeet meeting create \
   --recurring-type 2 \
   --until-type 1 \
   --until-count 10
+
+# Create a meeting and invite participants
+tmeet meeting create \
+  --subject "Requirements Review" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --invitees "open_id1,open_id2,open_id3"
 ```
 
 ---
@@ -340,6 +348,8 @@ tmeet meeting update --meeting-id <meeting-id> [options]
 | `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
 | `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
 | `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
+| `--invitees` | strings | — | — | Openid list to mutate; comma-separated or repeat the flag; used together with `--invitees-type`           |
+| `--invitees-type` | string | — | — | Invitees mutation strategy: `replace` / `add` / `remove`; required when `--invitees` is set              |
 
 **Example:**
 
@@ -349,6 +359,24 @@ tmeet meeting update \
   --subject "New Title" \
   --start "2026-04-10T15:00+08:00" \
   --end "2026-04-10T16:00+08:00"
+
+# Replace the full invitee list
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1,open_id2,open_id3" \
+  --invitees-type replace
+
+# Add invitees
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id4,open_id5" \
+  --invitees-type add
+
+# Remove invitees
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --invitees "open_id1" \
+  --invitees-type remove
 ```
 
 ---
