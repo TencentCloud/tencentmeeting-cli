@@ -49,6 +49,13 @@ tmeet meeting create \
   --recurring-type 0 \
   --until-type 0 \
   --until-date "2026-05-10T00:00:00+08:00"
+
+# 创建会议并邀请成员（最多 100 人，openid 列表）
+tmeet meeting create \
+  --subject "需求评审" \
+  --start "2026-04-10T14:00:00+08:00" \
+  --end "2026-04-10T15:00:00+08:00" \
+  --invitees "open_id1,open_id2,open_id3"
 ```
 
 ### 参数
@@ -67,6 +74,7 @@ tmeet meeting create \
 | `--until-type <n>` | 周期性时使用 | `0` | 结束类型：`0`-按日期，`1`-按次数                             |
 | `--until-count <n>` | 周期性时使用 | `7` | 重复次数（每天/每个工作日/每周最大 500，每两周/每月最大 50）              |
 | `--until-date <date>` | 周期性按日期结束时使用 | — | 结束日期（ISO 8601，含时区，如 `2026-05-10T00:00:00+08:00`） |
+| `--invitees <ids>` | 否 | — | 邀请成员的 openid 列表，逗号分隔或重复传参，最多 100 人              |
 
 ---
 
@@ -96,9 +104,29 @@ tmeet meeting update \
   --recurring-type 2 \
   --until-type 1 \
   --until-count 20
+
+# 在原邀请列表上追加成员
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --invitees "open_id4,open_id5" \
+  --invitees-type add
+
+# 从原邀请列表移除指定成员
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --invitees "open_id1" \
+  --invitees-type remove
+
+# 整体覆盖邀请列表
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --invitees "open_id1,open_id2,open_id3" \
+  --invitees-type replace
 ```
 
 > ⚠️ **周期性会议注意**：修改周期性会议时，如果没有修改会议类型，**必须传 `--meeting-type 1`**，否则系统会将其修改为普通会议，导致周期规则丢失。
+
+> ⚠️ **邀请变更**：`--invitees` 与 `--invitees-type` 必须同时使用。`--invitees` 单次最多 100 人。
 
 ### 参数
 
@@ -117,6 +145,8 @@ tmeet meeting update \
 | `--until-type <n>` | 周期性时使用 | `0` | 结束类型：`0`-按日期，`1`-按次数                             |
 | `--until-count <n>` | 周期性时使用 | `7` | 重复次数（每天/每个工作日/每周最大 500，每两周/每月最大 50）              |
 | `--until-date <date>` | 周期性按日期结束时使用 | — | 结束日期（ISO 8601，含时区，如 `2026-05-10T00:00:00+08:00`） |
+| `--invitees <ids>` | 与 `--invitees-type` 同时使用 | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参                |
+| `--invitees-type <s>` | 同上 | — | 邀请变更策略：`add` / `remove` / `replace`                |
 
 ---
 
