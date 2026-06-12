@@ -18,18 +18,19 @@ import (
 // CreateOptions holds the options for creating a meeting.
 type CreateOptions struct {
 	tmeet             *internal.Tmeet
-	Subject           string // Meeting subject (required)
-	StartTime         string // Meeting start time, ISO 8601, e.g. 2026-03-12T14:00+08:00 (required)
-	EndTime           string // Meeting end time, ISO 8601, e.g. 2026-03-12T15:00+08:00 (required)
-	Password          string // Meeting password (4-6 digits), optional
-	Timezone          string // Timezone, see Oracle-TimeZone standard, e.g. Asia/Shanghai
-	MeetingType       int    // Meeting type, default 0. 0: normal meeting, 1: recurring meeting
-	OnlyUserJoinType  int    // Member join restriction. 1: all members, 2: invited only, 3: internal only
-	AutoInWaitingRoom bool   // Whether to enable waiting room, default false.
-	RecurringType     int    // Recurring meeting config (required when meetingType=1). Recurrence type, default 0. 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly
-	UntilType         int    // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
-	UntilCount        int    // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
-	UntilDate         string // Recurring meeting config (required when meetingType=1). End date, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	Subject           string   // Meeting subject (required)
+	StartTime         string   // Meeting start time, ISO 8601, e.g. 2026-03-12T14:00+08:00 (required)
+	EndTime           string   // Meeting end time, ISO 8601, e.g. 2026-03-12T15:00+08:00 (required)
+	Password          string   // Meeting password (4-6 digits), optional
+	Timezone          string   // Timezone, see Oracle-TimeZone standard, e.g. Asia/Shanghai
+	MeetingType       int      // Meeting type, default 0. 0: normal meeting, 1: recurring meeting
+	OnlyUserJoinType  int      // Member join restriction. 1: all members, 2: invited only, 3: internal only
+	AutoInWaitingRoom bool     // Whether to enable waiting room, default false.
+	RecurringType     int      // Recurring meeting config (required when meetingType=1). Recurrence type, default 0. 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly
+	UntilType         int      // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
+	UntilCount        int      // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
+	UntilDate         string   // Recurring meeting config (required when meetingType=1). End date, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	Invitees          []string // Invited participants (openid list). Up to 100 users.
 }
 
 // newCreateCmd creates a meeting.
@@ -57,6 +58,8 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0, "recurring end type (meeting-type=1): 0-by date, 1-by count")
 	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7, "recurring count (meeting-type=1, max: 500 for daily/weekdays/weekly, 50 for biweekly/monthly)")
 	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "recurring end date (meeting-type=1) e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().StringSliceVar(&opts.Invitees, "invitees", nil,
+		"invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. --invitees open_id1,open_id2)")
 
 	_ = cmd.MarkFlagRequired("subject")
 	_ = cmd.MarkFlagRequired("start")
@@ -113,6 +116,15 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	if len(settings) > 0 {
 		params["settings"] = settings
+	}
+
+	// Invitees: validated, deduped and capped (max 100) by the shared helper.
+	if len(o.Invitees) > 0 {
+		invitees, err := cmdutil.PackageApiInviteesUsers("--invitees", o.Invitees)
+		if err != nil {
+			return err
+		}
+		params["invitees"] = invitees
 	}
 
 	req := &thttp.Request{
