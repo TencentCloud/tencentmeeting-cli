@@ -94,6 +94,10 @@ func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 	if err != nil {
 		return nil, exception.NetworkError
 	}
+	if rsp.StatusCode == http.StatusRequestTimeout ||
+		rsp.StatusCode == http.StatusGatewayTimeout {
+		return nil, exception.NetworkError
+	}
 
 	var traceId string
 	if rsp.Header != nil {
@@ -104,18 +108,15 @@ func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 	if rsp.StatusCode != http.StatusOK {
 		proxyError := &ProxyError{}
 		if marshalErr := json.Unmarshal(rsp.RawBody, proxyError); marshalErr == nil {
-			if proxyError.ErrorInfo != nil {
-				if proxyError.ErrorInfo.NewErrorCode == exception.ServerCodeTokenExpired {
-					// Token invalid/expired, prompt user to re-login.
-					return nil, exception.TokenExpiredError
-				}
-				if exception.IsNotRetryCode(int(proxyError.ErrorInfo.NewErrorCode)) {
-					return nil, exception.NotRetryRequestError.With(
-						"request failed, http status:%d, business err: %s, trace:%s", rsp.StatusCode, string(rsp.RawBody), traceId)
-				}
+			if proxyError.ErrorInfo != nil &&
+				proxyError.ErrorInfo.NewErrorCode == exception.ServerCodeTokenExpired {
+				// Token invalid/expired, prompt user to re-login.
+				return nil, exception.TokenExpiredError
 			}
 		}
-		return nil, exception.RestBusinessError.With("request failed, http status:%d, business err: %s, trace:%s", rsp.StatusCode, string(rsp.RawBody), traceId)
+
+		return nil, exception.NotRetryRequestError.With(
+			"request failed, http status:%d, business err: %s, trace:%s", rsp.StatusCode, string(rsp.RawBody), traceId)
 	}
 
 	return &ProxyRsp{
