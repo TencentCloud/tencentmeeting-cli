@@ -225,3 +225,102 @@ func hasNameMatchInside(data interface{}, depth int, nameFields map[string]struc
 	}
 	return false
 }
+
+// DeleteFields recursively parses JSON data and removes the specified fields (blacklist mode);
+// all other fields will be preserved. It is the dual of KeepFields.
+// maxDepth limits the maximum recursion depth to prevent infinite recursion.
+//
+// Each entry in fields supports two modes:
+//   - Field name mode (without "."): e.g. "secret", any field with the same name anywhere
+//     in the JSON tree will be removed (together with its whole subtree), limited by maxDepth.
+//   - Path mode (with "."): e.g. "meeting.recurring_rule.recurring_type", removes the target
+//     field by exact path. Parent objects along the path are preserved as-is (only the target
+//     leaf is removed). Arrays are automatically expanded (each element continues matching the
+//     remaining path).
+//
+// When both modes are mixed, a field is removed if it matches either rule.
+func DeleteFields(data []byte, maxDepth int, fields []string) []byte {
+	if maxDepth <= 0 || len(fields) == 0 {
+		return data
+	}
+
+	// Split fields into field-name mode and path mode groups.
+	nameFields := make(map[string]struct{})
+	pathTree := make(map[string]interface{})
+	for _, key := range fields {
+		if key == "" {
+			continue
+		}
+		if strings.Contains(key, ".") {
+			addPathToTree(pathTree, strings.Split(key, "."))
+		} else {
+			nameFields[key] = struct{}{}
+		}
+	}
+
+	if len(nameFields) == 0 && len(pathTree) == 0 {
+		return data
+	}
+
+	var result interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return data
+	}
+
+	result = deleteRecursive(result, maxDepth, nameFields, pathTree)
+
+	updatedData, err := json.Marshal(result)
+	if err != nil {
+		return data
+	}
+	return updatedData
+}
+
+// deleteRecursive walks the data tree and removes the keys that match the blacklist.
+// nameFields: recursive name-based blacklist.
+// pathTree:   path-based blacklist rooted at the current position. A leaf (nil value) means
+// "delete this node entirely".
+func deleteRecursive(data interface{}, depth int, nameFields map[string]struct{},
+	pathTree map[string]interface{}) interface{} {
+	if depth <= 0 {
+		return data
+	}
+
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			// Rule 1: matched by name-based blacklist, drop the whole subtree.
+			if _, ok := nameFields[key]; ok {
+				delete(v, key)
+				continue
+			}
+
+			// Rule 2: matched by path-based blacklist.
+			if sub, ok := pathTree[key]; ok {
+				if sub == nil {
+					// Leaf in the delete-tree: drop this node entirely.
+					delete(v, key)
+					continue
+				}
+				subTree, _ := sub.(map[string]interface{})
+				v[key] = deleteRecursive(value, depth-1, nameFields, subTree)
+				continue
+			}
+
+			// Rule 3: not in path-tree at this level; still recurse so deeper name-based
+			// matches can take effect on descendants.
+			v[key] = deleteRecursive(value, depth-1, nameFields, nil)
+		}
+		return v
+
+	case []interface{}:
+		for i, item := range v {
+			// Path-tree applies to each array element when arrays are auto-expanded.
+			v[i] = deleteRecursive(item, depth-1, nameFields, pathTree)
+		}
+		return v
+
+	default:
+		return data
+	}
+}

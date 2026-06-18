@@ -246,3 +246,9 @@ var MeetingStatusConverter = stringEnumConverter(enumerate.MeetingStatusName)
 
 // MeetingUserJoinRoleConverter converts meeting user join role strings to their human-readable meeting user join role names.
 var MeetingUserJoinRoleConverter = stringEnumConverter(enumerate.MeetingUserJoinRoleName)
+
+// MeetingJoinTypeConverter converts meeting join type IDs to their human-readable meeting join type names.
+var MeetingJoinTypeConverter = intEnumConverter(enumerate.MeetingJoinTypeName)
+
+// ShowAllSubMeetingsConverter converts show all sub meetings flag to its human-readable name.
+var ShowAllSubMeetingsConverter = intEnumConverter(enumerate.ShowAllSubMeetingsName)

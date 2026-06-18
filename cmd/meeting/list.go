@@ -110,6 +110,8 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 		"until_date":               utils.TimestampConverter,
 		"until_type":               utils.MeetingRecurringUntilTypeConverter,
 		"join_meeting_role":        utils.MeetingUserJoinRoleConverter,
+		"only_user_join_type":      utils.MeetingJoinTypeConverter,
+		"is_show_all_sub_meetings": utils.ShowAllSubMeetingsConverter,
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),

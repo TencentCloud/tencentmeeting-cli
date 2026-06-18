@@ -268,8 +268,12 @@ tmeet meeting create --subject <title> --start <start-time> --end <end-time> [op
 | `--recurring-type` | int | — | `0` | Recurrence type (when `--meeting-type=1`): `0`-daily, `1`-weekdays, `2`-weekly, `3`-biweekly, `4`-monthly |
 | `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
 | `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
-| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
+| `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00` |
 | `--invitees` | strings | — | — | Invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. `--invitees open_id1,open_id2`) |
+| `--water-mark-type` | int | — | `2` | Text watermark: `0`-single row, `1`-double row, `2`-off<br>● Personal account: default is 2<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--audio-watermark` | bool | — | `false` | Audio watermark: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--auto-record-type` | string | — | `none` | Auto record when host joins: `none`-off, `local`-local recording, `cloud`-cloud recording<br>● Personal account: default is none<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--auto-asr` | bool | — | `false` | Auto speech recognition: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
 
 **Examples:**
 
@@ -298,6 +302,15 @@ tmeet meeting create \
   --start "2026-04-10T14:00+08:00" \
   --end "2026-04-10T15:00+08:00" \
   --invitees "open_id1,open_id2,open_id3"
+
+# Create a meeting and explicitly turn off audio watermark / auto speech recognition
+# Note: bool flags must use the `=` form when passing `false` (e.g. `--audio-watermark=false`)
+tmeet meeting create \
+  --subject "No Watermark Meeting" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --audio-watermark=false \
+  --auto-asr=false
 ```
 
 ---
@@ -377,6 +390,13 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --invitees "open_id1" \
   --invitees-type remove
+
+# Explicitly turn off audio watermark / auto speech recognition
+# Note: bool flags must use the `=` form when passing `false` (e.g. `--audio-watermark=false`)
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --audio-watermark=false \
+  --auto-asr=false
 ```
 
 ---

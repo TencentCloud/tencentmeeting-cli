@@ -56,6 +56,14 @@ tmeet meeting create \
   --start "2026-04-10T14:00:00+08:00" \
   --end "2026-04-10T15:00:00+08:00" \
   --invitees "open_id1,open_id2,open_id3"
+
+# 显式关闭音频水印 / 自动文字转写（注意必须使用 = 形式传 false）
+tmeet meeting create \
+  --subject "无水印会议" \
+  --start "2026-04-10T14:00:00+08:00" \
+  --end "2026-04-10T15:00:00+08:00" \
+  --audio-watermark=false \
+  --auto-asr=false
 ```
 
 ### 参数
@@ -75,6 +83,10 @@ tmeet meeting create \
 | `--until-count <n>` | 周期性时使用 | `7` | 重复次数（每天/每个工作日/每周最大 500，每两周/每月最大 50）              |
 | `--until-date <date>` | 周期性按日期结束时使用 | — | 结束日期（ISO 8601，含时区，如 `2026-05-10T00:00:00+08:00`） |
 | `--invitees <ids>` | 否 | — | 邀请成员的 openid 列表，逗号分隔或重复传参，最多 100 人              |
+| `--water-mark-type <n>` | 否 | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
+| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
 
 ---
 
@@ -122,6 +134,12 @@ tmeet meeting update \
   --meeting-id "100000000" \
   --invitees "open_id1,open_id2,open_id3" \
   --invitees-type replace
+
+# 显式关闭音频水印 / 自动文字转写（注意必须使用 = 形式传 false）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --audio-watermark=false \
+  --auto-asr=false
 ```
 
 > ⚠️ **周期性会议注意**：修改周期性会议时，如果没有修改会议类型，**必须传 `--meeting-type 1`**，否则系统会将其修改为普通会议，导致周期规则丢失。
@@ -147,6 +165,10 @@ tmeet meeting update \
 | `--until-date <date>` | 周期性按日期结束时使用 | — | 结束日期（ISO 8601，含时区，如 `2026-05-10T00:00:00+08:00`） |
 | `--invitees <ids>` | 与 `--invitees-type` 同时使用 | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参                |
 | `--invitees-type <s>` | 同上 | — | 邀请变更策略：`add` / `remove` / `replace`                |
+| `--water-mark-type <n>` | 否 | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
+| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
 
 ---
 

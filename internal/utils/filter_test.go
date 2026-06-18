@@ -389,7 +389,7 @@ func TestExtractTimestamp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := extractTimestamp(tt.input)
 			if got != tt.want {
-				t.Errorf("extractTimestamp(%v) = %d, want %d", tt.input, got, tt.want) //nolint
+				t.Errorf("extractTimestamp(%v) = %d, want %d", tt.input, got, tt.want) // nolint
 			}
 		})
 	}
@@ -753,6 +753,405 @@ func TestKeepFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := KeepFields(tt.data, tt.maxDepth, tt.fields)
+
+			if tt.expectRaw != nil {
+				if string(result) != string(tt.expectRaw) {
+					t.Errorf("expected raw result:\n  want: %s\n  got:  %s", string(tt.expectRaw), string(result))
+				}
+				return
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, result)
+			}
+		})
+	}
+}
+
+// ---- TestDeleteFields ----
+
+func TestDeleteFields(t *testing.T) {
+	// Build a representative nested JSON as the base sample for multiple cases.
+	baseSample := map[string]interface{}{
+		"meeting_id": "123",
+		"subject":    "team sync",
+		"host_info": map[string]interface{}{
+			"user_id":  "u1",
+			"nickname": "alice",
+			"extra":    "secret",
+		},
+		"meeting_info_list": []interface{}{
+			map[string]interface{}{
+				"meeting_id": "m1",
+				"subject":    "daily",
+				"start_time": float64(1741766400),
+				"end_time":   float64(1741770000),
+				"nested": map[string]interface{}{
+					"start_time": float64(1741766400),
+					"secret":     "x",
+				},
+			},
+			map[string]interface{}{
+				"meeting_id": "m2",
+				"subject":    "weekly",
+				"start_time": float64(1741780000),
+				"end_time":   float64(1741790000),
+			},
+		},
+		"meeting_number": float64(2),
+	}
+
+	tests := []struct {
+		name      string
+		data      []byte
+		maxDepth  int
+		fields    []string
+		expectRaw []byte
+		validate  func(t *testing.T, result []byte)
+	}{
+		{
+			name:     "name mode: top-level field removed with its subtree",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"host_info"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				if _, ok := m["host_info"]; ok {
+					t.Errorf("host_info should be removed, got: %s", string(result))
+				}
+				// other top-level fields preserved
+				if m["meeting_id"] != "123" {
+					t.Errorf("meeting_id should be preserved, got: %v", m["meeting_id"])
+				}
+				if m["subject"] != "team sync" {
+					t.Errorf("subject should be preserved, got: %v", m["subject"])
+				}
+				if _, ok := m["meeting_info_list"]; !ok {
+					t.Errorf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				if _, ok := m["meeting_number"]; !ok {
+					t.Errorf("meeting_number should be preserved, got: %s", string(result))
+				}
+			},
+		},
+		{
+			name:     "name mode: recursive removal of all same-name fields in tree",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"start_time"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				list, ok := m["meeting_info_list"].([]interface{})
+				if !ok {
+					t.Fatalf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				if len(list) != 2 {
+					t.Fatalf("list length expected 2, got %d", len(list))
+				}
+				for i, it := range list {
+					item, _ := it.(map[string]interface{})
+					if _, ok := item["start_time"]; ok {
+						t.Errorf("items[%d].start_time should be removed, got: %v", i, item)
+					}
+					// siblings preserved
+					if _, ok := item["end_time"]; !ok {
+						t.Errorf("items[%d].end_time should be preserved, got: %v", i, item)
+					}
+					if _, ok := item["subject"]; !ok {
+						t.Errorf("items[%d].subject should be preserved, got: %v", i, item)
+					}
+				}
+				// nested.start_time also removed; nested.secret preserved
+				first, _ := list[0].(map[string]interface{})
+				nested, _ := first["nested"].(map[string]interface{})
+				if nested == nil {
+					t.Fatalf("items[0].nested should be preserved, got: %v", first)
+				}
+				if _, ok := nested["start_time"]; ok {
+					t.Errorf("items[0].nested.start_time should be removed, got: %v", nested)
+				}
+				if nested["secret"] != "x" {
+					t.Errorf("items[0].nested.secret should be preserved, got: %v", nested)
+				}
+			},
+		},
+		{
+			name:     "name mode: non-existent field is a no-op",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"not_exist_key"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				// All original top-level keys remain present.
+				for _, k := range []string{"meeting_id", "subject", "host_info", "meeting_info_list", "meeting_number"} {
+					if _, ok := m[k]; !ok {
+						t.Errorf("%s should be preserved when delete target does not exist, got: %s", k, string(result))
+					}
+				}
+			},
+		},
+		{
+			name:     "name mode: maxDepth=1 only removes top-level matches",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 1,
+			fields:   []string{"start_time"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				// start_time only exists at deeper levels, so depth=1 should not affect them.
+				list, ok := m["meeting_info_list"].([]interface{})
+				if !ok {
+					t.Fatalf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				if len(list) != 2 {
+					t.Fatalf("list length expected 2, got %d", len(list))
+				}
+				for i, it := range list {
+					item, _ := it.(map[string]interface{})
+					if _, ok := item["start_time"]; !ok {
+						t.Errorf("items[%d].start_time should remain due to maxDepth=1, got: %v", i, item)
+					}
+				}
+			},
+		},
+		{
+			name:     "path mode: nested path removed and siblings preserved",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"host_info.nickname"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				host, ok := m["host_info"].(map[string]interface{})
+				if !ok {
+					t.Fatalf("host_info should be preserved as parent, got: %s", string(result))
+				}
+				if _, ok := host["nickname"]; ok {
+					t.Errorf("host_info.nickname should be removed, got: %v", host)
+				}
+				if host["user_id"] != "u1" {
+					t.Errorf("host_info.user_id should be preserved, got: %v", host["user_id"])
+				}
+				if host["extra"] != "secret" {
+					t.Errorf("host_info.extra should be preserved, got: %v", host["extra"])
+				}
+			},
+		},
+		{
+			name:     "path mode: array auto-expanded, remove subject inside each item",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"meeting_info_list.subject"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				list, ok := m["meeting_info_list"].([]interface{})
+				if !ok {
+					t.Fatalf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				if len(list) != 2 {
+					t.Fatalf("list length expected 2, got %d", len(list))
+				}
+				for i, it := range list {
+					item, _ := it.(map[string]interface{})
+					if _, ok := item["subject"]; ok {
+						t.Errorf("items[%d].subject should be removed, got: %v", i, item)
+					}
+					// siblings preserved
+					for _, sibling := range []string{"meeting_id", "start_time", "end_time"} {
+						if _, ok := item[sibling]; !ok {
+							t.Errorf("items[%d].%s should be preserved, got: %v", i, sibling, item)
+						}
+					}
+				}
+				// top-level siblings preserved
+				if m["meeting_id"] != "123" {
+					t.Errorf("top-level meeting_id should be preserved, got: %v", m["meeting_id"])
+				}
+				// path-mode targeting top-level 'subject' was NOT requested, so it remains.
+				if m["subject"] != "team sync" {
+					t.Errorf("top-level subject should be preserved, got: %v", m["subject"])
+				}
+			},
+		},
+		{
+			name:     "path mode: non-existent path is a no-op",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"not_exist.a.b"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				for _, k := range []string{"meeting_id", "subject", "host_info", "meeting_info_list", "meeting_number"} {
+					if _, ok := m[k]; !ok {
+						t.Errorf("%s should be preserved, got: %s", k, string(result))
+					}
+				}
+			},
+		},
+		{
+			name:     "path mode: intermediate exists but tail missing keeps parent intact",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"host_info.not_exist"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				host, ok := m["host_info"].(map[string]interface{})
+				if !ok {
+					t.Fatalf("host_info should be preserved, got: %s", string(result))
+				}
+				// parent fully preserved because tail does not exist
+				if host["user_id"] != "u1" || host["nickname"] != "alice" || host["extra"] != "secret" {
+					t.Errorf("host_info subtree should be preserved when tail missing, got: %v", host)
+				}
+			},
+		},
+		{
+			name:     "mixed mode: union of name-based and path-based blacklists",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"meeting_id", "host_info.nickname"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				// name match: top-level meeting_id removed
+				if _, ok := m["meeting_id"]; ok {
+					t.Errorf("top-level meeting_id should be removed, got: %s", string(result))
+				}
+				// path match: host_info.nickname removed; host_info itself preserved
+				host, ok := m["host_info"].(map[string]interface{})
+				if !ok {
+					t.Fatalf("host_info should be preserved, got: %s", string(result))
+				}
+				if _, ok := host["nickname"]; ok {
+					t.Errorf("host_info.nickname should be removed, got: %v", host)
+				}
+				if host["user_id"] != "u1" {
+					t.Errorf("host_info.user_id should be preserved, got: %v", host)
+				}
+				// name match also affects deeper meeting_id under each list item
+				list, ok := m["meeting_info_list"].([]interface{})
+				if !ok {
+					t.Fatalf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				for i, it := range list {
+					item, _ := it.(map[string]interface{})
+					if _, ok := item["meeting_id"]; ok {
+						t.Errorf("items[%d].meeting_id should be removed, got: %v", i, item)
+					}
+					if _, ok := item["subject"]; !ok {
+						t.Errorf("items[%d].subject should be preserved, got: %v", i, item)
+					}
+				}
+			},
+		},
+		{
+			name:     "partial: some fields exist and some do not",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"subject", "ghost_field"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				if _, ok := m["subject"]; ok {
+					t.Errorf("subject should be removed, got: %s", string(result))
+				}
+				// other top-level fields preserved
+				if m["meeting_id"] != "123" {
+					t.Errorf("meeting_id should be preserved, got: %v", m["meeting_id"])
+				}
+				// items also have 'subject' which should be removed recursively
+				list, ok := m["meeting_info_list"].([]interface{})
+				if !ok {
+					t.Fatalf("meeting_info_list should be preserved, got: %s", string(result))
+				}
+				for i, it := range list {
+					item, _ := it.(map[string]interface{})
+					if _, ok := item["subject"]; ok {
+						t.Errorf("items[%d].subject should be removed, got: %v", i, item)
+					}
+				}
+			},
+		},
+		{
+			name:      "edge: empty fields returns original data",
+			data:      mustMarshal(t, baseSample),
+			maxDepth:  10,
+			fields:    []string{},
+			expectRaw: mustMarshal(t, baseSample),
+		},
+		{
+			name:      "edge: maxDepth=0 returns original data",
+			data:      mustMarshal(t, baseSample),
+			maxDepth:  0,
+			fields:    []string{"meeting_id"},
+			expectRaw: mustMarshal(t, baseSample),
+		},
+		{
+			name:      "edge: invalid JSON returns original data",
+			data:      []byte(`{invalid json}`),
+			maxDepth:  10,
+			fields:    []string{"meeting_id"},
+			expectRaw: []byte(`{invalid json}`),
+		},
+		{
+			name:      "edge: only empty string entries returns original data",
+			data:      mustMarshal(t, baseSample),
+			maxDepth:  10,
+			fields:    []string{"", ""},
+			expectRaw: mustMarshal(t, baseSample),
+		},
+		{
+			name:     "edge: empty string entries in fields are ignored",
+			data:     mustMarshal(t, baseSample),
+			maxDepth: 10,
+			fields:   []string{"", "meeting_id", ""},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				if _, ok := m["meeting_id"]; ok {
+					t.Errorf("meeting_id should be removed, got: %s", string(result))
+				}
+				if m["subject"] != "team sync" {
+					t.Errorf("subject should be preserved, got: %v", m["subject"])
+				}
+			},
+		},
+		{
+			name: "name mode: removes whole array when name matched",
+			data: mustMarshal(t, map[string]interface{}{
+				"tags":  []interface{}{"a", "b", "c"},
+				"other": "keep me",
+			}),
+			maxDepth: 10,
+			fields:   []string{"tags"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				if _, ok := m["tags"]; ok {
+					t.Errorf("tags array should be removed, got: %s", string(result))
+				}
+				if m["other"] != "keep me" {
+					t.Errorf("other should be preserved, got: %v", m["other"])
+				}
+			},
+		},
+		{
+			name: "duality: KeepFields + DeleteFields cover all top-level keys",
+			data: mustMarshal(t, map[string]interface{}{
+				"a": "1",
+				"b": "2",
+				"c": "3",
+			}),
+			maxDepth: 10,
+			fields:   []string{"b"},
+			validate: func(t *testing.T, result []byte) {
+				m := unmarshalToMap(t, result)
+				if _, ok := m["b"]; ok {
+					t.Errorf("b should be removed, got: %s", string(result))
+				}
+				if m["a"] != "1" || m["c"] != "3" {
+					t.Errorf("a and c should be preserved, got: %s", string(result))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DeleteFields(tt.data, tt.maxDepth, tt.fields)
 
 			if tt.expectRaw != nil {
 				if string(result) != string(tt.expectRaw) {

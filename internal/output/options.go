@@ -11,9 +11,10 @@ import (
 type optionsMsg struct {
 	cmd *cobra.Command
 
-	data    string // output data
-	traceId string // output traceId
-	message string // output message
+	data    string   // output data
+	traceId string   // output traceId
+	message string   // output message
+	hints   []string // output hints
 }
 
 // Option defines the options.
@@ -62,5 +63,26 @@ func WithContactSearchLogic() Option {
 			// if the users only one, we need to keep the field open_id only
 			msg.data = string(utils.KeepFields([]byte(msg.data), 10, []string{"open_id"}))
 		}
+	}
+}
+
+// WithHints defines the hints format.
+// fn is a lazy function that generates hints, called only when output is rendered.
+func WithHints(fn func(string) []string) Option {
+	return func(msg *optionsMsg) {
+		if fn != nil {
+			msg.hints = fn(msg.data)
+		}
+	}
+}
+
+// WithFilterFields defines the filter fields format.
+func WithFilterFields(filterFields []string) Option {
+	return func(msg *optionsMsg) {
+		if len(filterFields) == 0 {
+			return
+		}
+
+		msg.data = string(utils.DeleteFields([]byte(msg.data), 10, filterFields))
 	}
 }

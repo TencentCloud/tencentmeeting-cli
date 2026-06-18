@@ -31,6 +31,10 @@ type CreateOptions struct {
 	UntilCount        int      // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
 	UntilDate         string   // Recurring meeting config (required when meetingType=1). End date, ISO 8601, e.g. 2026-03-12T15:00+08:00
 	Invitees          []string // Invited participants (openid list). Up to 100 users.
+	WaterMarkType     int      // Text watermark, 0=single row, 1=double row, 2=off
+	AudioWatermark    bool     // Audio watermark, true=on, false=off
+	AutoRecordType    string   // Auto record when host joins, none=off, local=local recording, cloud=cloud recording
+	AutoASR           bool     // Auto speech recognition, true=on, false=off
 }
 
 // newCreateCmd creates a meeting.
@@ -60,11 +64,21 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "recurring end date (meeting-type=1) e.g. 2026-03-12T15:00+08:00)")
 	cmd.Flags().StringSliceVar(&opts.Invitees, "invitees", nil,
 		"invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. --invitees open_id1,open_id2)")
+	cmd.Flags().IntVar(&opts.WaterMarkType, "water-mark-type", 2, "text watermark: 0=single row, 1=double row, 2=off")
+	cmd.Flags().BoolVar(&opts.AudioWatermark, "audio-watermark", false, "audio watermark")
+	cmd.Flags().StringVar(&opts.AutoRecordType, "auto-record-type", "none", "auto record when host joins: none=off, local=local recording, cloud=cloud recording")
+	cmd.Flags().BoolVar(&opts.AutoASR, "auto-asr", false, "auto speech")
 
 	_ = cmd.MarkFlagRequired("subject")
 	_ = cmd.MarkFlagRequired("start")
 	_ = cmd.MarkFlagRequired("end")
 	return cmd
+}
+
+// Hints implements the Hints.HintProvider interface and returns hints for meeting settings.
+// Lock detection is solely driven by the corp_lock_mask bitmask in the response.
+func (o *CreateOptions) Hints(responseData string) []string {
+	return cmdutil.GenerateMeetingSettingsHints(responseData)
 }
 
 func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
@@ -114,6 +128,21 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 	if o.AutoInWaitingRoom {
 		settings["auto_in_waiting_room"] = o.AutoInWaitingRoom
 	}
+	if cmd.Flags().Changed("water-mark-type") {
+		if o.WaterMarkType != 2 {
+			settings["water_mark_type"] = o.WaterMarkType
+		}
+		settings["allow_screen_shared_watermark"] = o.WaterMarkType != 2
+	}
+	if cmd.Flags().Changed("audio-watermark") {
+		settings["audio_watermark"] = o.AudioWatermark
+	}
+	if cmd.Flags().Changed("auto-record-type") {
+		settings["auto_record_type"] = o.AutoRecordType
+	}
+	if cmd.Flags().Changed("auto-asr") {
+		settings["auto_asr"] = o.AutoASR
+	}
 	if len(settings) > 0 {
 		params["settings"] = settings
 	}
@@ -137,10 +166,13 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	convertMap := map[string]utils.FieldConverter{
-		"start_time": utils.TimestampConverter,
-		"end_time":   utils.TimestampConverter,
+		"start_time":          utils.TimestampConverter,
+		"end_time":            utils.TimestampConverter,
+		"only_user_join_type": utils.MeetingJoinTypeConverter,
 	}
+
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithConvert(convertMap))
+		output.WithConvert(convertMap),
+		output.WithHints(o.Hints))
 	return nil
 }
