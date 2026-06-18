@@ -11,6 +11,7 @@ type formatOutput struct {
 	TraceId string      `json:"trace_id,omitempty"`
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
+	Hints   []string    `json:"hints,omitempty"`
 }
 
 // PrintInfof prints informational messages.
@@ -45,6 +46,7 @@ func FormatPrint(cmd *cobra.Command, traceId, message, data string, opts ...Opti
 	fo := &formatOutput{
 		TraceId: optMsg.traceId,
 		Message: optMsg.message,
+		Hints:   optMsg.hints,
 	}
 	dataMap := make(map[string]interface{})
 	err := json.Unmarshal([]byte(optMsg.data), &dataMap)
