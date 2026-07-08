@@ -36,10 +36,10 @@ tmeet control call \
 
 ## kick — 踢出会议成员
 
-> ⚠️ **高风险写操作：被踢出的成员会立即离开会议。执行前必须向用户明确列出将被踢出的成员，并确认是否需要允许重新入会（`--allow-rejoin`，默认 `false` 不允许），获得用户确认后再执行。**
+> ⚠️ **高风险写操作：被踢出的成员会立即离开会议。默认允许被踢成员重新入会（`--allow-rejoin` 默认 `true`）；如需不允许重新入会，可显式传 `--allow-rejoin=false`。执行前必须向用户明确列出将被踢出的成员。**
 
 > 🔒 **成员来源约束：`kick` 的目标必须是当前会议中的实际参会人，其 `open_id` / `ms_open_id` 必须从 [`tmeet report participants`](tmeet-report.md#participants--获取参会人列表) 的返回结果中获取，严禁使用 `tmeet contact search` 通讯录查询的结果作为来源。**
->
+
 > 原因：通讯录查询返回的是组织成员名录，并不代表他们已加入当前会议；而踢人操作仅对会中成员有效，且需要区分普通成员、Sip、Pstn 三类设备身份，这些信息只有 `report participants` 才能准确提供。
 
 会中踢人：将指定成员从当前正在进行的会议中移除。支持踢出三类对象（身份类型以 `report participants` 返回的字段为准）：
@@ -48,7 +48,7 @@ tmeet control call \
 - **Pstn 设备**：通过 `--pstn-users` 传入设备 `ms_open_id`
 
 ```bash
-# 踢出普通成员（默认不允许重新入会）
+# 踢出普通成员（默认允许重新入会）
 tmeet control kick \
   --meeting-id "100000000" \
   --users "open_id1,open_id2"
@@ -66,10 +66,10 @@ tmeet control kick \
   --sip-users "ms_open_id_sip1" \
   --pstn-users "ms_open_id_pstn1"
 
-# 允许被踢成员重新入会
+# 不允许被踢成员重新入会
 tmeet control kick \
   --meeting-id "100000000" \
-  --allow-rejoin \
+  --allow-rejoin=false \
   --users "open_id1,open_id2"
 ```
 
@@ -81,7 +81,7 @@ tmeet control kick \
 | `--users <list>` | 三选一 | — | 待踢出的普通成员 `open_id` 列表（不含 Sip/Pstn 设备），支持英文逗号分隔或重复传入该参数 |
 | `--sip-users <list>` | 三选一 | — | 待踢出的 Sip 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
 | `--pstn-users <list>` | 三选一 | — | 待踢出的 Pstn 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
-| `--allow-rejoin` | ❌ | `false` | 被踢出的成员是否允许重新加入会议；不传则默认 `false`（不允许重新入会） |
+| `--allow-rejoin` | ❌ | `true` | 被踢出的成员是否允许重新加入会议；不传则默认 `true`（允许重新入会），传 `--allow-rejoin=false` 不允许重新入会 |
 
 > `--users` / `--sip-users` / `--pstn-users` **至少必填一种**，且**三者总数合计最多 20 个**。
 

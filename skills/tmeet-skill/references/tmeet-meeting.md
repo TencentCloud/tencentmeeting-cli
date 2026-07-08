@@ -117,6 +117,14 @@ tmeet meeting update \
   --until-type 1 \
   --until-count 20
 
+# 只修改周期性会议中的某一场子会议时间（不修改周期规则）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --meeting-type 1 \
+  --sub-meeting-id "200000001" \
+  --start "2026-04-17T10:00:00+08:00" \
+  --end "2026-04-17T11:00:00+08:00"
+
 # 在原邀请列表上追加成员
 tmeet meeting update \
   --meeting-id "100000000" \
@@ -163,6 +171,7 @@ tmeet meeting update \
 | `--until-type <n>` | 周期性时使用 | `0` | 结束类型：`0`-按日期，`1`-按次数                             |
 | `--until-count <n>` | 周期性时使用 | `7` | 重复次数（每天/每个工作日/每周最大 500，每两周/每月最大 50）              |
 | `--until-date <date>` | 周期性按日期结束时使用 | — | 结束日期（ISO 8601，含时区，如 `2026-05-10T00:00:00+08:00`） |
+| `--sub-meeting-id <id>` | 修改单场子会议时使用 | — | 子会议 ID：仅修改该场子会议的时间；**不可与 `--recurring-type` / `--until-type` / `--until-count` / `--until-date` 同时使用**。不填则修改整个周期性会议 |
 | `--invitees <ids>` | 与 `--invitees-type` 同时使用 | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参                |
 | `--invitees-type <s>` | 同上 | — | 邀请变更策略：`add` / `remove` / `replace`                |
 | `--water-mark-type <n>` | 否 | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |

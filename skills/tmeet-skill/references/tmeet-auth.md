@@ -61,6 +61,7 @@ tmeet auth status
 ```
 Logged in
   OpenId:  xxx
+  UserName:  xxx
   AccessToken:  valid (expires at 2026-05-01 10:00:00, remaining 25d 0h 6m)
   RefreshToken: valid (expires at 2026-07-01 10:00:00, remaining 86d 0h 6m)
 ```

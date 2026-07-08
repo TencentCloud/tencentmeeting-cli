@@ -215,7 +215,7 @@ tmeet
   | `meeting invitees-remove` | 从会议中移除受邀成员 |
   | `meeting invitees-replace` | 整体替换会议受邀成员列表（未在新列表中的成员会被移除） |
   | `control call` | 主动呼叫成员入会，会向目标成员发起会议邀请通话，对其产生实际打扰 |
-  | `control kick` | 将成员踢出会议，立即生效，被踢成员需要重新申请入会；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
+  | `control kick` | 将成员踢出会议，立即生效；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
   | `auth logout` | 清除本地登录凭证 |
   | `record permission-apply-commit` | 正式提交录制权限申请，会触发审批流程（必须先执行 `record permission-apply-prepare` 并向用户展示申请信息确认）|
 
