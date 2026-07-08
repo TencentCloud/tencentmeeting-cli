@@ -2,6 +2,25 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.11] - 2026-07-08
+
+### Added
+
+- **AI agent identity tracking via `AgentConfig`** (`internal/config/agent.go`, `internal/config/agent_test.go`): New module that records the calling AI agent name and LLM model in plaintext `agent.json`, separate from user credentials. Provides atomic write (tmp + rename), idempotent clear, and `GetAgentConfig` / `SaveAgentConfig` / `ClearAgentConfig` APIs. Full unit test coverage (9 test cases: missing file, round-trip, nil save, overwrite, clear, idempotent clear, corrupted JSON, path resolution, atomic write content).
+- **`auth login` now persists agent identity** (`cmd/auth/login.go`): After successful login, reads `TMEET_AGENT` / `TMEET_MODEL` environment variables and saves them to `agent.json`. Write failure is logged but non-fatal — login succeeds regardless.
+- **`auth status` now displays `UserName`** (`cmd/auth/status.go`): When the refresh token is still valid, calls `/v1/cli/get-user-info` to fetch and display the user's name alongside `OpenId`. Re-reads user config after the API call to reflect any token refresh that occurred in-flight.
+- **`meeting update` supports `--sub-meeting-id` for single sub-meeting modification** (`cmd/meeting/update.go`): New `--sub-meeting-id` flag (recurring meetings only) modifies a single sub-meeting's start/end time without altering the recurring rule. Mutually exclusive with `--recurring-type` / `--until-type` / `--until-count` / `--until-date` — validated at runtime with a clear error message. Extracted `buildRecurringRule()` helper for cleaner payload assembly.
+- **`Tmeet-Cli-Name` request header and ApiCmd context passthrough** (`internal/proxy/rest-proxy/proxy.go`, `internal/cmdutil/middleware/api_cmd.go`): The REST proxy now attaches a `Tmeet-Cli-Name` header carrying the resolved ApiCmd identifier. New `InjectApiCmdContext` / `GetApiCmdFromContext` utilities use an unexported key type. The `WithApiCmd` middleware writes the resolved ApiCmd to both the cobra annotation and `cmd.Context()`, decoupling the proxy from annotation reads.
+- **New ApiCmd constants for tshoot commands** (`internal/cmdutil/api_schema.go`): `ApiCmdTshootLogUpload` (covers the two-step log upload flow) and `ApiCmdTshootFeedback`. `tshoot feedback` is now wrapped with `WithApiCmd` middleware; `tshoot log` injects `ApiCmdTshootLogUpload` into context before the upload flow.
+
+### Changed
+
+- **`AccessToken` proactive refresh with 60-second leeway** (`internal/auth/auth.go`): Introduced `accessTokenRefreshLeeway = 60s`. `RefreshToken` now triggers 60s before the declared expiry to absorb clock skew and in-flight network latency, preventing server-side `TokenExpired` rejection that the rest-proxy treats as fatal (clears local credentials).
+- **`GetSystemInfo` accepts `*config.AgentConfig`** (`internal/common/system.go`, `internal/common/system_test.go`): Agent and Model are now resolved via env var (`TMEET_AGENT` / `TMEET_MODEL`) → `agent.json` fallback → empty string. All test call sites updated to pass `nil`.
+- **`control kick --allow-rejoin` default flipped to `true`** (`cmd/control/kick.go`): The flag now defaults to `true` (allow rejoin). Users must explicitly pass `--allow-rejoin=false` to disallow rejoin. Help text updated accordingly.
+- **`internal/tmeet.go` loads `AgentConfig` at startup** (`internal/tmeet.go`): Missing `agent.json` is treated as "not set" and does not block CLI startup. `GetSystemInfo` is called with the loaded config so agent/model metadata is available for all subsequent REST requests.
+- **Documentation and skill references updated** (`README.md`, `README_EN.md`, `skills/tmeet-skill/SKILL.md`, `skills/tmeet-skill/references/tmeet-auth.md`, `skills/tmeet-skill/references/tmeet-control.md`, `skills/tmeet-skill/references/tmeet-meeting.md`): Added `--sub-meeting-id` parameter tables, usage examples, and updated `--allow-rejoin` default value across all documentation surfaces. `auth status` output example now includes `UserName`. `control kick` description simplified in `SKILL.md`.
+
 ## [v1.0.10] - 2026-06-19
 
 ### Added
