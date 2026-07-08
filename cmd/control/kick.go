@@ -37,7 +37,9 @@ func newKickCmd(tmeet *internal.Tmeet) *cobra.Command {
 
 	// fill flags
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "meeting ID (required)")
-	cmd.Flags().BoolVar(&opts.AllowRejoin, "allow-rejoin", false, "allow re join after kick out")
+	cmd.Flags().BoolVar(&opts.AllowRejoin, "allow-rejoin", true,
+		"allow kicked-out members to rejoin the meeting, default true. "+
+			"pass --allow-rejoin=false to disallow rejoin")
 	cmd.Flags().StringSliceVar(&opts.Users, "users", nil,
 		"user open_id list to kick out, not contains sip/pstn device, comma-separated or repeat the flag, "+
 			"the total number of --users/--sip-users/--pstn-users is max 20. "+
