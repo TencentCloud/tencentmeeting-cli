@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"time"
 	"tmeet/internal"
@@ -100,6 +101,17 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 
 	if err != nil {
 		return err
+	}
+
+	// Record the caller's identity (AI-Agent / LLM model) in plaintext agent.json.
+	// This is non-sensitive telemetry, independent of the user credential lifecycle;
+	// a failure here is logged but does not fail the login.
+	agentCfg := &config.AgentConfig{
+		Agent: os.Getenv("TMEET_AGENT"),
+		Model: os.Getenv("TMEET_MODEL"),
+	}
+	if err := config.SaveAgentConfig(agentCfg); err != nil {
+		log.Errorf(cmd.Context(), "save agent config failed: %v", err)
 	}
 
 	output.PrintInfof(cmd, "Login successful. Start managing your meetings using tmeet.")

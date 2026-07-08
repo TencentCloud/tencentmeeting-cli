@@ -361,6 +361,7 @@ tmeet meeting update --meeting-id <meeting-id> [options]
 | `--until-type` | int | — | `0` | Recurrence end type (when `--meeting-type=1`): `0`-end by date, `1`-end by count                          |
 | `--until-count` | int | — | `7` | Max occurrences (when `--meeting-type=1`): max 500 for daily/weekday/weekly; max 50 for biweekly/monthly  |
 | `--until-date` | string | — | — | Recurrence end date (when `--meeting-type=1`), ISO 8601, e.g. `2026-03-12T15:00+08:00`                    |
+| `--sub-meeting-id` | string | — | — | Sub-meeting ID (when `--meeting-type=1`): update only that sub-meeting's time. **Cannot be combined with `--recurring-type` / `--until-type` / `--until-count` / `--until-date`.** If omitted, the whole recurring meeting is updated |
 | `--invitees` | strings | — | — | Openid list to mutate; comma-separated or repeat the flag; used together with `--invitees-type`           |
 | `--invitees-type` | string | — | — | Invitees mutation strategy: `replace` / `add` / `remove`; required when `--invitees` is set              |
 
@@ -390,6 +391,14 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --invitees "open_id1" \
   --invitees-type remove
+
+# Update only a single sub-meeting's time in a recurring meeting (recurring rule is not modified)
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --meeting-type 1 \
+  --sub-meeting-id "100001" \
+  --start "2026-04-17T10:00+08:00" \
+  --end "2026-04-17T11:00+08:00"
 
 # Explicitly turn off audio watermark / auto speech recognition
 # Note: bool flags must use the `=` form when passing `false` (e.g. `--audio-watermark=false`)
@@ -1006,7 +1015,7 @@ tmeet control kick --meeting-id <meeting-id> [--users <open-id-list>] [--sip-use
 | `--users` | strings | one of three | — | List of `open_id`s of regular members to kick out (excluding Sip/Pstn devices). Supports comma-separated values or repeating the flag |
 | `--sip-users` | strings | one of three | — | List of `ms_open_id`s of Sip devices to kick out. Supports comma-separated values or repeating the flag |
 | `--pstn-users` | strings | one of three | — | List of `ms_open_id`s of Pstn devices to kick out. Supports comma-separated values or repeating the flag |
-| `--allow-rejoin` | bool | ❌ | `false` | Whether kicked-out members are allowed to rejoin the meeting. Defaults to `false` (rejoin disallowed) when not provided |
+| `--allow-rejoin` | bool | ❌ | `true` | Whether kicked-out members are allowed to rejoin the meeting. Defaults to `true` (rejoin allowed) when not provided; pass `--allow-rejoin=false` to disallow rejoin |
 
 > At least one of `--users` / `--sip-users` / `--pstn-users` is required, and the **total number of all three combined must not exceed 20**.
 
@@ -1025,10 +1034,10 @@ tmeet control kick \
   --sip-users "ms_open_id_sip1" \
   --pstn-users "ms_open_id_pstn1"
 
-# Allow kicked-out members to rejoin
+# Disallow kicked-out members from rejoining
 tmeet control kick \
   --meeting-id "6953553464429888300" \
-  --allow-rejoin \
+  --allow-rejoin=false \
   --users "open_id1,open_id2"
 ```
 

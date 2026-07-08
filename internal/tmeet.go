@@ -56,15 +56,19 @@ func NewTmeet() (*Tmeet, error) {
 		return nil, err
 	}
 
-	// Get system information.
-	systemInfo := common.GetSystemInfo()
-
-	// Get user information.
+	// Load user config first.
 	usr, err := config.GetUserConfig()
 	if exception.Is(err, exception.ParseUserConfigError) ||
 		exception.Is(err, exception.GetUserConfigUnknownError) {
 		return nil, err
 	}
+
+	// Load agent config (plaintext, non-sensitive); missing file is treated as "not set".
+	// Failure to read it should not block CLI startup.
+	agentCfg, _ := config.GetAgentConfig()
+
+	// Build system info; env takes precedence, AgentConfig serves as fallback for Agent/Model.
+	systemInfo := common.GetSystemInfo(agentCfg)
 
 	return &Tmeet{
 		TCtx:       ctx,

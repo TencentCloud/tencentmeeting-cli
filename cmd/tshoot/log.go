@@ -309,6 +309,10 @@ type uploadTokenRsp struct {
 
 // uploadToServer uploads the zip file to the server.
 func (o *LogOptions) uploadToServer(ctx context.Context, zipPath string) (string, error) {
+	// Bind the api-schema identifier to ctx so that the REST proxy can
+	// attach the Tmeet-Cli-Name header on the requests below.
+	ctx = restProxy.InjectApiCmdContext(ctx, cmdutil.ApiCmdTshootLogUpload)
+
 	defer func() {
 		_ = os.Remove(zipPath)
 	}()

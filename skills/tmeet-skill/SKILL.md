@@ -1,6 +1,6 @@
 ---
 name: tmeet-skill
-version: 1.0.6
+version: 1.0.7
 description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/下载地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室）、通讯录（按用户名/手机号/邮箱搜索成员）、会中控制（呼叫成员入会/踢出会议成员）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
 metadata:
   requires:
@@ -215,7 +215,7 @@ tmeet
   | `meeting invitees-remove` | 从会议中移除受邀成员 |
   | `meeting invitees-replace` | 整体替换会议受邀成员列表（未在新列表中的成员会被移除） |
   | `control call` | 主动呼叫成员入会，会向目标成员发起会议邀请通话，对其产生实际打扰 |
-  | `control kick` | 将成员踢出会议，立即生效，被踢成员需要重新申请入会；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
+  | `control kick` | 将成员踢出会议，立即生效；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
   | `auth logout` | 清除本地登录凭证 |
   | `record permission-apply-commit` | 正式提交录制权限申请，会触发审批流程（必须先执行 `record permission-apply-prepare` 并向用户展示申请信息确认）|
 

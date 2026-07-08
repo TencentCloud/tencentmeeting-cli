@@ -26,11 +26,22 @@ const machineIDFile = ".machine_id"
 // GetSystemInfo retrieves system information.
 // It first tries to read the machineID from the local cache file;
 // if not found, it generates a new one and writes it to the file (only the first writer succeeds in concurrent scenarios).
-func GetSystemInfo() *SystemInfo {
+//
+// Agent / Model are resolved in this order:
+//  1. TMEET_AGENT / TMEET_MODEL environment variables.
+//  2. agentCfg.Agent / agentCfg.Model when agentCfg is non-nil.
+//  3. Empty string.
+func GetSystemInfo(agentCfg *config.AgentConfig) *SystemInfo {
 	cacheFile := filepath.Join(config.GetConfigDir(), machineIDFile)
 
 	agent := os.Getenv("TMEET_AGENT")
 	model := os.Getenv("TMEET_MODEL")
+	if agent == "" && agentCfg != nil {
+		agent = agentCfg.Agent
+	}
+	if model == "" && agentCfg != nil {
+		model = agentCfg.Model
+	}
 
 	// 1. Try to read from local file first.
 	if id, err := readMachineIDFromFile(cacheFile); err == nil && id != "" {

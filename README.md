@@ -361,6 +361,7 @@ tmeet meeting update --meeting-id <会议ID> [选项]
 | `--until-type` | int | — | `0` | 周期结束类型（`--meeting-type=1` 时生效）：`0`-按日期结束重复，`1`-按次数结束重复               |
 | `--until-count` | int | — | `7` | 限定会议次数（`--meeting-type=1` 时生效）：每天/每个工作日/每周最大 500，每两周/每月最大 50         |
 | `--until-date` | string | — | — | 周期结束日期（`--meeting-type=1` 时生效），ISO 8601，如 `2026-03-12T15:00+08:00`   |
+| `--sub-meeting-id` | string | — | — | 子会议 ID（`--meeting-type=1` 时生效）：仅修改该场子会议的时间；**不可与 `--recurring-type` / `--until-type` / `--until-count` / `--until-date` 同时使用**。不填则修改整个周期性会议 |
 | `--invitees` | strings | — | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参；与 `--invitees-type` 配合使用              |
 | `--invitees-type` | string | — | — | 邀请变更策略：`replace`-全量替换邀请列表，`add`-新增邀请用户，`remove`-删除邀请用户；当指定 `--invitees` 时必填 |
 
@@ -390,6 +391,14 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --invitees "open_id1" \
   --invitees-type remove
+
+# 仅修改周期性会议中某一场子会议的时间（不修改周期规则）
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --meeting-type 1 \
+  --sub-meeting-id "100001" \
+  --start "2026-04-17T10:00+08:00" \
+  --end "2026-04-17T11:00+08:00"
 
 # 显式关闭音频水印 / 自动文字转写
 # 注：bool 参数传 false 必须使用 = 形式，不能用空格
@@ -1006,7 +1015,7 @@ tmeet control kick --meeting-id <会议ID> [--users <open_id列表>] [--sip-user
 | `--users` | strings | 三选一 | — | 待踢出的普通成员 `open_id` 列表（不包含 Sip/Pstn 设备），支持英文逗号分隔或重复传入该参数 |
 | `--sip-users` | strings | 三选一 | — | 待踢出的 Sip 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
 | `--pstn-users` | strings | 三选一 | — | 待踢出的 Pstn 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
-| `--allow-rejoin` | bool | ❌ | `false` | 被踢出的成员是否允许重新加入会议；不传则默认 `false`（不允许重新入会） |
+| `--allow-rejoin` | bool | ❌ | `true` | 被踢出的成员是否允许重新加入会议；不传则默认 `true`（允许重新入会），传 `--allow-rejoin=false` 不允许重新入会 |
 
 > `--users` / `--sip-users` / `--pstn-users` **三者至少必填一种**，且**三者总数合计最多 20 个**。
 
@@ -1025,10 +1034,10 @@ tmeet control kick \
   --sip-users "ms_open_id_sip1" \
   --pstn-users "ms_open_id_pstn1"
 
-# 允许被踢成员重新入会
+# 不允许被踢成员重新入会
 tmeet control kick \
   --meeting-id "6953553464429888300" \
-  --allow-rejoin \
+  --allow-rejoin=false \
   --users "open_id1,open_id2"
 ```
 

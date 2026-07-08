@@ -154,7 +154,7 @@ func TestWriteMachineIDToFile_ConcurrentOnlyFirstSucceeds(t *testing.T) {
 // TestGetSystemInfo_ReturnNotNil 返回值不为 nil
 func TestGetSystemInfo_ReturnNotNil(t *testing.T) {
 	t.Setenv("TMEET_CLI_CONFIG_DIR", t.TempDir())
-	info := GetSystemInfo()
+	info := GetSystemInfo(nil)
 	if info == nil {
 		t.Fatal("GetSystemInfo 返回 nil")
 	}
@@ -163,7 +163,7 @@ func TestGetSystemInfo_ReturnNotNil(t *testing.T) {
 // TestGetSystemInfo_MachineIDLength machineID 长度为 48
 func TestGetSystemInfo_MachineIDLength(t *testing.T) {
 	t.Setenv("TMEET_CLI_CONFIG_DIR", t.TempDir())
-	info := GetSystemInfo()
+	info := GetSystemInfo(nil)
 	if len(info.MachineID) != 48 {
 		t.Errorf("期望 MachineID 长度 48，实际 %d，id=%q", len(info.MachineID), info.MachineID)
 	}
@@ -172,8 +172,8 @@ func TestGetSystemInfo_MachineIDLength(t *testing.T) {
 // TestGetSystemInfo_MachineIDCached 第二次调用应返回相同的 machineID（读缓存）
 func TestGetSystemInfo_MachineIDCached(t *testing.T) {
 	t.Setenv("TMEET_CLI_CONFIG_DIR", t.TempDir())
-	first := GetSystemInfo()
-	second := GetSystemInfo()
+	first := GetSystemInfo(nil)
+	second := GetSystemInfo(nil)
 	if first.MachineID != second.MachineID {
 		t.Errorf("两次调用 machineID 不一致: %q vs %q", first.MachineID, second.MachineID)
 	}
@@ -182,7 +182,7 @@ func TestGetSystemInfo_MachineIDCached(t *testing.T) {
 // TestGetSystemInfo_OSNotEmpty OS 字段不为空
 func TestGetSystemInfo_OSNotEmpty(t *testing.T) {
 	t.Setenv("TMEET_CLI_CONFIG_DIR", t.TempDir())
-	info := GetSystemInfo()
+	info := GetSystemInfo(nil)
 	if strings.TrimSpace(info.OS) == "" {
 		t.Error("OS 字段不应为空")
 	}
@@ -200,7 +200,7 @@ func TestGetSystemInfo_UseExistingCacheFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	info := GetSystemInfo()
+	info := GetSystemInfo(nil)
 	if info.MachineID != fixedID {
 		t.Errorf("期望读取缓存 ID %q，实际 %q", fixedID, info.MachineID)
 	}

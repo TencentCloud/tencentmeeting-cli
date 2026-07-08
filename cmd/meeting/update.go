@@ -58,6 +58,7 @@ type UpdateOptions struct {
 	UntilType         int      // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
 	UntilCount        int      // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
 	UntilDate         string   // Recurring meeting config (required when meetingType=1). End date
+	SubMeetingID      string   // Recurring meeting config (optional, when meetingType=1). Sub-meeting ID: modify a single sub-meeting's time only; mutually exclusive with recurring-rule fields (recurring-type/until-type/until-count/until-date). If empty, the whole recurring meeting is updated.
 	Invitees          []string // Invited participants (openid list).
 	InviteesType      string   // Invitees mutation strategy: replace / add / remove.
 	WaterMarkType     int      // Text watermark, 0=single row, 1=double row, 2=off
@@ -92,6 +93,10 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0, "until type (0-date, 1-count)")
 	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7, "until count")
 	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "until date e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().StringVar(&opts.SubMeetingID, "sub-meeting-id", "",
+		"sub-meeting ID: modify a single sub-meeting's time only (recurring meeting). "+
+			"mutually exclusive with --recurring-type / --until-type / --until-count / --until-date. "+
+			"if not set, the whole recurring meeting is updated")
 	cmd.Flags().StringSliceVar(&opts.Invitees, "invitees", nil,
 		"invitee openid list, comma-separated or repeat the flag (used together with --invitees-type)")
 	cmd.Flags().StringVar(&opts.InviteesType, "invitees-type", "",
@@ -148,16 +153,9 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	if o.MeetingType == 1 {
 		// Recurring meeting, add recurring parameters.
-		recurringRule := make(map[string]interface{}, 3)
-		recurringRule["until_type"] = o.UntilType
-		recurringRule["until_count"] = o.UntilCount
-		recurringRule["recurring_type"] = o.RecurringType
-		if o.UntilDate != "" {
-			untilDate, err := utils.ISO8601ToTimeStamp(o.UntilDate)
-			if err != nil {
-				return exception.InvalidArgsError.With("--until-date format error: %v", err)
-			}
-			recurringRule["until_date"] = untilDate
+		recurringRule, err := o.buildRecurringRule(cmd)
+		if err != nil {
+			return err
 		}
 		params["recurring_rule"] = recurringRule
 	}
@@ -214,6 +212,39 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 		output.WithConvert(convertMap),
 		output.WithHints(o.Hints))
 	return nil
+}
+
+// buildRecurringRule assembles the `recurring_rule` payload for a recurring
+// meeting update. When --sub-meeting-id is provided, only that single
+// sub-meeting's time is modified and it must not be combined with the
+// recurring-rule fields (--recurring-type / --until-type / --until-count /
+// --until-date); otherwise the whole recurring meeting is updated using the
+// recurring-rule fields.
+func (o *UpdateOptions) buildRecurringRule(cmd *cobra.Command) (map[string]interface{}, error) {
+	if o.SubMeetingID != "" {
+		conflicting := []string{"recurring-type", "until-type", "until-count", "until-date"}
+		for _, name := range conflicting {
+			if cmd.Flags().Changed(name) {
+				return nil, exception.InvalidArgsError.With(
+					"--sub-meeting-id cannot be used together with --%s: "+
+						"either update a single sub-meeting's time, or update the recurring rule", name)
+			}
+		}
+		return map[string]interface{}{"sub_meeting_id": o.SubMeetingID}, nil
+	}
+
+	recurringRule := make(map[string]interface{}, 4)
+	recurringRule["until_type"] = o.UntilType
+	recurringRule["until_count"] = o.UntilCount
+	recurringRule["recurring_type"] = o.RecurringType
+	if o.UntilDate != "" {
+		untilDate, err := utils.ISO8601ToTimeStamp(o.UntilDate)
+		if err != nil {
+			return nil, exception.InvalidArgsError.With("--until-date format error: %v", err)
+		}
+		recurringRule["until_date"] = untilDate
+	}
+	return recurringRule, nil
 }
 
 // applyInvitees validates --invitees / --invitees-type and writes the

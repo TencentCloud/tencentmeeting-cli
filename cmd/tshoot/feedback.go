@@ -3,6 +3,8 @@ package tshoot
 import (
 	"net/http"
 	"tmeet/internal"
+	"tmeet/internal/cmdutil"
+	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -35,9 +37,10 @@ func newFeedbackCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "feedback",
 		Short: "report troubleshooting feedback to the server",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return opts.Run(cmd, args)
-		},
+		RunE: middleWare.Chain(
+			opts.Run,
+			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdTshootFeedback)),
+		),
 	}
 
 	cmd.Flags().StringVar(&opts.Category, "category", "", `feedback category (required), options:

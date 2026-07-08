@@ -69,6 +69,13 @@ const (
 	ApiCmdControlCall = "control_call"
 	// ApiCmdControlKick apiCmd control_kick
 	ApiCmdControlKick = "control_kick"
+
+	// ApiCmdTshootLogUpload apiCmd tshoot_log_upload.
+	// Covers the two-step log upload flow (fetch upload token + notify
+	// upload complete) triggered by `tmeet-cli tshoot log --upload`.
+	ApiCmdTshootLogUpload = "tshoot_log_upload"
+	// ApiCmdTshootFeedback apiCmd tshoot_feedback
+	ApiCmdTshootFeedback = "tshoot_feedback"
 )
 
 // APISchema defines the api schema.

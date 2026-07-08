@@ -86,7 +86,8 @@ func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 			tmeet.SystemInfo.OS,
 			tmeet.SystemInfo.Agent,
 			tmeet.SystemInfo.Model,
-			tmeet.CmdPath),
+			tmeet.CmdPath,
+			GetApiCmdFromContext(ctx)),
 		authenticator(tmeet.UserConfig.OpenId, tmeet.UserConfig.AccessToken),
 	}
 
@@ -159,13 +160,39 @@ func authenticator(openId, accessToken string) thttp.RequestOptionFunc {
 }
 
 // header builds the common request headers.
+//
+// apiCmd is the api-schema identifier of the current invocation (see
+// internal/cmdutil/api_schema.go). When it is empty, the Tmeet-Cli-Name
+// header is omitted.
 func header(ctx context.Context, openId, machineId, version,
-	os, agent, model, cmdPath string) thttp.RequestOptionFunc {
+	os, agent, model, cmdPath, apiCmd string) thttp.RequestOptionFunc {
 	x := http.Header{}
 	x.Set("Tmeet-Unique-ID", fmt.Sprintf("%s*%s", openId, machineId))
 	x.Set("Tmeet-Device-Info", fmt.Sprintf("%s;%s;%s", os, agent, model))
 	x.Set("Tmeet-Open-Source", OpenSourceCLI)
 	x.Set("Tmeet-Cli-Ver", version)
 	x.Set("Tmeet-Trace", fmt.Sprintf("%s;%s", cmdPath, ctx.Value(log.CtxTraceIDKey)))
+	if apiCmd != "" {
+		x.Set("Tmeet-Cli-Name", apiCmd)
+	}
 	return thttp.WithRequestHeader(x)
+}
+
+// apiCmdCtxKey is the unexported key type used to stash the resolved ApiCmd
+// into a context.Context.
+type apiCmdCtxKey struct{}
+
+// InjectApiCmdContext returns a copy of ctx that carries the given ApiCmd
+// name.
+func InjectApiCmdContext(ctx context.Context, apiCmdName string) context.Context {
+	return context.WithValue(ctx, apiCmdCtxKey{}, apiCmdName)
+}
+
+// GetApiCmdFromContext returns the ApiCmd stored in ctx, or an empty string
+// when no ApiCmd is bound.
+func GetApiCmdFromContext(ctx context.Context) string {
+	if name, ok := ctx.Value(apiCmdCtxKey{}).(string); ok {
+		return name
+	}
+	return ""
 }
