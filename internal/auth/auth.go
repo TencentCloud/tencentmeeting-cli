@@ -18,6 +18,13 @@ const authorizationTimeout = 5 * time.Minute
 const loopPollTime = 5 * time.Second
 const authorizationLocation = "%s://%s/marketplace/tencentmeeting-cli-auth.html?code=%s"
 
+// accessTokenRefreshLeeway proactively refreshes the AccessToken slightly before
+// its declared expiry to absorb clock skew between the client and the server as
+// well as network transmission latency. Without this, a token that looks valid
+// locally may already be rejected by the server upon arrival, and the rest-proxy
+// treats server-side "token expired" as fatal (clears local credentials).
+const accessTokenRefreshLeeway = 60 * time.Second
+
 type TmeetAuth struct {
 	tmeet *internal.Tmeet
 }
@@ -66,7 +73,10 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context) error {
 	now := time.Now().Unix()
 	expires := w.tmeet.UserConfig.Expires
 	refreshTokenExpires := w.tmeet.UserConfig.RefreshTokenExpires
-	if expires > now {
+	// Refresh proactively slightly before the declared expiry to tolerate clock
+	// skew and in-flight latency; otherwise the request may reach the server
+	// after the token has already expired and be rejected as TokenExpired.
+	if expires > now+int64(accessTokenRefreshLeeway.Seconds()) {
 		return nil
 	}
 	if refreshTokenExpires <= now {
@@ -83,7 +93,7 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context) error {
 		// Lock contention above; re-read the file config here.
 		config.ResetCache()
 		userConfig, _ := config.GetUserConfig()
-		if userConfig != nil && userConfig.Expires > now {
+		if userConfig != nil && userConfig.Expires > now+int64(accessTokenRefreshLeeway.Seconds()) {
 			// Another process refreshed successfully, return directly.
 			w.tmeet.UserConfig = userConfig
 			return nil
