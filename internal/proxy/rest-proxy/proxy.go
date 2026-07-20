@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"time"
 	"tmeet/internal"
 	"tmeet/internal/auth"
+	"tmeet/internal/cmdutil/apicmdctx"
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -87,7 +88,7 @@ func requestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req
 			tmeet.SystemInfo.Agent,
 			tmeet.SystemInfo.Model,
 			tmeet.CmdPath,
-			GetApiCmdFromContext(ctx)),
+			apicmdctx.Get(ctx)),
 		authenticator(tmeet.UserConfig.OpenId, tmeet.UserConfig.AccessToken),
 	}
 
@@ -146,8 +147,7 @@ func doRequest(ctx context.Context, method string, tmeet *internal.Tmeet, req *t
 // authenticator builds the authentication information.
 func authenticator(openId, accessToken string) thttp.RequestOptionFunc {
 	// oauth2 authenticator
-	rn := rand.New(rand.NewSource(time.Now().UnixNano()))
-	nonce := uint64(100000 + rn.Intn(900000))
+	nonce := uint64(100000 + rand.IntN(900000))
 	curTs := strconv.FormatInt(time.Now().Unix(), 10)
 	x := &thttp.OAuth2Authenticator{
 		Nonce:       nonce,
@@ -176,23 +176,4 @@ func header(ctx context.Context, openId, machineId, version,
 		x.Set("Tmeet-Cli-Name", apiCmd)
 	}
 	return thttp.WithRequestHeader(x)
-}
-
-// apiCmdCtxKey is the unexported key type used to stash the resolved ApiCmd
-// into a context.Context.
-type apiCmdCtxKey struct{}
-
-// InjectApiCmdContext returns a copy of ctx that carries the given ApiCmd
-// name.
-func InjectApiCmdContext(ctx context.Context, apiCmdName string) context.Context {
-	return context.WithValue(ctx, apiCmdCtxKey{}, apiCmdName)
-}
-
-// GetApiCmdFromContext returns the ApiCmd stored in ctx, or an empty string
-// when no ApiCmd is bound.
-func GetApiCmdFromContext(ctx context.Context) string {
-	if name, ok := ctx.Value(apiCmdCtxKey{}).(string); ok {
-		return name
-	}
-	return ""
 }

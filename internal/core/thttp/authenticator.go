@@ -3,7 +3,7 @@ package thttp
 import (
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,8 +40,7 @@ func (oauth2 OAuth2Authenticator) AuthHeader(httpReq *http.Request) error {
 	httpReq.Header.Set(HeaderOpenId, oauth2.OpenId)
 	if oauth2.Nonce == 0 {
 		ts := time.Now().UnixMilli()
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-		rs := fmt.Sprintf("%06d", rng.Intn(1000000))
+		rs := fmt.Sprintf("%06d", rand.IntN(1000000))
 		ri, _ := strconv.Atoi(rs)
 		oauth2.Nonce = uint64(ts)*1000000 + uint64(ri)
 	}

@@ -2,6 +2,7 @@ package output
 
 import (
 	"encoding/json"
+	"strings"
 	"tmeet/internal/utils"
 
 	"github.com/spf13/cobra"
@@ -76,13 +77,44 @@ func WithHints(fn func(string) []string) Option {
 	}
 }
 
-// WithFilterFields defines the filter fields format.
-func WithFilterFields(filterFields []string) Option {
+// metaKeyFilterField is the reserved meta key whose value is itself a
+// comma-separated list of extra fields to strip from the response.
+const MetaKeyFilterField = "filter_field"
+
+// WithMetaFieldFilter strips the given meta key from the response so that it
+// never leaks to the caller. As a special case, when metaKey is
+// "filter_field", the value of that meta key is treated as a comma-separated
+// list of additional fields (name or dot path) to strip as well; this lets the
+// downstream API drive per-endpoint field stripping without exposing a CLI
+// flag.
+func WithMetaFieldFilter(metaKey string) Option {
 	return func(msg *optionsMsg) {
-		if len(filterFields) == 0 {
+		if metaKey == "" {
 			return
 		}
 
-		msg.data = string(utils.DeleteFields([]byte(msg.data), 10, filterFields))
+		var root map[string]interface{}
+		if err := json.Unmarshal([]byte(msg.data), &root); err != nil {
+			return
+		}
+		rawVal, hasMeta := root[metaKey]
+		if !hasMeta {
+			return
+		}
+
+		// Always strip the meta key itself.
+		fields := []string{metaKey}
+
+		// Special case: `filter_field`'s value lists additional fields to strip.
+		if metaKey == MetaKeyFilterField {
+			raw, _ := rawVal.(string)
+			for _, item := range strings.Split(raw, ",") {
+				if s := strings.TrimSpace(item); s != "" {
+					fields = append(fields, s)
+				}
+			}
+		}
+
+		msg.data = string(utils.DeleteFields([]byte(msg.data), 10, fields))
 	}
 }

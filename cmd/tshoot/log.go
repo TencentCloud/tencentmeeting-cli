@@ -18,6 +18,7 @@ import (
 	"time"
 	"tmeet/internal"
 	"tmeet/internal/cmdutil"
+	"tmeet/internal/cmdutil/apicmdctx"
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -311,7 +312,7 @@ type uploadTokenRsp struct {
 func (o *LogOptions) uploadToServer(ctx context.Context, zipPath string) (string, error) {
 	// Bind the api-schema identifier to ctx so that the REST proxy can
 	// attach the Tmeet-Cli-Name header on the requests below.
-	ctx = restProxy.InjectApiCmdContext(ctx, cmdutil.ApiCmdTshootLogUpload)
+	ctx = apicmdctx.Inject(ctx, cmdutil.ApiCmdTshootLogUpload)
 
 	defer func() {
 		_ = os.Remove(zipPath)

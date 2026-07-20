@@ -120,8 +120,10 @@ func (o *ParticipantsOptions) Run(cmd *cobra.Command, args []string) error {
 		"subject":             utils.Base64DecodeConverter,
 		"user_role":           utils.MeetingUserRoleConverter,
 	}
+
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
-		output.WithConvert(convertMap))
+		output.WithMetaFieldFilter(output.MetaKeyFilterField),
+		output.WithConvert(convertMap),
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())))
 	return nil
 }
