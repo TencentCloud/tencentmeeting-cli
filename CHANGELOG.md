@@ -2,6 +2,22 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.12] - 2026-07-20
+
+### Added
+
+- **Server-driven response field filtering for `report participants`** (`cmd/report/participants.go`, `internal/output/options.go`): The downstream API may now return a top-level `filter_field` string in the response body — a comma-separated list of field names or dot paths (e.g. `participants.email,participants.phone`) that the CLI must strip before exposing the data to the caller. The behavior is entirely driven by the server and is not surfaced as a CLI flag; the `filter_field` meta field itself is always removed so it never leaks out. This lets the backend tighten per-endpoint field visibility without a CLI release.
+- **New `output.WithMetaFieldFilter(metaKey)` output option and exported `output.MetaKeyFilterField` constant** (`internal/output/options.go`): Generic "strip a reserved meta key from the response" helper, with a documented special case: when `metaKey == "filter_field"`, the value of that meta key is additionally parsed as a comma-separated field list and each entry is stripped from the response via `utils.DeleteFields` with `maxDepth=10`. Wired into `report participants` and layered before `WithConvert` / `WithCompact` in the option chain, so field renaming and compact trimming operate on the already-filtered payload.
+- **New `internal/cmdutil/apicmdctx` sub-package** (`internal/cmdutil/apicmdctx/apicmdctx.go`): Extracts the "resolved ApiCmd on context" primitive out of `internal/proxy/rest-proxy` into a dependency-free sub-package. Exposes `apicmdctx.Inject(ctx, apiCmdName)` / `apicmdctx.Get(ctx)` with an unexported key type. Both `internal/cmdutil/middleware` and `internal/proxy/rest-proxy` now depend on this package instead of the middleware depending on the proxy, breaking the previous import cycle risk.
+
+### Changed
+
+- **`WithApiCmd` middleware and REST proxy switched to `apicmdctx`** (`internal/cmdutil/middleware/api_cmd.go`, `internal/proxy/rest-proxy/proxy.go`, `cmd/tshoot/log.go`): `middleware.WithApiCmd` now writes the resolved ApiCmd via `apicmdctx.Inject`; the REST proxy reads it via `apicmdctx.Get` when composing the `Tmeet-Cli-Name` header; `tshoot log`'s upload flow also injects `ApiCmdTshootLogUpload` via `apicmdctx.Inject` instead of the old `restProxy.InjectApiCmdContext`. The v1.0.11 `restProxy.InjectApiCmdContext` / `restProxy.GetApiCmdFromContext` helpers have been removed from the proxy package.
+- **`report participants` output option ordering hardened** (`cmd/report/participants.go`): Reordered `FormatPrint` options to `WithMetaFieldFilter → WithConvert → WithCompact`, so server-side field stripping happens first, then enum/base64 conversion runs on the trimmed payload, then `--compact` whitelist filtering is applied last. This gives a well-defined single "filter → transform → project" pipeline instead of the ad-hoc pre-`FormatPrint` JSON manipulation that lived in `participants.go` before.
+- **`math/rand` upgraded to `math/rand/v2`** (`internal/core/thttp/authenticator.go`, `internal/proxy/rest-proxy/proxy.go`): The auth nonce generator and the REST proxy's random component now use `math/rand/v2`'s auto-seeded top-level `rand.IntN`, removing the manual `rand.New(rand.NewSource(time.Now().UnixNano()))` boilerplate. Behavior is unchanged; the code paths are simpler and per-goroutine safe.
+- **`WithFilterFields` output option removed** (`internal/output/options.go`): The v1.0.10 `output.WithFilterFields([]string)` variant — which required the caller to hard-code the list of fields to strip — has been deleted; its use case is now covered by the more flexible, server-driven `WithMetaFieldFilter`. No caller in this repository relied on the old option.
+- **SKILL bumped to 1.0.8** (`skills/tmeet-skill/SKILL.md`): The `auth login` guidance has been rewritten. The previous instruction "must run in the background with `2>&1 &`" was wrong — background execution detaches the process from the controlling terminal and causes the OAuth callback to fail to persist credentials. The new guidance clarifies that `auth login` prints the authorization URL and then **blocks for up to 300 seconds** waiting for the user to complete the browser authorization, and that it **must be run in the foreground**. Related wording tweaks were also applied to the top-level description.
+
 ## [v1.0.11] - 2026-07-08
 
 ### Added
