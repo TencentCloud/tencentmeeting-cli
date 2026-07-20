@@ -122,7 +122,7 @@ func (o *ParticipantsOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithMetaFieldFilter("filter_field"),
+		output.WithMetaFieldFilter(output.MetaKeyFilterField),
 		output.WithConvert(convertMap),
 		output.WithCompact(middleWare.GetCompactFields(cmd.Context())))
 	return nil

@@ -79,7 +79,7 @@ func WithHints(fn func(string) []string) Option {
 
 // metaKeyFilterField is the reserved meta key whose value is itself a
 // comma-separated list of extra fields to strip from the response.
-const metaKeyFilterField = "filter_field"
+const MetaKeyFilterField = "filter_field"
 
 // WithMetaFieldFilter strips the given meta key from the response so that it
 // never leaks to the caller. As a special case, when metaKey is
@@ -106,7 +106,7 @@ func WithMetaFieldFilter(metaKey string) Option {
 		fields := []string{metaKey}
 
 		// Special case: `filter_field`'s value lists additional fields to strip.
-		if metaKey == metaKeyFilterField {
+		if metaKey == MetaKeyFilterField {
 			raw, _ := rawVal.(string)
 			for _, item := range strings.Split(raw, ",") {
 				if s := strings.TrimSpace(item); s != "" {
