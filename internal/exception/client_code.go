@@ -44,4 +44,7 @@ const (
 	ClientCodeAuthorizationTimeout = 3001
 	// ClientCodeAuthorizationFailed authorization failed error
 	ClientCodeAuthorizationFailed = 3002
+
+	// ClientCodePanic cli process panic error
+	ClientCodePanic = 9000
 )
