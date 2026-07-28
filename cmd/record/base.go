@@ -18,6 +18,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newListCmd(tmeet),
 		// Get record download address
 		newAddressCmd(tmeet),
+		// Search records
+		newSearchCmd(tmeet),
 		// Get smart minutes
 		newSmartMinutesCmd(tmeet),
 		// Get transcript details

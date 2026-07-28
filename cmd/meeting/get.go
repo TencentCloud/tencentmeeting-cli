@@ -66,7 +66,7 @@ func (o *GetOptions) Run(cmd *cobra.Command, args []string) error {
 		pathParams = nil
 		queryParams.Set("userid", o.tmeet.UserConfig.OpenId)
 		queryParams.Set("instanceid", "1") // PC, fixed value
-		queryParams.Set("meeting_code", o.MeetingCode)
+		queryParams.Set("meeting_code", cmdutil.FormatMeetingCode(o.MeetingCode))
 	} else {
 		return exception.InvalidArgsError.With("--meeting-id or --meeting-code is empty")
 	}
