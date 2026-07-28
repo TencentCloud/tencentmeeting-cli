@@ -116,7 +116,9 @@ tmeet record list --meeting-id "6953553464429888300" --compact
 
 ## 分页参数说明
 
-自 `v1.0.5` 起，所有支持分页的命令统一采用 **`--page-token` + `--page-size`** 方案。原先的 `--page` / `--pos` / `--pid` / `--size` / `--limit` 参数被标记为 **deprecated**，仍可使用但不再推荐，未来版本可能移除。
+自 `v1.0.5` 起，所有支持分页的命令统一采用 **`--page-token` + `--page-size`** 方案。原先的 `--page` / `--pos` / `--size` 参数被标记为 **deprecated**，仍可使用但不再推荐，未来版本可能移除。
+
+> 说明：`record transcript-get` 的 `--pid` / `--limit` 是该命令用于段落定位的独立参数，**不属于**通用分页参数，未被弃用。
 
 **统一用法：**
 
@@ -146,9 +148,11 @@ tmeet record list \
 |------|:---:|:------:|------|
 | `meeting list` | 20  | 20 | — |
 | `meeting list-ended` | 30  | 30 | `--page` |
+| `meeting search` | 30  | 30 | — |
 | `meeting invitees-list` | 30  | 30 | `--pos` |
 | `record list` | 30  | 30 | `--page` |
 | `record address` | 30  | 30 | `--page` |
+| `record search` | 30  | 30 | — |
 | `report participants` | 100 | 100 | `--pos` / `--size` |
 | `report waiting-room-log` | 100 | 100 | `--page` |
 
@@ -173,6 +177,7 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── get            # 获取会议详情
 │   ├── list           # 获取进行中/即将开始的会议列表
 │   ├── list-ended     # 获取已结束的会议列表
+│   ├── search         # 按关键词/会议号/时间范围搜索会议
 │   ├── invitees-list    # 获取会议受邀者列表
 │   ├── invitees-add     # 添加会议受邀者
 │   ├── invitees-remove  # 移除会议受邀者
@@ -184,6 +189,7 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── record
 │   ├── list           # 查询录制列表
 │   ├── address        # 获取录制文件下载地址
+│   ├── search         # 按关键词/会议号/会议ID/时间范围搜索录制
 │   ├── smart-minutes  # 获取智能纪要
 │   ├── transcript-get          # 获取转写详情
 │   ├── transcript-paragraphs   # 获取转写段落列表
@@ -505,6 +511,49 @@ tmeet meeting list-ended \
 
 ---
 
+#### `meeting search` — 搜索会议
+
+按关键词、会议号、时间范围等条件搜索会议。所有过滤参数均为可选，可任意组合。
+
+```bash
+tmeet meeting search [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--query` | string | — | — | 搜索关键词 |
+| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-会议主题；`creator`-创建者昵称/备注名；`note`-用户对会议的备注；`all`-搜索所有字段 |
+| `--meeting-code` | string | — | — | 按会议号过滤（精确匹配，仅数字，无短横线） |
+| `--start` | string | — | — | 搜索时间窗下限（ISO 8601，如 `2026-03-12T15:00+08:00`）。匹配条件：会议预约开始时间、实际开始时间或当前用户加入时间任一落在窗口内 |
+| `--end` | string | — | — | 搜索时间窗上限（ISO 8601，如 `2026-03-12T15:00+08:00`），语义同上 |
+| `--page-token` | string | — | — | 分页游标，从上一次响应中返回的 `next_page_token` 获取，首页不传 |
+| `--page-size` | int | — | `30` | 每页大小，默认 30，最大 30 |
+
+**示例：**
+
+```bash
+# 按主题关键词搜索
+tmeet meeting search --query "周例会" --query-field subject
+
+# 按创建者昵称搜索
+tmeet meeting search --query "张三" --query-field creator
+
+# 按会议号精确搜索
+tmeet meeting search --meeting-code "931945029"
+
+# 按时间范围搜索
+tmeet meeting search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# 翻下一页
+tmeet meeting search \
+  --query "项目评审" \
+  --page-token "<next_page_token>" --page-size 30
+```
+
+---
+
 #### `meeting invitees-list` — 查询受邀成员
 
 ```bash
@@ -669,6 +718,52 @@ tmeet record address --meeting-record-id "record_abc123"
 # 翻下一页
 tmeet record address \
   --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>" --page-size 30
+```
+
+---
+
+#### `record search` — 搜索录制
+
+按关键词、会议号、会议 ID、时间范围、文件类型等条件搜索录制。所有过滤参数均为可选，可任意组合。
+
+```bash
+tmeet record search [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--query` | string | — | — | 搜索关键词 |
+| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-录制主题；`creator`-会议创建者昵称/备注名；`transcript_content`-文件中的原始转写内容；`smart_minutes`-文件中的智能纪要内容（摘要 + 待办）；`timeline`-文件中的时间轴内容；`all`-搜索所有字段 |
+| `--file-type` | string | — | `all` | 文件类型：`video`、`audio`、`transcript`、`upload`、`external`、`all` |
+| `--meeting-id` | string | — | — | 按会议 ID 过滤 |
+| `--meeting-code` | string | — | — | 按会议号过滤（精确匹配，仅数字，无短横线） |
+| `--start` | string | — | — | 查询开始时间（ISO 8601，如 `2026-03-12T14:00+08:00`） |
+| `--end` | string | — | — | 查询结束时间（ISO 8601，如 `2026-03-12T14:00+08:00`） |
+| `--page-token` | string | — | — | 分页游标，从上一次响应中返回的 `next_page_token` 获取，首页不传 |
+| `--page-size` | int | — | `30` | 每页大小，默认 30，最大 30 |
+
+**示例：**
+
+```bash
+# 按转写内容关键词搜索
+tmeet record search --query "季度目标" --query-field transcript_content
+
+# 按智能纪要内容搜索
+tmeet record search --query "待办" --query-field smart_minutes
+
+# 按会议 ID 过滤
+tmeet record search --meeting-id "6953553464429888300"
+
+# 按时间范围 + 文件类型搜索
+tmeet record search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00" \
+  --file-type video
+
+# 翻下一页
+tmeet record search \
+  --query "项目评审" \
   --page-token "<next_page_token>" --page-size 30
 ```
 
