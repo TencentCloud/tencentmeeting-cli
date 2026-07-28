@@ -77,7 +77,7 @@ func WithHints(fn func(string) []string) Option {
 	}
 }
 
-// metaKeyFilterField is the reserved meta key whose value is itself a
+// MetaKeyFilterField is the reserved meta key whose value is itself a
 // comma-separated list of extra fields to strip from the response.
 const MetaKeyFilterField = "filter_field"
 
@@ -116,5 +116,21 @@ func WithMetaFieldFilter(metaKey string) Option {
 		}
 
 		msg.data = string(utils.DeleteFields([]byte(msg.data), 10, fields))
+	}
+}
+
+// WithTotalCountLogic defines the total count logic.
+func WithTotalCountLogic() Option {
+	return func(msg *optionsMsg) {
+		dataMap := make(map[string]interface{})
+		err := json.Unmarshal([]byte(msg.data), &dataMap)
+		if err != nil {
+			// do nothing
+			return
+		}
+		if totalCount, ok := dataMap["total_count"].(float64); ok && totalCount == 0 {
+			// if total_count is 0, not show this field
+			msg.data = string(utils.DeleteFields([]byte(msg.data), 10, []string{"total_count"}))
+		}
 	}
 }

@@ -33,6 +33,8 @@ const (
 	ApiCmdMeetingList = "meeting_list"
 	// ApiCmdMeetingListEnded apiCmd meeting_list_ended
 	ApiCmdMeetingListEnded = "meeting_list_ended"
+	// ApiCmdMeetingSearch apiCmd meeting_search
+	ApiCmdMeetingSearch = "meeting_search"
 	// ApiCmdMeetingUpdate apiCmd meeting_update
 	ApiCmdMeetingUpdate = "meeting_update"
 
@@ -40,6 +42,8 @@ const (
 	ApiCmdRecordAddress = "record_address"
 	// ApiCmdRecordList apiCmd record_list
 	ApiCmdRecordList = "record_list"
+	// ApiCmdRecordSearch apiCmd record_search
+	ApiCmdRecordSearch = "record_search"
 	// ApiCmdRecordSmartMinutes apiCmd record_smart_minutes
 	ApiCmdRecordSmartMinutes = "record_smart_minutes"
 	// ApiCmdRecordTranscriptGet apiCmd record_transcript_get

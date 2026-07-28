@@ -1,10 +1,32 @@
 package output
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
+
+// marshalNoEscape marshals v to JSON without escaping HTML special characters
+// (<, >, &). The standard library's json.Marshal escapes these by default to
+// be safe for HTML embedding, but for CLI output (URLs, query strings, etc.)
+// we want them rendered verbatim.
+func marshalNoEscape(v interface{}, indent bool) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if indent {
+		enc.SetIndent("", "  ")
+	}
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	// json.Encoder.Encode appends a trailing newline; strip it so callers
+	// can rely on "no extra whitespace at the end" the same way they used
+	// to with json.Marshal.
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
+}
 
 // formatOutput defines the output format.
 type formatOutput struct {
@@ -60,11 +82,11 @@ func FormatPrint(cmd *cobra.Command, traceId, message, data string, opts ...Opti
 	f := GetFormat(cmd)
 	switch f {
 	case "json-pretty":
-		b, _ = json.MarshalIndent(fo, "", "  ")
+		b, _ = marshalNoEscape(fo, true)
 	case "json":
 		fallthrough
 	default:
-		b, _ = json.Marshal(fo)
+		b, _ = marshalNoEscape(fo, false)
 	}
 	PrintInfof(cmd, string(b))
 }

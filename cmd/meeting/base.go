@@ -26,6 +26,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newListCmd(tmeet),
 		// List ended meetings
 		newListEndedCmd(tmeet),
+		// Search meetings
+		newSearchCmd(tmeet),
 		// List meeting invitees
 		newInviteesCmd(tmeet),
 		// Add meeting invitees

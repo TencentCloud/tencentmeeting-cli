@@ -93,7 +93,7 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 		queryParams.Set("meeting_id", o.MeetingID)
 	}
 	if o.MeetingCode != "" {
-		queryParams.Set("meeting_code", o.MeetingCode)
+		queryParams.Set("meeting_code", cmdutil.FormatMeetingCode(o.MeetingCode))
 	}
 	if o.StartTime != "" {
 		startTime, err := utils.ISO8601ToTimeStamp(o.StartTime)
@@ -128,6 +128,7 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
-		output.WithConvert(convertMap))
+		output.WithConvert(convertMap),
+		output.WithTotalCountLogic())
 	return nil
 }

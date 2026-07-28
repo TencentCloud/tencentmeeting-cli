@@ -116,7 +116,9 @@ tmeet record list --meeting-id "6953553464429888300" --compact
 
 ## Pagination
 
-Starting from `v1.0.5`, all list/query commands that support pagination use a unified **`--page-token` + `--page-size`** model. The legacy `--page` / `--pos` / `--pid` / `--size` / `--limit` flags are marked as **deprecated** — they still work for backward compatibility but are discouraged and may be removed in a future release.
+Starting from `v1.0.5`, all list/query commands that support pagination use a unified **`--page-token` + `--page-size`** model. The legacy `--page` / `--pos` / `--size` flags are marked as **deprecated** — they still work for backward compatibility but are discouraged and may be removed in a future release.
+
+> Note: The `--pid` / `--limit` flags of `record transcript-get` are dedicated paragraph-locating parameters of that specific command, **not** part of the generic pagination scheme, and are **not deprecated**.
 
 **Unified usage:**
 
@@ -146,9 +148,11 @@ tmeet record list \
 |---------|:-------:|:---:|-------------------------|
 | `meeting list` |   20    | 20 | — |
 | `meeting list-ended` |   30    | 30 | `--page` |
+| `meeting search` |   30    | 30 | — |
 | `meeting invitees-list` |   30    | 30 | `--pos` |
 | `record list` |   30    | 30 | `--page` |
 | `record address` |   30    | 30 | `--page` |
+| `record search` |   30    | 30 | — |
 | `report participants` |   100   | 100 | `--pos` / `--size` |
 | `report waiting-room-log` |   100   | 100 | `--page` |
 
@@ -173,6 +177,7 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── get            # Get meeting details
 │   ├── list           # List ongoing or upcoming meetings
 │   ├── list-ended     # List ended meetings
+│   ├── search         # Search meetings by keyword/code/time range
 │   ├── invitees-list    # List meeting invitees
 │   ├── invitees-add     # Add meeting invitees
 │   ├── invitees-remove  # Remove meeting invitees
@@ -184,6 +189,7 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── record
 │   ├── list                     # Query recording list
 │   ├── address                  # Get recording file download URL
+│   ├── search                   # Search recordings by keyword/code/meeting-id/time range
 │   ├── smart-minutes            # Get smart minutes
 │   ├── transcript-get           # Get transcript details
 │   ├── transcript-paragraphs    # Get transcript paragraph list
@@ -505,6 +511,49 @@ tmeet meeting list-ended \
 
 ---
 
+#### `meeting search` — Search Meetings
+
+Search meetings by keyword, meeting code, time range, or other filters. All filter parameters are optional and can be combined freely.
+
+```bash
+tmeet meeting search [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--query` | string | — | — | Search keyword |
+| `--query-field` | string | — | `all` | Search field for `--query`: `subject`-meeting subject; `creator`-creator's nickname/remark name; `note`-user's note on the meeting; `all`-search all fields |
+| `--meeting-code` | string | — | — | Filter by meeting code, exact match (digits only, no dashes) |
+| `--start` | string | — | — | Lower bound of search time window (ISO 8601, e.g. `2026-03-12T15:00+08:00`). Matches if meeting's scheduled start time, actual start time, or user's join time falls within the window |
+| `--end` | string | — | — | Upper bound of search time window (ISO 8601, e.g. `2026-03-12T15:00+08:00`); same semantics as above |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+
+**Examples:**
+
+```bash
+# Search by subject keyword
+tmeet meeting search --query "Weekly Standup" --query-field subject
+
+# Search by creator nickname
+tmeet meeting search --query "John" --query-field creator
+
+# Exact search by meeting code
+tmeet meeting search --meeting-code "931945029"
+
+# Search by time range
+tmeet meeting search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# Fetch the next page
+tmeet meeting search \
+  --query "Project Review" \
+  --page-token "<next_page_token>" --page-size 30
+```
+
+---
+
 #### `meeting invitees-list` — List Meeting Invitees
 
 ```bash
@@ -669,6 +718,52 @@ tmeet record address --meeting-record-id "record_abc123"
 # Fetch the next page
 tmeet record address \
   --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>" --page-size 30
+```
+
+---
+
+#### `record search` — Search Recordings
+
+Search recordings by keyword, meeting code, meeting ID, time range, file type, or other filters. All filter parameters are optional and can be combined freely.
+
+```bash
+tmeet record search [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--query` | string | — | — | Search keyword |
+| `--query-field` | string | — | `all` | Search field for `--query`: `subject`-recording subject; `creator`-meeting creator's nickname/remark name; `transcript_content`-original transcript content within the file; `smart_minutes`-smart minutes content within the file (summary + todos); `timeline`-timeline content within the file; `all`-search all fields |
+| `--file-type` | string | — | `all` | File type: `video`, `audio`, `transcript`, `upload`, `external`, `all` |
+| `--meeting-id` | string | — | — | Filter by meeting ID |
+| `--meeting-code` | string | — | — | Filter by meeting code, exact match (digits only, no dashes) |
+| `--start` | string | — | — | Query start time (ISO 8601, e.g. `2026-03-12T14:00+08:00`) |
+| `--end` | string | — | — | Query end time (ISO 8601, e.g. `2026-03-12T14:00+08:00`) |
+| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
+| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
+
+**Examples:**
+
+```bash
+# Search transcript content by keyword
+tmeet record search --query "quarterly goals" --query-field transcript_content
+
+# Search smart minutes content by keyword
+tmeet record search --query "todo" --query-field smart_minutes
+
+# Filter by meeting ID
+tmeet record search --meeting-id "6953553464429888300"
+
+# Search by time range with file type filter
+tmeet record search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00" \
+  --file-type video
+
+# Fetch the next page
+tmeet record search \
+  --query "Project Review" \
   --page-token "<next_page_token>" --page-size 30
 ```
 
