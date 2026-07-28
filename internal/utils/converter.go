@@ -252,3 +252,6 @@ var MeetingJoinTypeConverter = intEnumConverter(enumerate.MeetingJoinTypeName)
 
 // ShowAllSubMeetingsConverter converts show all sub meetings flag to its human-readable name.
 var ShowAllSubMeetingsConverter = intEnumConverter(enumerate.ShowAllSubMeetingsName)
+
+// MeetingStatusInSearchConverter converts meeting status strings to their human-readable meeting status names in search.
+var MeetingStatusInSearchConverter = stringEnumConverter(enumerate.MeetingStatusInSearchName)
