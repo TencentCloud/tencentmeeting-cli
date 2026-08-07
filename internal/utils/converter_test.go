@@ -437,6 +437,59 @@ func TestHHMMSSConverter(t *testing.T) {
 	}
 }
 
+func TestDurationSecondsConverter(t *testing.T) {
+	tests := []struct {
+		name  string
+		input interface{}
+		want  interface{}
+	}{
+		{
+			name:  "string seconds more than one hour (11h28m07s)",
+			input: "41287",
+			want:  "11:28:07",
+		},
+		{
+			name:  "string seconds less than one hour (5m)",
+			input: "300",
+			want:  "05:00",
+		},
+		{
+			name:  "string zero seconds",
+			input: "0",
+			want:  "00:00",
+		},
+		{
+			name:  "float64 seconds exactly one hour",
+			input: float64(3600),
+			want:  "01:00:00",
+		},
+		{
+			name:  "float64 seconds less than one minute",
+			input: float64(45),
+			want:  "00:45",
+		},
+		{
+			name:  "非数字字符串原样返回",
+			input: "not-a-number",
+			want:  "not-a-number",
+		},
+		{
+			name:  "nil 原样返回",
+			input: nil,
+			want:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DurationSecondsConverter(tt.input)
+			if got != tt.want {
+				t.Errorf("DurationSecondsConverter(%v) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestConvertFields_WithConverters(t *testing.T) {
 	tests := []struct {
 		name   string

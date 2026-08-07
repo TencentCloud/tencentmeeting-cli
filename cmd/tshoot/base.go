@@ -18,6 +18,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newLogCmd(tmeet),
 		// Report troubleshooting feedback
 		newFeedbackCmd(tmeet),
+		// [internal] Dump all commands (hidden)
+		newCommandsCmd(tmeet),
 	)
 
 	return cmd

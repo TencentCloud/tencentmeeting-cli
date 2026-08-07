@@ -66,14 +66,60 @@ if (!fs.existsSync(binaryPath)) {
     process.exit(1);
 }
 
-// 确保可执行权限（Windows 不需要）
-if (platform !== "win32") {
-    fs.chmodSync(binaryPath, 0o755);
+// ── 确保二进制可执行 ─────────────────────────────────────────────────────────
+// 分三层兜底，适配普通环境与 Agent 沙箱等受限环境：
+//   ① accessSync(X_OK) 探测：已具备可执行权限则直接使用（发布产物固化 0755 后走这里）
+//   ② 原地 chmodSync：常规环境下补 x 位
+//   ③ 拷贝到 os.tmpdir() 再 chmod：兜底沙箱只读 FS / 禁止 chmod 等场景（EROFS/EPERM/EACCES/ENOSYS）
+function ensureExecutable(srcPath) {
+    if (platform === "win32") return srcPath;
+
+    // ① 已具备 x 位 → 直接返回
+    try {
+        fs.accessSync(srcPath, fs.constants.X_OK);
+        return srcPath;
+    } catch (_) { /* 不可执行，继续尝试 chmod */ }
+
+    // ② 原地 chmod
+    try {
+        fs.chmodSync(srcPath, 0o755);
+        return srcPath;
+    } catch (err) {
+        const tolerable = ["EROFS", "EPERM", "EACCES", "ENOSYS"];
+        if (tolerable.indexOf(err.code) === -1) throw err;
+        // 沙箱典型错误，降级到 ③
+    }
+
+    // ③ 拷贝到 tmpdir 再 chmod
+    const cacheDir = path.join(os.tmpdir(), "tmeet-cache");
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const tmpBin = path.join(cacheDir, binaryName);
+
+    // 简易缓存：size 与 mtime 均匹配则复用副本，避免每次冷启动都产生 IO
+    let needCopy = true;
+    try {
+        const a = fs.statSync(srcPath);
+        const b = fs.statSync(tmpBin);
+        if (a.size === b.size && a.mtimeMs <= b.mtimeMs) needCopy = false;
+    } catch (_) { /* 副本不存在，需要复制 */ }
+
+    if (needCopy) fs.copyFileSync(srcPath, tmpBin);
+    fs.chmodSync(tmpBin, 0o755);
+    return tmpBin;
+}
+
+let execPath;
+try {
+    execPath = ensureExecutable(binaryPath);
+} catch (err) {
+    console.error(`[tmeet] 无法准备可执行文件: ${err.message}`);
+    console.error(`可能原因：当前环境同时禁止修改文件权限和写入临时目录（${os.tmpdir()}）`);
+    process.exit(1);
 }
 
 // 透传所有参数并继承 stdio，保持与直接调用二进制完全一致的体验
 try {
-    execFileSync(binaryPath, process.argv.slice(2), { stdio: "inherit" });
+    execFileSync(execPath, process.argv.slice(2), { stdio: "inherit" });
 } catch (err) {
     process.exit(err.status != null ? err.status : 1);
 }

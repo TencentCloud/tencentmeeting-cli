@@ -28,7 +28,14 @@ func getOptions(msg *optionsMsg, opts ...Option) {
 	}
 }
 
-// WithCompact defines the compact format.
+// WithCompact defines the compact format. When --compact is on, only the
+// fields listed in compactFields are kept; traceId and message are dropped.
+// When --compact is off this option is a no-op.
+//
+// compactFields is used as-is: callers that need to append client-side
+// enrichment field names (e.g. an injected "records" subtree that the remote
+// schema whitelist does not know about) must merge them into the slice
+// beforehand rather than relying on this option to do it.
 func WithCompact(compactFields []string) Option {
 	return func(msg *optionsMsg) {
 		compact, _ := msg.cmd.Root().PersistentFlags().GetBool("compact")
@@ -40,6 +47,7 @@ func WithCompact(compactFields []string) Option {
 		// traceId and message are not needed
 		msg.traceId = ""
 		msg.message = ""
+
 		msg.data = string(utils.KeepFields([]byte(msg.data), 10, compactFields))
 	}
 }

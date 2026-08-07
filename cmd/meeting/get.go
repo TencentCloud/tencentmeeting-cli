@@ -81,15 +81,21 @@ func (o *GetOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Enrich meeting with full recording snapshot via paginated API.
+	rsp.Data = string(enrichMeetingWithFullRecords(cmd.Context(), o.tmeet, []byte(rsp.Data), "meeting_info_list"))
+
 	convertMap := map[string]utils.FieldConverter{
-		"start_time":               utils.TimestampConverter,
-		"end_time":                 utils.TimestampConverter,
-		"meeting_info_list.status": utils.MeetingStatusConverter,
-		"meeting_type":             utils.MeetingTypeConverter,
-		"recurring_type":           utils.MeetingRecurringTypeConverter,
-		"time_zone":                utils.Base64DecodeConverter,
-		"until_date":               utils.TimestampConverter,
-		"until_type":               utils.MeetingRecurringUntilTypeConverter,
+		"start_time":                        utils.TimestampConverter,
+		"end_time":                          utils.TimestampConverter,
+		"meeting_info_list.status":          utils.MeetingStatusConverter,
+		"meeting_type":                      utils.MeetingTypeConverter,
+		"recurring_type":                    utils.MeetingRecurringTypeConverter,
+		"time_zone":                         utils.Base64DecodeConverter,
+		"until_date":                        utils.TimestampConverter,
+		"until_type":                        utils.MeetingRecurringUntilTypeConverter,
+		"media_start_time":                  utils.TimestampConverter,       // recording start time
+		"duration":                          utils.DurationSecondsConverter, // recording duration (seconds -> HH:MM:SS)
+		"meeting_info_list.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithConvert(convertMap))

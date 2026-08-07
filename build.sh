@@ -54,6 +54,22 @@ for TARGET in "${TARGETS[@]}"; do
 done
 
 echo "────────────────────────────────────────"
+
+# ── 权限位兜底 + 自检 ─────────────────────────────────────────────────────────
+# 确保所有非 .exe 产物均为 0755，防止 umask 异常、后处理步骤或发布环境导致 x 位丢失，
+# 进而在用户侧（尤其是 Agent 沙箱等无法 chmod 的场景）无法执行。
+for f in "${OUTPUT_DIR}"/*; do
+  case "$f" in
+    *.exe) continue ;;
+  esac
+  chmod 0755 "$f"
+  if [ ! -x "$f" ]; then
+    echo "❌ $f 缺少可执行权限，构建失败"
+    exit 1
+  fi
+done
+echo "✅ 权限自检通过（所有非 .exe 产物均为 0755）"
+
 echo "✅ 全部编译完成，产物位于 ./${OUTPUT_DIR}/"
 ls -lh "${OUTPUT_DIR}/"
 

@@ -197,11 +197,14 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── permission-apply-prepare # 预览录制权限申请信息（申请前确认）
 │   └── permission-apply-commit  # 提交录制权限申请（用户确认后执行）
 ├── report
-│   ├── participants      # 获取参会人列表
-│   └── waiting-room-log  # 获取等候室成员列表
+│   ├── participants         # 获取参会人列表
+│   ├── waiting-room-log     # 获取等候室成员列表
+│   ├── participants-export  # 导出参会成员明细（异步任务）
+│   └── job-result           # 获取异步任务结果
 ├── control
 │   ├── call           # 呼叫成员入会（会中邀请呼叫）
-│   └── kick           # 将成员踢出会议（会中踢人）
+│   ├── kick           # 将成员踢出会议（会中踢人）
+│   └── waiting-room   # 等候室管理（移入会议/移回等候室/移出）
 └── tshoot
     ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
     └── feedback          # 上报问题排查反馈到服务器
@@ -1062,6 +1065,99 @@ tmeet report waiting-room-log \
 
 ---
 
+#### `report participants-export` — 导出参会成员明细
+
+异步导出会议参会成员明细，本命令仅提交导出任务并返回 `job_id`，需配合 `report job-result` 轮询任务状态获取下载链接。
+
+```bash
+tmeet report participants-export --meeting-id <会议ID> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--sub-meeting-id` | string | — | — | 周期性会议子会议 ID |
+| `--start` | string | — | — | 查询起始时间，ISO 8601，如 `2026-03-12T14:00+08:00` |
+| `--end` | string | — | — | 查询结束时间，ISO 8601，如 `2026-03-12T14:00+08:00` |
+| `--file-type` | string | — | `xlsx` | 导出文件格式：`xlsx` 或 `json` |
+
+**响应关键字段：**
+
+| 字段 | 说明 |
+|------|------|
+| `job_id` | 异步任务 ID（用于轮询任务状态） |
+
+> 本命令仅返回 `job_id`，不会自动等待任务完成。获取 `job_id` 后，需每隔 5 秒调用 `report job-result` 轮询任务状态，直到 status 为 "成功" 时获取下载链接，或 status 非 "处理中" 时终止。
+
+**示例：**
+
+```bash
+# 导出会议参会成员明细（默认 xlsx 格式）
+tmeet report participants-export --meeting-id "6953553464429888300"
+
+# 导出为 json 格式
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --file-type "json"
+
+# 导出周期性会议某个子会议的参会成员
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --sub-meeting-id "200000001"
+
+# 按时间范围过滤
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00"
+```
+
+---
+
+#### `report job-result` — 获取异步任务结果
+
+查询异步导出任务的执行状态与结果。调用 `participants-export` 获取 `job_id` 后，需每隔 5 秒调用本命令轮询，直到任务完成或失败。
+
+```bash
+tmeet report job-result --job-id <任务ID>
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--job-id` | string | ✅ | — | 任务 ID（从 `participants-export` 获取） |
+
+**响应关键字段：**
+
+| 字段 | 说明 |
+|------|------|
+| `status` | 任务状态："成功"、"失败"、"处理中" |
+| `url` | 文件下载链接（状态为 "成功" 时返回，有效期 2 小时） |
+| `error_msg` | 错误信息（状态为 "失败" 时返回） |
+
+**示例：**
+
+```bash
+# 查询异步任务结果
+tmeet report job-result --job-id "e1234567-f123-4d12-123a-12346192e332"
+```
+
+**导出参会成员明细完整工作流：**
+
+```
+1. 提交导出任务，获取 job_id
+   tmeet report participants-export --meeting-id "6953553464429888300"
+
+2. 每隔 5 秒调用 job-result 轮询任务状态
+   tmeet report job-result --job-id <job_id>
+
+3. 根据返回的 status 判断：
+   - status = "成功"：返回文件下载链接 url（有效期 2 小时），流程结束
+   - status = "处理中"：等待 5 秒后再次调用 job-result 继续轮询
+   - status = "失败" 或其他值：终止并返回 error_msg
+```
+
+---
+
 ### control — 会中控制
 
 会中控制相关命令，用于在会议进行中对参会成员执行呼叫、踢出等管理操作。受邀成员通过用户 `open_id` 指定，可通过 `contact search` 命令查询获得。
@@ -1092,6 +1188,75 @@ tmeet control call \
   --meeting-id "6953553464429888300" \
   --users "open_id1" \
   --users "open_id2"
+```
+
+---
+
+#### `control waiting-room` — 等候室管理
+
+管理会议中等候室成员，支持三种操作类型：
+
+- **enter-meeting**：主持人将等候室成员移入会议
+- **back-to-waiting**：主持人将会中成员移回等候室
+- **expel**：主持人将等候室成员移出（踢出会议）
+
+```bash
+tmeet control waiting-room --meeting-id <会议ID> --operate-type <操作类型> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--operate-type` | string | ✅ | — | 操作类型：`enter-meeting`（主持人将等候室成员移入会议）、`back-to-waiting`（主持人将会中成员移入等候室）、`expel`（主持人将等候室成员移出） |
+| `--users` | strings | 三选一 | — | 待操作的普通成员 `open_id` 列表（不含 Sip/Pstn 设备），支持英文逗号分隔或重复传入该参数 |
+| `--sip-users` | strings | 三选一 | — | 待操作的 Sip 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
+| `--pstn-users` | strings | 三选一 | — | 待操作的 Pstn 设备 `ms_open_id` 列表，支持英文逗号分隔或重复传入该参数 |
+| `--allow-rejoin` | bool | ❌ | — | 移出后是否允许再次加入会议（仅 `--operate-type=expel` 时生效）； |
+
+> `--users` / `--sip-users` / `--pstn-users` **三者至少必填一种**，且**三者总数合计最多 20 个**。
+
+**示例：**
+
+```bash
+# 将等候室成员移入会议
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type enter-meeting \
+  --users "open_id1,open_id2"
+
+# 将会中成员移回等候室
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type back-to-waiting \
+  --users "open_id1,open_id2"
+
+# 将等候室成员移出，不允许再次加入
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --users "open_id1,open_id2"
+
+# 将等候室成员移出，允许再次加入会议
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --allow-rejoin \
+  --users "open_id1,open_id2"
+
+# 将等候室成员移出，显式不允许再次加入会议
+# 注意：bool 类型显式设为 false 时必须使用等号语法 --allow-rejoin=false，不能写成 --allow-rejoin false
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --allow-rejoin=false \
+  --users "open_id1,open_id2"
+
+# 同时操作 sip 设备和 pstn 设备
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --sip-users "ms_open_id_sip1" \
+  --pstn-users "ms_open_id_pstn1"
 ```
 
 ---

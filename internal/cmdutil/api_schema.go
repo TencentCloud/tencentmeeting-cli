@@ -61,6 +61,10 @@ const (
 	ApiCmdReportParticipants = "report_participants"
 	// ApiCmdReportWaitingRoomLog apiCmd report_waiting_room_log
 	ApiCmdReportWaitingRoomLog = "report_waiting_room_log"
+	// ApiCmdReportParticipantsExport apiCmd report_participants_export
+	ApiCmdReportParticipantsExport = "report_participants_export"
+	// ApiCmdReportJobResult apiCmd report_job_result
+	ApiCmdReportJobResult = "report_job_result"
 
 	// ApiCmdContactSearch apiCmd contact_search
 	ApiCmdContactSearch = "contact_search"
@@ -73,6 +77,8 @@ const (
 	ApiCmdControlCall = "control_call"
 	// ApiCmdControlKick apiCmd control_kick
 	ApiCmdControlKick = "control_kick"
+	// ApiCmdControlWaitingRoom apiCmd control_waiting_room
+	ApiCmdControlWaitingRoom = "control_waiting_room"
 
 	// ApiCmdTshootLogUpload apiCmd tshoot_log_upload.
 	// Covers the two-step log upload flow (fetch upload token + notify

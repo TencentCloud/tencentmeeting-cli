@@ -18,6 +18,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newCallCmd(tmeet),
 		// Kick meeting members out
 		newKickCmd(tmeet),
+		// Admit waiting room members
+		newWaitingRoomCmd(tmeet),
 	)
 
 	return cmd
