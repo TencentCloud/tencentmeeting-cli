@@ -197,11 +197,14 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── permission-apply-prepare # Preview record permission application (before commit)
 │   └── permission-apply-commit  # Commit record permission application (after user confirmation)
 ├── report
-│   ├── participants   # Get participant list
-│   └── waiting-room-log # Get waiting room member list
+│   ├── participants         # Get participant list
+│   ├── waiting-room-log     # Get waiting room member list
+│   ├── participants-export  # Export participant details (async job)
+│   └── job-result           # Get async job result
 ├── control
 │   ├── call           # Call members into the meeting (in-meeting invite call)
-│   └── kick           # Kick members out of the meeting (in-meeting kick-out)
+│   ├── kick           # Kick members out of the meeting (in-meeting kick-out)
+│   └── waiting-room   # Waiting room management (admit / send back / expel)
 └── tshoot
     ├── log            # Export local logs (supports time range filter, optional --upload to server)
     └── feedback       # Report troubleshooting feedback to the server
@@ -1062,6 +1065,99 @@ tmeet report waiting-room-log \
 
 ---
 
+#### `report participants-export` — Export Participant Details
+
+Asynchronously export meeting participant details. This command only submits the export job and returns a `job_id`. Use `report job-result` to poll the job status and obtain the download link.
+
+```bash
+tmeet report participants-export --meeting-id <meeting-id> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--sub-meeting-id` | string | — | — | Sub-meeting ID for recurring meetings |
+| `--start` | string | — | — | Query start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
+| `--end` | string | — | — | Query end time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
+| `--file-type` | string | — | `xlsx` | Export file format: `xlsx` or `json` |
+
+**Key response fields:**
+
+| Field | Description |
+|-------|-------------|
+| `job_id` | Async job ID (used to poll job status) |
+
+> This command only returns a `job_id` and does not wait for the job to complete. After obtaining the `job_id`, poll `report job-result` every 5 seconds until the status is "success" to get the download link, or until the status is no longer "processing" to terminate.
+
+**Examples:**
+
+```bash
+# Export participant details (default xlsx format)
+tmeet report participants-export --meeting-id "6953553464429888300"
+
+# Export as json format
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --file-type "json"
+
+# Export participants of a specific sub-meeting in a recurring meeting
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --sub-meeting-id "200000001"
+
+# Filter by time range
+tmeet report participants-export \
+  --meeting-id "6953553464429888300" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00"
+```
+
+---
+
+#### `report job-result` — Get Async Job Result
+
+Query the execution status and result of an async export job. After obtaining the `job_id` from `participants-export`, poll this command every 5 seconds until the job completes or fails.
+
+```bash
+tmeet report job-result --job-id <job-id>
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--job-id` | string | ✅ | — | Job ID (obtained from `participants-export`) |
+
+**Key response fields:**
+
+| Field | Description |
+|-------|-------------|
+| `status` | Job status: "success", "failed", "processing" |
+| `url` | File download link (returned when status is "success", valid for 2 hours) |
+| `error_msg` | Error message (returned when status is "failed") |
+
+**Example:**
+
+```bash
+# Query async job result
+tmeet report job-result --job-id "e1234567-f123-4d12-123a-12346192e332"
+```
+
+**Complete workflow for exporting participant details:**
+
+```
+1. Submit the export job and obtain job_id
+   tmeet report participants-export --meeting-id "6953553464429888300"
+
+2. Poll job-result every 5 seconds
+   tmeet report job-result --job-id <job_id>
+
+3. Determine next steps based on the returned status:
+   - status = "success": download link (url) is returned (valid for 2 hours), workflow ends
+   - status = "processing": wait 5 seconds and poll job-result again
+   - status = "failed" or other: terminate and return error_msg
+```
+
+---
+
 ### control — In-Meeting Control
 
 In-meeting control commands for managing participants during an ongoing meeting, including calling members in and kicking members out. Members are specified by user `open_id`, which can be obtained via the `contact search` command.
@@ -1096,6 +1192,75 @@ tmeet control call \
 
 ---
 
+#### `control waiting-room` — Waiting Room Management
+
+Manage waiting room members during a meeting. Supports three operation types:
+
+- **enter-meeting**: Host admits waiting room members into the meeting
+- **back-to-waiting**: Host moves in-meeting members back to the waiting room
+- **expel**: Host expels waiting room members from the meeting
+
+```bash
+tmeet control waiting-room --meeting-id <meeting-id> --operate-type <type> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--operate-type` | string | ✅ | — | Operation type: `enter-meeting` (host admits waiting room members into the meeting), `back-to-waiting` (host moves in-meeting members back to the waiting room), `expel` (host expels waiting room members from the meeting) |
+| `--users` | strings | one of three | — | List of regular member `open_id`s to operate (excluding Sip/Pstn devices). Supports comma-separated values or repeating the flag |
+| `--sip-users` | strings | one of three | — | List of Sip device `ms_open_id`s to operate. Supports comma-separated values or repeating the flag |
+| `--pstn-users` | strings | one of three | — | List of Pstn device `ms_open_id`s to operate. Supports comma-separated values or repeating the flag |
+| `--allow-rejoin` | bool | ❌ | — | Whether expelled members are allowed to rejoin the meeting (only valid when `--operate-type=expel`); |
+
+> At least one of `--users` / `--sip-users` / `--pstn-users` is required, and the **total number of all three combined must not exceed 20**.
+
+**Examples:**
+
+```bash
+# Admit waiting room members into the meeting
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type enter-meeting \
+  --users "open_id1,open_id2"
+
+# Move in-meeting members back to the waiting room
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type back-to-waiting \
+  --users "open_id1,open_id2"
+
+# Expel waiting room members (disallow rejoin)
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --users "open_id1,open_id2"
+
+# Expel waiting room members (allow rejoin)
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --allow-rejoin \
+  --users "open_id1,open_id2"
+
+# Expel waiting room members (explicitly disallow rejoin)
+# Note: For bool flags, setting false MUST use the equals syntax --allow-rejoin=false; the space form --allow-rejoin false is NOT supported.
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --allow-rejoin=false \
+  --users "open_id1,open_id2"
+
+# Operate Sip and Pstn devices simultaneously
+tmeet control waiting-room \
+  --meeting-id "6953553464429888300" \
+  --operate-type expel \
+  --sip-users "ms_open_id_sip1" \
+  --pstn-users "ms_open_id_pstn1"
+```
+
+---
+
 #### `control kick` — Kick Members Out of the Meeting
 
 In-meeting kick-out: remove the specified members from the ongoing meeting.
@@ -1107,7 +1272,7 @@ tmeet control kick --meeting-id <meeting-id> [--users <open-id-list>] [--sip-use
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
 | `--meeting-id` | string | ✅ | — | Meeting ID |
-| `--users` | strings | one of three | — | List of `open_id`s of regular members to kick out (excluding Sip/Pstn devices). Supports comma-separated values or repeating the flag |
+| `--users` | strings | one of three | — | List of `open_id`s of regular members to kick out (excluding CIP/Pstn devices). Supports comma-separated values or repeating the flag |
 | `--sip-users` | strings | one of three | — | List of `ms_open_id`s of Sip devices to kick out. Supports comma-separated values or repeating the flag |
 | `--pstn-users` | strings | one of three | — | List of `ms_open_id`s of Pstn devices to kick out. Supports comma-separated values or repeating the flag |
 | `--allow-rejoin` | bool | ❌ | `true` | Whether kicked-out members are allowed to rejoin the meeting. Defaults to `true` (rejoin allowed) when not provided; pass `--allow-rejoin=false` to disallow rejoin |
