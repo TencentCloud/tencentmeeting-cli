@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"tmeet/internal/utils/enumerate"
+	"unicode/utf8"
 )
 
 // FieldConverter is the field converter function type that accepts a raw value and returns the converted value.
@@ -160,7 +161,9 @@ func TimestampConverter(value interface{}) interface{} {
 // It can be passed directly to ConvertFields as a FieldConverter.
 var InstanceIdConverter = intEnumConverter(func(n int) string { return enumerate.InstanceTypeName(n) })
 
-// HHMMSSConverter converts float64 or string duration values to HH:MM:SS / MM:SS format.
+// HHMMSSConverter converts float64 or string **millisecond** duration values
+// to HH:MM:SS / MM:SS format. Use DurationSecondsConverter when the upstream
+// value is expressed in seconds.
 var HHMMSSConverter FieldConverter = func(value interface{}) interface{} {
 	switch ts := value.(type) {
 	case float64:
@@ -174,18 +177,37 @@ var HHMMSSConverter FieldConverter = func(value interface{}) interface{} {
 	return value
 }
 
+// DurationSecondsConverter converts float64 or string **second** duration
+// values to HH:MM:SS / MM:SS format. It is the seconds-based counterpart of
+// HHMMSSConverter (which expects milliseconds).
+var DurationSecondsConverter FieldConverter = func(value interface{}) interface{} {
+	switch ts := value.(type) {
+	case float64:
+		return DurationSecondsToHMS(int64(ts))
+	case string:
+		var n int64
+		if _, err := fmt.Sscanf(ts, "%d", &n); err == nil {
+			return DurationSecondsToHMS(n)
+		}
+	}
+	return value
+}
+
 // Base64DecodeConverter decodes a Base64-encoded string value to its original string.
-// Returns the original value unchanged if decoding fails.
+// Returns the original value unchanged if the value is empty, decoding fails,
+// or the decoded bytes are not valid UTF-8(to avoid leaking garbled output
+// for values that only look like Base64 by coincidence).
 func Base64DecodeConverter(value interface{}) interface{} {
 	str, ok := value.(string)
-	if !ok {
+	if !ok || str == "" {
 		return value
 	}
 	decoded, err := base64.StdEncoding.DecodeString(str)
-	if err != nil {
-		// Fall back to URL-safe Base64.
-		decoded, err = base64.URLEncoding.DecodeString(str)
-		if err != nil {
+	if err != nil || !utf8.Valid(decoded) {
+		// Fall back to raw URL-safe Base64 (no padding); some backends use
+		// URL-safe encoding without padding.
+		decoded, err = base64.RawURLEncoding.DecodeString(str)
+		if err != nil || !utf8.Valid(decoded) {
 			return value
 		}
 	}
@@ -255,3 +277,6 @@ var ShowAllSubMeetingsConverter = intEnumConverter(enumerate.ShowAllSubMeetingsN
 
 // MeetingStatusInSearchConverter converts meeting status strings to their human-readable meeting status names in search.
 var MeetingStatusInSearchConverter = stringEnumConverter(enumerate.MeetingStatusInSearchName)
+
+// ExportJobStatusConverter converts export job status IDs to their human-readable status names.
+var ExportJobStatusConverter = intEnumConverter(enumerate.ExportJobStatusName)
