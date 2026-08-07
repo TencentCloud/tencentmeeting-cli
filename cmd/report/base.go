@@ -18,6 +18,10 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newParticipantsCmd(tmeet),
 		// Get waiting room members list
 		newWaitingRoomCmd(tmeet),
+		// Export participants list
+		newParticipantsExportCmd(tmeet),
+		// Get async task result
+		newJobResultCmd(tmeet),
 	)
 
 	return cmd
