@@ -101,20 +101,26 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 			[]byte(rsp.Data), "meeting_info_list", "start_time", "end_time", filterStart, filterEnd))
 	}
 
+	// Enrich each meeting with its recording basic info.
+	rsp.Data = string(enrichMeetingsWithRecords(cmd.Context(), o.tmeet, []byte(rsp.Data), "meeting_info_list", false))
+
 	convertMap := map[string]utils.FieldConverter{
-		"start_time":               utils.TimestampConverter,
-		"end_time":                 utils.TimestampConverter,
-		"meeting_info_list.status": utils.MeetingStatusConverter,
-		"meeting_type":             utils.MeetingTypeConverter,
-		"recurring_type":           utils.MeetingRecurringTypeConverter,
-		"until_date":               utils.TimestampConverter,
-		"until_type":               utils.MeetingRecurringUntilTypeConverter,
-		"join_meeting_role":        utils.MeetingUserJoinRoleConverter,
-		"only_user_join_type":      utils.MeetingJoinTypeConverter,
-		"is_show_all_sub_meetings": utils.ShowAllSubMeetingsConverter,
+		"start_time":                        utils.TimestampConverter,
+		"end_time":                          utils.TimestampConverter,
+		"meeting_info_list.status":          utils.MeetingStatusConverter,
+		"meeting_type":                      utils.MeetingTypeConverter,
+		"recurring_type":                    utils.MeetingRecurringTypeConverter,
+		"until_date":                        utils.TimestampConverter,
+		"until_type":                        utils.MeetingRecurringUntilTypeConverter,
+		"join_meeting_role":                 utils.MeetingUserJoinRoleConverter,
+		"only_user_join_type":               utils.MeetingJoinTypeConverter,
+		"is_show_all_sub_meetings":          utils.ShowAllSubMeetingsConverter,
+		"media_start_time":                  utils.TimestampConverter,       // recording start time
+		"duration":                          utils.DurationSecondsConverter, // recording duration (seconds -> HH:MM:SS)
+		"meeting_info_list.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithCompact(compactFieldsWithRecords(cmd.Context())),
 		output.WithConvert(convertMap))
 	return nil
 }

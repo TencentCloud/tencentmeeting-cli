@@ -91,13 +91,19 @@ func (o *ListEndedOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Enrich each meeting with its recording basic info.
+	rsp.Data = string(enrichMeetingsWithRecords(cmd.Context(), o.tmeet, []byte(rsp.Data), "meeting_info_list", true))
+
 	convertMap := map[string]utils.FieldConverter{
-		"start_time":   utils.TimestampConverter,
-		"end_time":     utils.TimestampConverter,
-		"meeting_type": utils.MeetingTypeConverter,
+		"start_time":                        utils.TimestampConverter,
+		"end_time":                          utils.TimestampConverter,
+		"meeting_type":                      utils.MeetingTypeConverter,
+		"media_start_time":                  utils.TimestampConverter,       // recording start time
+		"duration":                          utils.DurationSecondsConverter, // recording duration (seconds -> HH:MM:SS)
+		"meeting_info_list.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithCompact(compactFieldsWithRecords(cmd.Context())),
 		output.WithConvert(convertMap))
 	return nil
 }
