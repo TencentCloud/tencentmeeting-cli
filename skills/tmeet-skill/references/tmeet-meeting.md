@@ -18,6 +18,8 @@
 - [invitees-add — 添加受邀成员](#invitees-add--添加受邀成员)
 - [invitees-remove — 移除受邀成员](#invitees-remove--移除受邀成员)
 - [invitees-replace — 替换受邀成员列表](#invitees-replace--替换受邀成员列表)
+- [join-as-agent — 以子账号身份加入会议](#join-as-agent--以子账号身份加入会议)
+- [leave-as-agent — 以子账号身份离开会议](#leave-as-agent--以子账号身份离开会议)
 - [常见错误](#常见错误)
 - [参考](#参考)
 
@@ -519,6 +521,55 @@ tmeet meeting invitees-replace \
 |------|------|--------|------|
 | `--meeting-id <id>` | ✅ | — | 会议 ID |
 | `--invitees <list>` | ✅ | — | 替换后的受邀成员 `open_id` 完整列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+---
+
+## join-as-agent — 以子账号身份加入会议
+
+> **前置条件：** 需先通过 `tmeet agent create` 创建子账号并确保 token 有效。
+
+以子账号（agent）身份加入指定会议，加入后自动开启实时转写（ASR），适用于用户无法亲自参会但需要获取会议内容的场景。
+
+```bash
+tmeet meeting join-as-agent --meeting-code <会议号> --agent-id <值> [--password <值>] [--require-realtime-asr]
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-code <code>` | ✅ | — | 会议号，用于指定要加入的会议 |
+| `--agent-id <id>` | ✅ | — | Agent ID，指定要作为代理加入会议的 Agent 标识 |
+| `--password <pwd>` | — | — | 入会密码，通常是 4-6 位数字；如果会议未设置密码可省略 |
+| `--require-realtime-asr` | — | `false` | 若为 true 且 ASR 开启失败，bot 将自动离开会议（离开原因：asr-denied） |
+
+### 行为说明
+
+- **前置操作**：调用 `join-as-agent` 前，应先询问用户是否需要订阅实时转写推送事件（`meeting.asr-push`）。若用户确认，则执行 `tmeet event consume --event-id meeting.asr-push` 完成订阅后再入会；若用户拒绝，则跳过订阅直接入会（详见 [tmeet-event](tmeet-event.md) 中 `meeting.asr-push` 的说明）
+- **命令内部自动处理**：加入会议、查询/开启实时转写（ASR）均由 CLI 内部自动完成，无需额外操作
+- **返回结果**：
+  - 加入失败 → 返回错误
+  - 加入成功且 ASR 开启失败 + `--require-realtime-asr=true` → bot 自动离会，返回错误（asr-denied）
+  - 加入成功且 ASR 开启失败 + `--require-realtime-asr=false`（默认） → 返回成功，附带提示：`joined the meeting successfully, but failed to enable real-time transcription`
+
+---
+
+## leave-as-agent — 以子账号身份离开会议
+
+> **前置条件：** 子账号当前已在会议中（通过 `join-as-agent` 加入）。
+
+以子账号（agent）身份离开指定会议。
+
+```bash
+tmeet meeting leave-as-agent --meeting-id "100000000" --agent-id "agent_xxxx"
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-id <id>` | ✅ | — | 会议 ID |
+| `--agent-id <id>` | ✅ | — | 子账号 ID |
 
 ---
 

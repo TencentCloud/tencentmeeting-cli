@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"tmeet/cmd/agent"
 	"tmeet/cmd/auth"
 	"tmeet/cmd/contact"
 	"tmeet/cmd/control"
+	"tmeet/cmd/event"
 	"tmeet/cmd/meeting"
 	"tmeet/cmd/record"
 	"tmeet/cmd/report"
@@ -14,6 +16,7 @@ import (
 	"tmeet/internal/common"
 	"tmeet/internal/config"
 	"tmeet/internal/crash"
+	"tmeet/internal/event/cleanup"
 	"tmeet/internal/exception"
 	"tmeet/internal/log"
 	"tmeet/internal/output"
@@ -29,9 +32,17 @@ var Version = "dev"
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() (exitCode int) {
+	// Wire credential-teardown side effects BEFORE any subcommand runs.
+	// This survives subprocess fork (event _bus inherits the registration
+	// but won't call ClearUserConfig itself, so it never fires there).
+	// Registering here — not in init() — keeps the dependency from
+	// activating during simple package import (e.g. tests of cmd/root
+	// won't accidentally tear down the user's bus).
+	registerResourceReleaseHook()
+
 	tmeet, err := internal.NewTmeet()
 	if err != nil {
-		output.PrintErrorf(nil, fmt.Sprintf("failed to initialize Tmeet: %v", err))
+		output.PrintErrorf(nil, "%s", fmt.Sprintf("failed to initialize Tmeet: %v", err))
 		return 1
 	}
 
@@ -97,6 +108,8 @@ func Execute() (exitCode int) {
 
 	// Add subcommand: auth
 	rootCmd.AddCommand(auth.NewBaseCmd(tmeet))
+	// Add subcommand: agent
+	rootCmd.AddCommand(agent.NewBaseCmd(tmeet))
 	// Add subcommand: meeting
 	rootCmd.AddCommand(meeting.NewBaseCmd(tmeet))
 	// Add subcommand: contact
@@ -109,6 +122,8 @@ func Execute() (exitCode int) {
 	rootCmd.AddCommand(control.NewBaseCmd(tmeet))
 	// Add subcommand: tshoot
 	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
+	// Add subcommand: event
+	rootCmd.AddCommand(event.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
 	if err != nil {
 		log.Errorf(rootCmd.Context(), "execute failed: %v", err)
@@ -150,4 +165,12 @@ func commandOperationLog(cmd *cobra.Command, args []string) {
 
 func injectCmdPathIntoTmeet(tmeet *internal.Tmeet, cmd *cobra.Command) {
 	tmeet.CmdPath = cmd.CommandPath()
+}
+
+func registerResourceReleaseHook() {
+	// event-bus
+	config.RegisterResourceReleaseHook(config.ResourceReleaseHook{
+		Name: "event-bus",
+		Fn:   cleanup.OnUserCleared,
+	})
 }
