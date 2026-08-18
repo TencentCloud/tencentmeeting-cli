@@ -81,4 +81,31 @@ var (
 	AuthorizationTimeoutError = NewTmeetError(ClientCodeAuthorizationTimeout, "authorization timeout, please try 'tmeet auth login' again")
 	// AuthorizationFailedError indicates authorization failure.
 	AuthorizationFailedError = NewTmeetError(ClientCodeAuthorizationFailed, "authorization failed, please try 'tmeet auth login' again")
+
+	// EventInternalError indicates an internal runtime error in event operations.
+	EventInternalError = NewTmeetError(ClientCodeEventInternal, "event internal error")
+	// EventBusError indicates a bus-level error.
+	EventBusError = NewTmeetError(ClientCodeEventBus, "event bus error")
+	// EventBusNotRunningError indicates the event bus is not running.
+	EventBusNotRunningError = NewTmeetError(ClientCodeEventBusNotRunning, "event bus not running")
+
+	// AgentAlreadyExistsError indicates that an agent has already been created locally for the active main account.
+	AgentAlreadyExistsError = NewTmeetError(ClientCodeAgentAlreadyExists,
+		"agent already exists for the active account")
+	// CreateAgentFailedError indicates failure to create an agent.
+	CreateAgentFailedError = NewTmeetError(ClientCodeCreateAgentFailed, "create agent failed, please retry later")
+	// AgentNotFoundError indicates that no agent exists locally for the active main account.
+	AgentNotFoundError = NewTmeetError(ClientCodeAgentNotFound,
+		"no agent exists for the active account")
+	// DeleteAgentFailedError indicates failure to delete an agent.
+	DeleteAgentFailedError = NewTmeetError(ClientCodeDeleteAgentFailed, "delete agent failed, please retry later")
+	// RefreshAgentTokenFailedError indicates failure to refresh an agent's token.
+	RefreshAgentTokenFailedError = NewTmeetError(ClientCodeRefreshAgentTokenFailed,
+		"refresh agent token failed, please retry later")
+	// AgentTokenExpiredError indicates that both agent access_token and refresh_token have expired.
+	AgentTokenExpiredError = NewTmeetError(ClientCodeAgentTokenExpired,
+		"agent token expired, please run 'tmeet agent token' to reissue")
+	// AsrDeniedError indicates that ASR failed and the bot auto-left the meeting.
+	AsrDeniedError = NewTmeetError(ClientCodeAsrDenied,
+		"ASR failed, bot auto-left the meeting (reason: asr-denied)")
 )

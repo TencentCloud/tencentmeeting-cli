@@ -1,0 +1,78 @@
+syntax = "proto3";
+package wsspb;
+
+option go_package = "tmeet/internal/event/protocol/wsspb;wsspb";
+
+// WebSocket frame header.
+message Head {
+  uint32 frame_type = 1; // Always 1.
+  uint32 cmd_type = 2; // 0 = upstream req, 1 = upstream rsp (reply to req), 2 = downstream push, 3 = downstream ack (reply to push).
+  string cmd = 3; // Command identifier.
+  uint32 seq_no = 4; // Monotonically increasing per-direction sequence id; upstream does not distinguish req/ack, downstream does not distinguish rsp/push.
+  string msg_id = 5; // Message id used to correlate upstream req/rsp pairs and to uniquely identify each push. UUID-based.
+  string module = 6; // Module name.
+
+  int32 status = 10; // Status code; only meaningful on upstream rsp frames.
+}
+
+// WebSocket frame body.
+message ConnMsg {
+  Head head = 1;
+  bytes data = 2; // Protobuf-serialised payload bytes.
+}
+
+// WebSocket auth bind request.
+message AuthBindReq {
+  string biz_id = 1; // Business id; fixed to "web_hook_cli".
+  string token_type = 2; // Fixed to "access-token".
+  string token = 3; // userinfo accessToken.
+  string open_id = 4; // Open id.
+  string cli_uniq_id = 5; // CLI unique id.
+}
+
+// WebSocket auth bind response.
+message AuthBindRsp {
+  int32 ret_code = 1; // 0 = success, non-zero = failure.
+  string msg = 2; // Error message.
+  string session_id = 3; // Session id.
+  string connect_id = 4; // Connection id.
+}
+
+// WebSocket auth refresh request.
+message AuthRefreshReq {
+  string biz_id = 1; // Business id; fixed to "web_hook_cli".
+  string token_type = 2; // Fixed to "access-token".
+  string token = 3; // userinfo accessToken.
+  string open_id = 4; // Open id.
+  string cli_uniq_id = 5; // CLI unique id.
+}
+
+// WebSocket auth refresh response.
+message AuthRefreshRsp {
+  int32 ret_code = 1; // 0 = success, non-zero = failure.
+  string msg = 2; // Error message.
+  string session_id = 3; // Session id.
+  string connect_id = 4; // Connection id.
+}
+
+// WebSocket event subscribe request.
+message SubscribeReq {
+  repeated string event_list = 1; // List of event keys to subscribe to.
+  string agent_open_id = 2; // Agent (子账号) open_id this subscribe is on behalf of; empty for master-only / unrestricted subscriptions.
+}
+
+// WebSocket event subscribe response.
+message SubscribeRsp {
+  uint32 code = 1; // 0 = success, non-zero = failure.
+  string msg = 2; // Error message.
+  Data data = 3; // Response payload.
+
+  message Data {
+    repeated string has_sub_event_list = 1; // List of event keys currently subscribed.
+  }
+}
+
+// WebSocket heart rsp.
+message HeartRsp {
+  int32 heart_interval = 1; // Heart interval in seconds.
+}

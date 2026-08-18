@@ -5,6 +5,7 @@ type Endpoints struct {
 	Open string // Open API address
 	CGI  string // CGI address
 	Auth string // Auth address
+	WSS  string // WSS event push endpoint (full ws(s)://host/path URL)
 }
 
 // baseEndpoints returns the base endpoint configuration.
@@ -13,6 +14,7 @@ func baseEndpoints() *Endpoints {
 		Open: "api.meeting.qq.com",
 		CGI:  "work.medialab.qq.com",
 		Auth: "meeting.tencent.com",
+		WSS:  "meeting.tencent.com",
 	}
 }
 
@@ -29,4 +31,9 @@ func GetAuthEndpoint() string {
 // GetCGIEndpoint returns the CGI address.
 func GetCGIEndpoint() string {
 	return baseEndpoints().CGI
+}
+
+// GetWSSEndpoint returns the WSS address
+func GetWSSEndpoint() string {
+	return baseEndpoints().WSS
 }
