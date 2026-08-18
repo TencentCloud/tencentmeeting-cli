@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
-version: 1.0.15
-description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/播放地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室/导出参会成员明细/异步任务结果）、通讯录（严格限定：仅存在\"会议邀请/呼叫入会\"动作的前置步骤通过用户名/手机号/邮箱搜索成员；严禁单独用于查询任何人的姓名/部门/职位/联系方式/是否存在，无下游会议动作时一律拒绝）、会中控制（呼叫成员入会/踢出会议成员）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
+version: 1.0.16
+description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/播放地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室/导出参会成员明细/异步任务结果）、通讯录（严格限定：仅存在\"会议邀请/呼叫入会\"动作的前置步骤通过用户名/手机号/邮箱搜索成员；严禁单独用于查询任何人的姓名/部门/职位/联系方式/是否存在，无下游会议动作时一律拒绝）、会中控制（呼叫成员入会/踢出会议成员）、实时事件订阅（监听实时转写/纪要生成等事件流）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -10,7 +10,7 @@ metadata:
 
 # tmeet
 
-腾讯会议命令行工具，支持 OAuth 授权、会议全生命周期管理、录制与转写、会议报告查询。
+腾讯会议命令行工具，支持 OAuth 授权、会议管理、录制与智能纪要、会议报告、通讯录查询、会中控制、会议事件的提醒通知（基于实时事件订阅）与问题反馈。
 
 ## 安装与初始化
 
@@ -40,7 +40,7 @@ tmeet auth logout
 tmeet auth status
 ```
 
-> **注意**：除 `auth login`,`auth status` 外，所有命令都需要先完成登录。未登录时命令会提示 `user config is empty`。
+> **注意**：除 `auth login`，`auth status` 与 `event list` / `event schema` / `event status` / `event stop` 外，所有命令都需要先完成登录。未登录时命令会提示 `user config is empty`。
 
 > **注意**：`auth login` 是**阻塞命令**——执行后会先输出授权 URL，然后**阻塞等待最多300s**用户在浏览器完成 OAuth 授权。**必须前台运行**：前台运行保持进程与终端连接，OAuth 回调能正常将凭证写入本地。**不要**用后台方式（`&`）运行——后台进程脱离控制终端会导致凭证写入失败。
  
@@ -71,7 +71,9 @@ tmeet
 │   ├── invitees-list             # 获取会议受邀者列表
 │   ├── invitees-add              # 添加会议受邀者
 │   ├── invitees-remove           # 移除会议受邀者
-│   └── invitees-replace          # 替换会议受邀者列表
+│   ├── invitees-replace          # 替换会议受邀者列表
+│   ├── join-as-agent             # 以子账号身份加入会议并自动开启实时转写（写操作，bot 会出现在真人会议中）
+│   └── leave-as-agent            # 以子账号身份离开会议
 ├── contact                       # 通讯录（仅会议邀请/呼叫入会场景） → [references/tmeet-contact.md](references/tmeet-contact.md)
 │   ├── search                    # [仅用于会议邀请和呼叫入会场景] 搜索企业通讯录成员（按用户名/职位/部门）；严禁单独用于查人
 │   ├── lookup-by-phone           # [仅用于会议邀请和呼叫入会场景] 按手机号查找用户；严禁单独用于查人
@@ -95,9 +97,21 @@ tmeet
 │   ├── call                      # 呼叫成员入会（会中邀请呼叫）
 │   ├── kick                      # 踢出会议成员（会中踢人）
 │   └── waiting-room              # 等候室管理（移入会议/移回等候室/移出踢出）
-└── tshoot                        # 问题排查与反馈 → [references/tmeet-tshoot.md](references/tmeet-tshoot.md)
-    ├── log                       # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
-    └── feedback                  # 反馈工具缺失/失败/能力不足等问题至平台（Agent 自助上报）
+├── event                         # 实时事件订阅 → [references/tmeet-event.md](references/tmeet-event.md)
+│   ├── list                      # 列出可订阅的 EventKey（不依赖登录）
+│   ├── schema                    # 查看 EventKey 的 params/payload schema 及 jq_root_path（不依赖登录）
+│   ├── consume                   # 订阅事件并按 NDJSON 流式输出（需登录；批处理/常驻两种模式）
+│   ├── status                    # 查看本机 bus 守护进程状态（不依赖登录）
+│   └── stop                      # 停止本机 bus 守护进程（不依赖登录；--force 为写操作，需二次确认）
+├── tshoot                        # 问题排查与反馈 → [references/tmeet-tshoot.md](references/tmeet-tshoot.md)
+│   ├── log                       # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
+│   └── feedback                  # 反馈工具缺失/失败/能力不足等问题至平台（Agent 自助上报）
+└── agent                         # 子账号管理 → [references/tmeet-agent.md](references/tmeet-agent.md)
+    ├── create                    # 在当前主账号下创建子账号（agent）并本地保存凭证
+    ├── delete                    # 删除当前主账号下的子账号并清除本地凭证
+    ├── token                     # 为当前子账号重新签发 access_token / refresh_token
+    ├── list                      # 列出当前主账号下的子账号列表
+    └── get                       # 查询单个子账号详情
 ```
 
 ## 查询命令选择准则（list vs search）
@@ -139,10 +153,14 @@ tmeet
   | `meeting invitees-add` | 向会议中添加受邀成员，被邀请者会收到会议通知；执行前必须展示目标会议与成员名单并获得明确确认 |
   | `meeting invitees-remove` | 从会议中移除受邀成员 |
   | `meeting invitees-replace` | 整体替换会议受邀成员列表（未在新列表中的成员会被移除） |
+  | `meeting join-as-agent` | 让子账号（bot）以独立身份进入真人会议，并自动开启实时转写；其他参会人可见该成员，会议内容会被转写留存。执行前必须展示目标会议（`meeting_code`）与将开启转写的事实并获得明确确认 |
   | `control call` | 主动呼叫成员入会，会向目标成员发起会议邀请通话，对其产生实际打扰 |
   | `control kick` | 将成员踢出会议，立即生效；**目标成员的 `open_id` / `ms_open_id` 必须来自 `report participants`，严禁使用 `contact search` 结果** |
   | `auth logout` | 清除本地登录凭证 |
   | `record permission-apply-commit` | 正式提交录制权限申请，会触发审批流程（必须先执行 `record permission-apply-prepare` 并向用户展示申请信息确认）|
+  | `agent create` | 在主账号下开通子账号并将凭证落盘到本机；执行前必须说明「将在您的账号下创建子账号，凭证保存在本机」并获得明确确认 |
+  | `agent delete` | **不可逆**：服务端删除子账号 + 清除本地凭证，该子账号一切请求立即失效，正在进行的 `subscribe_role=agent` 订阅会中断；执行前必须先用 `agent list` 取到 `AgentId` / `CreateTime` 展示给用户并获得明确确认。**非交互环境下必须带 `--force` 才会真正执行**（不带时 CLI 读 stdin 得 EOF，会打印 `已取消删除操作` 并以退出码 0 返回，删除并未发生）；`--force` 表示确认责任已由 Agent 承担，**严禁在未获用户确认时带 `--force` 执行** |
+  | `agent token` | 为子账号重新签发凭证并覆盖本地，**旧 `access_token` 立即失效**；执行前必须说明该影响并获得明确确认 |
 
   **确认流程**：
   1. 向用户展示即将执行的操作及关键信息（使用 `meeting_code` 会议号标识会议，不得展示 `meeting_id`）；涉及成员时，成员的回显格式遵循「响应处理规则」中的「成员回显格式」；
@@ -194,6 +212,8 @@ tmeet
 | `json`（默认） | 单行紧凑 JSON，体积小、便于管道传递 | 模型解析、脚本处理、`jq` 过滤 |
 | `json-pretty` | 多行缩进 JSON，可读性强 | 需要将原始结果直接呈现给用户阅读时 |
 
+> **例外**：`event` 子命令族（`event list` / `event schema` / `event consume` / `event status` / `event stop`）输出的是 **bare JSON**，**不带 `{trace_id, message, data}` 信封**——例如 `event consume` 每行 NDJSON 形如 `{event, trace_id, payload}`，`event list` 直接是 `[{...}, ...]`。具体形态详见 [references/tmeet-event.md](references/tmeet-event.md)。
+
 **使用示例**：
 
 ```bash
@@ -229,7 +249,8 @@ tmeet record list --meeting-id 123456789 --compact --format json-pretty
 
 > **使用准则**：
 > - **查询类命令优先启用**：模型在调用查询/读取类命令时，**默认追加 `--compact`** 以降低上下文占用；
-> - **何时不使用**：当用户明确要求"完整结果"、"原始字段"或需要某个非必要字段时，**不要**使用 `--compact`。
+> - **何时不使用**：当用户明确要求"完整结果"、"原始字段"或需要某个非必要字段时，**不要**使用 `--compact`；
+> - **`event` 子命令族不适用**：`event list` / `event schema` / `event consume` / `event status` / `event stop` 的输出**不经过 compact 中间件**，加 `--compact` 不会有任何精简效果。需要精简事件输出，请改用 `event consume --jq` 做投影。
 
 ### 分页
 
@@ -268,6 +289,12 @@ tmeet record list \
   --page-token "<next_page_token>" \
   --page-size 30 --compact
 ```
+
+## 实时事件订阅（event）
+
+> **调用前置**：`event consume` 是本 skill 唯一的**长跑 + 异步**命令。前台运行必须设上界（`--max-events` / `--timeout` 至少一个为正），后台运行必须带 `--output-dir` 并向用户交代 pid 与停止方式。**Agent 在用户静默期无法主动发言**，若用户要求"事件一到就实时推送"，必须如实说明该限制。
+
+> **首次使用 `event consume` 前必须完整阅读** [`references/tmeet-event.md`](references/tmeet-event.md)：命令语法、参数、何时使用 vs 快照查询、调用流程、运行模式选择、subprocess 契约、红线（登录前置 / `--jq` 前看 schema / 不要 `kill -9` / 多账号切换 / `--output-dir` 路径约束等）、bus 残留自愈流程、错误处理均在其中。
 
 ## 响应处理规则
 
@@ -310,7 +337,7 @@ Agent 应识别以下 5 种场景之一并触发反馈：`tool_not_found`（工�
 - **必须二次确认后再上报**：识别到上述触发条件后，**先向用户展示将要反馈的内容**（包括 `--category`、`--intent`、`--actions-tried`、`--result` 等关键字段），并明确询问用户是否同意上报；**仅在收到用户明确确认（如"确认"、"是"、"yes"等肯定指令）后**才执行 `tmeet tshoot feedback`；若用户拒绝或未明确同意，则不得上报。上报完成后**简要告知用户**「已为您将该问题反馈至平台」。
 - **不替代正常错误处理**：反馈仅用于告知平台，**不得用于绕过用户原始任务**。如仍有可执行的替代方案（如换一个命令、补充参数重试），应**先尝试解决**，无法解决再征询用户是否上报。
 - **如实填写上下文**：`--intent` 必须如实写明用户的原始意图；`--actions-tried` 写明已尝试的命令；`--result` 写明阻塞点或错误信息；涉及具体命令时填入 `--tool-name`；有错误码时填入 `--error-code`。**严禁编造或填充无关内容**。
-- **隐私脱敏强约束**：反馈内容中，**严禁透露用户姓名 / 电话 / 会议号 / 会议链接 / 会议主题 / 参会人**等涉及用户个人隐私的信息。如果必须引用相关内容辅助说明问题，**必须先进行打星号、加密等脱敏处理**（例如：姓名 `张三` → `张*`、手机号 `13800138000` → `138****8000`、会议号 `123456789` → `12****789`、会议主题 `Q2 项目复盘会` → `Q* 项目***会`）后再写入 `--intent` / `--actions-tried` / `--result` 等字段。
+- **隐私脱敏强约束**：反馈内容中，**严禁透露用户姓名 / 电话 / 会议号 / 会议链接 / 会议主题 / 参会人 / 内部身份标识（`OpenID` / `userid` / `open_id` / `ms_open_id` / `uuid` / `instance_id` 等）**等涉及用户个人隐私或系统内部实体的信息。如果必须引用相关内容辅助说明问题，**必须先进行打星号、加密等脱敏处理**（例如：姓名 `张三` → `张*`、手机号 `13800138000` → `138****8000`、会议号 `123456789` → `12****789`、会议主题 `Q2 项目复盘会` → `Q* 项目***会`、OpenID `openid_abc123xyz` → `openid_abc***xyz`）后再写入 `--intent` / `--actions-tried` / `--result` 等字段。
 - **登录前置**：本命令依赖登录态，若用户尚未登录，先引导执行 `tmeet auth login`，登录成功后再发起反馈。
 - **去重与节制**：同一用户会话中针对**同一问题**只上报**一次**，避免重复刷屏；不同问题分别独立上报。
 
@@ -321,3 +348,4 @@ Agent 应识别以下 5 种场景之一并触发反馈：`tool_not_found`（工�
 | `user config is empty` | 未登录 | 执行 `tmeet auth login` |
 | `--start format error` | 时间格式不合法（如缺少时区） | 改用 `2026-03-12T14:00:00+08:00` 格式 |
 | `user has been initialized` | 已登录，重复执行 login | 直接使用，或先 logout 再 login |
+| `event consume` 相关错误（ready 标记不出现 / 退出码 1 / `event stop` 返回 `refused` 等） | — | 见 [`references/tmeet-event.md`](references/tmeet-event.md) «典型故障速查» |

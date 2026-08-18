@@ -81,6 +81,8 @@ Logged in
 Not logged in. Please use 'tmeet auth login' to authenticate.
 ```
 
+> ⚠️ **agent 展示约束**：上文示例中的 `OpenId: xxx` 是脱敏样例；实际 CLI 输出的 `OpenId` 是完整的用户内部标识，属于隐私字段。**agent 向用户复述 `auth status` 结果时，只应传达语义**（如「已登录，AccessToken 剩余 25 天，RefreshToken 剩余 86 天」），**不得原样贴出 `OpenId` 值**（涉及登录 troubleshooting 需上报时也须按 SKILL.md §隐私脱敏强约束 打星号处理）。
+
 ---
 
 ## 常见错误
