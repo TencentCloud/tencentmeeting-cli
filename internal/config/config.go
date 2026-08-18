@@ -28,8 +28,7 @@ type UserConfig struct {
 // Contains only non-sensitive information, used to locate the encrypted file (<open_id>.enc) for the current active user.
 // Supports multi-application scenarios: each application has its own .enc file, identified by ActiveOpenId.
 type AppMeta struct {
-	ActiveOpenId      string `json:"active_open_id"`       // OpenId of the currently active user
-	ActiveAgentOpenId string `json:"active_agent_open_id"` // OpenId of the currently active agent user
+	ActiveOpenId string `json:"active_open_id"` // OpenId of the currently active user
 }
 
 // userConfig is the in-memory cached user configuration to avoid repeated decryption.
@@ -59,12 +58,6 @@ func GetConfigPath() string {
 // GetTokenLockPath 返回 token.lock 的完整路径。
 func GetTokenLockPath() string {
 	return filepath.Join(GetConfigDir(), "token.lock")
-}
-
-// GetAgentTokenLockPath 返回 agent_token.lock 的完整路径，与主账号 token.lock 独立，
-// 互不阻塞。
-func GetAgentTokenLockPath() string {
-	return filepath.Join(GetConfigDir(), "agent_token.lock")
 }
 
 // loadMeta 从 config.json 读取应用元数据。

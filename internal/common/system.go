@@ -3,7 +3,6 @@ package common
 import (
 	"bufio"
 	"crypto/rand"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,14 +11,6 @@ import (
 
 	"tmeet/internal/config"
 )
-
-// BuildUniqueID composes the canonical "<openId>*<machineId>" identifier
-// used by both the REST proxy (Tmeet-Unique-ID header) and the WSS
-// AuthBindReq.cli_uniq_id field.  Centralised here so the two paths can
-// never drift in format.
-func BuildUniqueID(openID, machineID string) string {
-	return fmt.Sprintf("%s*%s", openID, machineID)
-}
 
 // SystemInfo holds system information.
 type SystemInfo struct {

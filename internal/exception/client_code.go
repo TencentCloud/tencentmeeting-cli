@@ -45,28 +45,6 @@ const (
 	// ClientCodeAuthorizationFailed authorization failed error
 	ClientCodeAuthorizationFailed = 3002
 
-	// ClientCodeEventInternal event internal runtime error
-	ClientCodeEventInternal = 4000
-	// ClientCodeEventBus event bus-level error
-	ClientCodeEventBus = 4001
-	// ClientCodeEventBusNotRunning event bus not running error
-	ClientCodeEventBusNotRunning = 4002
-
-	// ClientCodeAgentAlreadyExists agent already exists locally error
-	ClientCodeAgentAlreadyExists = 5000
-	// ClientCodeCreateAgentFailed create agent failed error
-	ClientCodeCreateAgentFailed = 5001
-	// ClientCodeAgentNotFound agent not found locally error
-	ClientCodeAgentNotFound = 5002
-	// ClientCodeDeleteAgentFailed delete agent failed error
-	ClientCodeDeleteAgentFailed = 5003
-	// ClientCodeRefreshAgentTokenFailed refresh agent token failed error
-	ClientCodeRefreshAgentTokenFailed = 5004
-	// ClientCodeAgentTokenExpired agent token expired error (both ak and rk expired)
-	ClientCodeAgentTokenExpired = 5005
-	// ClientCodeAsrDenied ASR failed and bot auto-left the meeting
-	ClientCodeAsrDenied = 5006
-
 	// ClientCodePanic cli process panic error
 	ClientCodePanic = 9000
 )

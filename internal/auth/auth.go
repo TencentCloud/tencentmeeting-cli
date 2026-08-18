@@ -69,7 +69,7 @@ func (w *TmeetAuth) PollingOauth2Result(ctx context.Context, authCode string) (*
 }
 
 // RefreshToken refreshes the token.
-func (w *TmeetAuth) RefreshToken(ctx context.Context, clearFunc config.ClearUserConfigFunc) error {
+func (w *TmeetAuth) RefreshToken(ctx context.Context) error {
 	now := time.Now().Unix()
 	expires := w.tmeet.UserConfig.Expires
 	refreshTokenExpires := w.tmeet.UserConfig.RefreshTokenExpires
@@ -81,7 +81,7 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context, clearFunc config.ClearUser
 	}
 	if refreshTokenExpires <= now {
 		// refresh token expired, delete local credentials
-		if err := clearFunc(); err != nil {
+		if err := config.ClearUserConfig(); err != nil {
 			return err
 		}
 		return exception.UserIdentityExpiredError
@@ -104,7 +104,7 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context, clearFunc config.ClearUser
 		if err != nil {
 			log.Errorf(ctx, "refresh token failed: %v", err)
 			// Delete local config.
-			_ = clearFunc()
+			_ = config.ClearUserConfig()
 			return exception.RefreshTokenFailedError
 		}
 

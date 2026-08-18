@@ -57,39 +57,6 @@ var DefaultHttpClient = &http.Client{
 	Timeout:       3 * time.Second,
 }
 
-// DefaultNoProxyHttpClient is a direct-connection HTTP client that never
-// honours the HTTP(S)_PROXY / ALL_PROXY environment variables (Proxy: nil).
-//
-// It exists as a fallback for callers whose primary request failed while the
-// process still carries a proxy configuration inherited from a now-dead
-// parent (e.g. an agent sandbox that spawned us set HTTP_PROXY pointing at a
-// sidecar which has since been torn down).  In that scenario every request
-// through DefaultHttpClient dials a dead proxy and fails at the network layer;
-// retrying the exact same request via this client bypasses the stale proxy and
-// reaches the origin directly.
-//
-// All other transport tunables mirror DefaultHttpClient so timeout / pool
-// behaviour stays identical between the two paths.
-var DefaultNoProxyHttpClient = &http.Client{
-	Transport: &http.Transport{
-		Proxy: nil,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          200,
-		IdleConnTimeout:       50 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		MaxIdleConnsPerHost:   100,
-		MaxConnsPerHost:       200,
-		ExpectContinueTimeout: time.Second,
-	},
-	CheckRedirect: nil,
-	Jar:           nil,
-	Timeout:       3 * time.Second,
-}
-
 func WithSerializer(serializer serializable.Serializable) ClientOptionFunc {
 	return func(c *client) {
 		c.serializer = serializer
@@ -223,20 +190,13 @@ func (c *client) doRequest(ctx context.Context, req *Request, method string,
 		}
 	}
 
-	// Get the native HTTP client.  A per-request override (req.client, set
-	// via WithRequestClient) takes precedence over the client-level default,
-	// so a caller can retry the same request over a different transport
-	// (e.g. a direct-connection client) without mutating the shared client.
-	clt := c.clt
-	if req.client != nil {
-		clt = req.client
-	}
-	if clt == nil {
-		clt = http.DefaultClient
+	// Get the native HTTP client.
+	if c.clt == nil {
+		c.clt = http.DefaultClient
 	}
 
 	// Send the request.
-	httpRsp, err := clt.Do(httpReq)
+	httpRsp, err := c.clt.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

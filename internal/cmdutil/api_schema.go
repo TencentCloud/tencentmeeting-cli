@@ -37,10 +37,6 @@ const (
 	ApiCmdMeetingSearch = "meeting_search"
 	// ApiCmdMeetingUpdate apiCmd meeting_update
 	ApiCmdMeetingUpdate = "meeting_update"
-	// ApiCmdMeetingJoinAsAgent apiCmd meeting_join_as_agent (agent joins a meeting to listen and auto-enable ASR)
-	ApiCmdMeetingJoinAsAgent = "meeting_join_as_agent"
-	// ApiCmdMeetingLeaveAsAgent apiCmd meeting_leave_as_agent (agent leaves a meeting)
-	ApiCmdMeetingLeaveAsAgent = "meeting_leave_as_agent"
 
 	// ApiCmdRecordAddress apiCmd record_address
 	ApiCmdRecordAddress = "record_address"

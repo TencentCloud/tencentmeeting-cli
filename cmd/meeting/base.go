@@ -36,10 +36,6 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newInviteesRemoveCmd(tmeet),
 		// Replace meeting invitees
 		newInviteesReplaceCmd(tmeet),
-		// Join as agent: agent joins a meeting to listen and auto-enable real-time transcription
-		newJoinAsAgentCmd(tmeet),
-		// Leave as agent: agent leaves a meeting it previously joined
-		newLeaveAsAgentCmd(tmeet),
 	)
 	return cmd
 }
