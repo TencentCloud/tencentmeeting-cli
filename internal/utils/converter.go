@@ -204,9 +204,12 @@ func Base64DecodeConverter(value interface{}) interface{} {
 	}
 	decoded, err := base64.StdEncoding.DecodeString(str)
 	if err != nil || !utf8.Valid(decoded) {
-		// Fall back to raw URL-safe Base64 (no padding); some backends use
-		// URL-safe encoding without padding.
-		decoded, err = base64.RawURLEncoding.DecodeString(str)
+		// Fall back to URL-safe Base64. Some backends keep padding while others
+		// omit it, so support both variants before giving up.
+		decoded, err = base64.URLEncoding.DecodeString(str)
+		if err != nil || !utf8.Valid(decoded) {
+			decoded, err = base64.RawURLEncoding.DecodeString(str)
+		}
 		if err != nil || !utf8.Valid(decoded) {
 			return value
 		}
