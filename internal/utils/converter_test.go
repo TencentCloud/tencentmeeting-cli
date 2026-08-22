@@ -637,6 +637,11 @@ func TestBase64DecodeConverter(t *testing.T) {
 			want:  "hello>world",
 		},
 		{
+			name:  "URL-safe Base64 无填充解码",
+			input: "aGVsbG8_d29ybGQ", // URL-safe 编码 (no padding)
+			want:  "hello?world",
+		},
+		{
 			name:  "非 Base64 字符串原样返回",
 			input: "not-base64-!!!",
 			want:  "not-base64-!!!",
