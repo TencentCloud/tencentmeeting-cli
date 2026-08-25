@@ -18,6 +18,10 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newListCmd(tmeet),
 		// Get record download address
 		newAddressCmd(tmeet),
+		// Get record sharing settings
+		newSettingsGetCmd(tmeet),
+		// Download a recording file from the official download address
+		newDownloadCmd(tmeet),
 		// Search records
 		newSearchCmd(tmeet),
 		// Get smart minutes
