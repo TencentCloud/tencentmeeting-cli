@@ -2,6 +2,40 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.16] - 2026-09-02
+
+### Added
+
+- **New `minute` subcommand group** (`cmd/minute/`): Yuanbao meeting-minutes capabilities — search across meetings by keyword / time range, and retrieve full minute detail (steady-state or rolling transient) by minute ID / meeting ID / meeting code.
+  - `minute search` (`cmd/minute/search.go`) — Search Yuanbao minutes by keyword and/or time range. All filter parameters are optional and freely combinable. Backed by `GET /v1/mcp/asr/search-minutes-mcp` and wired through `WithApiCmd(ApiCmdMinuteSearch)`.
+    - `--query` — Search keyword; bounded by `maxQueryLen = 50` runes and validated via `utils.CharacterLimit`.
+    - `--start` / `--end` — ISO 8601 window bounds. `--start >= --end` is rejected client-side with `InvalidArgsError`.
+    - `--page-token` / `--page-size` (default `20`, max `50`, capped via `cmdutil.ClampingPageSize` + `pageSizeMaxMinutes`) — Standard pagination.
+    - Response is post-processed with `WithTotalCountLogic`.
+  - `minute get` (`cmd/minute/get.go`) — Query Yuanbao minute detail by minute ID, meeting ID, or meeting code. Supports two modes via the `--short-summary` flag, resolved at runtime by `FlagSwitchWithDefault` into either `ApiCmdMinuteGet` (stable) or `ApiCmdMinuteGetTransient` (transient).
+    - **Stable mode** (default): Fetches steady-state minutes via `GET /v1/mcp/asr/get-minutes-mcp`. Accepts `--minute-id`, `--meeting-id`, or `--meeting-code` (three-way choice); `--meeting-code` is automatically resolved to `meeting_id` via `GET /v1/meetings`. Supports `--sub-meeting-id` for recurring meetings, `--overview` / `--summary-points` / `--todos` content toggles (all default `true`), and `--page-token` / `--page-size` (default `10`, max `30`) pagination.
+    - **Transient mode** (`--short-summary`): Fetches rolling (transient) minutes via `GET /v1/mcp/asr/get-transient-minutes-mcp`. Requires `--minute-id`. Automatically loops through all pages (up to `maxPages = 100`) using `next_page_token`, merging all `items` into a single response with `has_more: false`. Page size defaults to `100`, max `300`.
+- **Meeting list enriched with Yuanbao minute summary** (`cmd/meeting/minute_enrich.go`): `meeting get`, `meeting list`, `meeting list-ended`, and `meeting search` now automatically enrich each meeting object with `minute_total_count` and a `minutes` array (minute ID, start time, overview) by calling `POST /v1/mcp/asr/get-meeting-minutes-summary-mcp` after the meeting query completes. The enrichment is best-effort — on any failure the original data is returned unchanged so meeting output is never blocked by minute query errors.
+  - `enrichMeetingsWithMinutes()` collects `meeting_id` (and optionally `sub_meeting_id`) from the meeting list, batch-queries the minutes summary API, and merges results back into each meeting object.
+  - `normalizeMinutes()` converts `minute_start_time` from unix timestamp to human-readable `YYYY-MM-DD HH:MM` format in-place, handling both second-level and millisecond-level timestamps.
+  - Under `--compact`, the client-side injected `minutes` / `minute_total_count` fields are preserved via the new `compactFieldsWithAllEnrichments()` (`cmd/meeting/enrich.go`), which merges both `recordEnrichmentFields` and `minuteEnrichmentFields` into the remote schema whitelist.
+- **New `agent_init.py` script for agent identity initialization** (`skills/tmeet-skill/scripts/agent_init.py`): A standalone Python script that atomically writes `agent.json` (AI-Agent name + LLM model) to the tmeet config directory. Resolves config dir from `TMEET_CLI_CONFIG_DIR` env var with `~/.tmeet/` fallback. Uses tmp-file + `os.replace` for atomic writes, mirrors the Go implementation's behavior. Replaces the previous `TMEET_AGENT` / `TMEET_MODEL` environment-variable approach that was wired into `auth login`.
+- **New ApiCmd constants** (`internal/cmdutil/api_schema.go`): `ApiCmdMinuteSearch`, `ApiCmdMinuteGet`, `ApiCmdMinuteGetTransient` — so the new minute commands plug into the `--compact` and middleware pipeline.
+
+### Changed
+
+- **Agent identity initialization decoupled from `auth login`** (`cmd/auth/login.go`): The `TMEET_AGENT` / `TMEET_MODEL` environment-variable reading and `config.SaveAgentConfig()` call have been removed from the login flow. Agent identity is now managed externally via `scripts/agent_init.py`, which the SKILL instructs the model to run silently at the start of each new session or on model switch. This decoupling means agent identity can be updated without re-login, and login no longer has a side-effect dependency on environment variables.
+- **`compactFieldsWithRecords` replaced by `compactFieldsWithAllEnrichments`** (`cmd/meeting/enrich.go`, `cmd/meeting/record_enrich.go`): The per-enrichment `compactFieldsWithRecords()` helper has been removed from `record_enrich.go` and replaced by a unified `compactFieldsWithAllEnrichments()` in the new `enrich.go`, which merges both `recordEnrichmentFields` and `minuteEnrichmentFields` into the compact whitelist. `meeting list`, `meeting list-ended`, and `meeting search` now call `compactFieldsWithAllEnrichments()` instead of `compactFieldsWithRecords()`.
+- **`package.json` version bumped to `v1.0.15`** (`package.json`): npm package version updated from `v1.0.14` to `v1.0.15`.
+- **SKILL bumped to 1.0.16 with Yuanbao minutes routing and agent-init overhaul** (`skills/tmeet-skill/SKILL.md`, `skills/tmeet-skill/references/tmeet-minute.md`, `skills/tmeet-skill/references/tmeet-auth.md`):
+  - **New `minute` command group in command tree**: `minute search` and `minute get` added to the command overview with a link to the new `references/tmeet-minute.md`.
+  - **New "元宝纪要查询" routing section in SKILL.md**: A comprehensive decision table distinguishing "known meeting" (permission-based routing: `can_view` → `record smart-minutes`, otherwise → `minute get`) from "cross-meeting content search" (dual-path: `minute search` + `record search --query-field transcript_content`). Includes explicit rules for dual-search fallback, source labeling, and terminology discipline ("元宝纪要" vs "智能纪要").
+  - **New "纪要 vs 录制" disambiguation table**: Inserted above the existing "查询命令选择准则" to route "纪要/总结/要点/待办" requests to the correct pipeline before the user's query is misclassified as a meeting-metadata query.
+  - **New `references/tmeet-minute.md`**: Full reference doc for the `minute` command group — routing guidelines, `search` / `get` parameter tables, response field tables, stable vs transient mode documentation, typical workflows, and terminology rules.
+  - **Agent-init guidance rewritten**: The `TMEET_AGENT` / `TMEET_MODEL` environment-variable instruction replaced with a `python3 ./scripts/agent_init.py --agent ... --model ...` invocation rule — must run silently at session start or model switch, failure is ignored, same combination is not repeated.
+  - **`tmeet-auth.md` updated**: Agent identity note changed from env-var approach to `agent_init.py` script invocation.
+- **README sync** (`README.md` / `README_EN.md`): Command tree updated with `minute search` / `minute get`; pagination quick-reference table extended with `minute search` (default 20, max 50) and `minute get` (default 10, max 30); full parameter tables and usage examples added for both commands in both Chinese and English READMEs.
+
 ## [v1.0.15] - 2026-08-07
 
 ### Added
