@@ -86,6 +86,13 @@ const (
 	ApiCmdTshootLogUpload = "tshoot_log_upload"
 	// ApiCmdTshootFeedback apiCmd tshoot_feedback
 	ApiCmdTshootFeedback = "tshoot_feedback"
+
+	// ApiCmdMinuteSearch apiCmd minute_search
+	ApiCmdMinuteSearch = "minute_search"
+	// ApiCmdMinuteGet apiCmd minute_get
+	ApiCmdMinuteGet = "minute_get"
+	// ApiCmdMinuteGetTransient apiCmd minute_get_transient
+	ApiCmdMinuteGetTransient = "minute_get_transient"
 )
 
 // APISchema defines the api schema.
