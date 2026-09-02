@@ -118,6 +118,9 @@ func (o *SearchOptions) Run(cmd *cobra.Command, args []string) error {
 	// Enrich each meeting with its recording basic info.
 	rsp.Data = string(enrichMeetingsWithRecords(cmd.Context(), o.tmeet, []byte(rsp.Data), "meetings", true))
 
+	// Enrich each meeting with its Yuanbao minute summary.
+	rsp.Data = string(enrichMeetingsWithMinutes(cmd.Context(), o.tmeet, []byte(rsp.Data), "meetings", true))
+
 	convertMap := map[string]utils.FieldConverter{
 		"meetings.meeting_type":    utils.MeetingTypeConverter,
 		"meetings.status":          utils.MeetingStatusInSearchConverter,
@@ -126,7 +129,7 @@ func (o *SearchOptions) Run(cmd *cobra.Command, args []string) error {
 		"meetings.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithCompact(compactFieldsWithRecords(cmd.Context())),
+		output.WithCompact(compactFieldsWithAllEnrichments(cmd.Context())),
 		output.WithConvert(convertMap),
 		output.WithTotalCountLogic())
 	return nil

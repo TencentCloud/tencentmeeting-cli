@@ -155,6 +155,8 @@ tmeet record list \
 | `record search` | 30  | 30 | — |
 | `report participants` | 100 | 100 | `--pos` / `--size` |
 | `report waiting-room-log` | 100 | 100 | `--page` |
+| `minute search` | 20  | 50 | — |
+| `minute get` | 10  | 30 | — |
 
 > `record transcript-get` / `record transcript-paragraphs` / `record transcript-search` 暂不支持基于 `--page-token` 的新分页方案。
 >
@@ -205,6 +207,9 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── call           # 呼叫成员入会（会中邀请呼叫）
 │   ├── kick           # 将成员踢出会议（会中踢人）
 │   └── waiting-room   # 等候室管理（移入会议/移回等候室/移出）
+├── minute
+│   ├── search         # 按关键词/时间搜索元宝纪要
+│   └── get            # 查询元宝纪要详情
 └── tshoot
     ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
     └── feedback          # 上报问题排查反馈到服务器
@@ -1299,6 +1304,96 @@ tmeet control kick \
   --meeting-id "6953553464429888300" \
   --allow-rejoin=false \
   --users "open_id1,open_id2"
+```
+
+---
+
+### minute — 元宝纪要
+
+#### `minute search` — 搜索元宝纪要
+
+按关键词、时间范围搜索元宝纪要。所有过滤参数均为可选，可任意组合。
+
+```bash
+tmeet minute search [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--query` | string | ❌ | — | 搜索关键词，最多 50 字 |
+| `--start` | string | ❌ | — | 搜索时间下界（ISO 8601，如 `2026-03-12T14:00+08:00`） |
+| `--end` | string | ❌ | — | 搜索时间上界（ISO 8601，如 `2026-03-12T14:00+08:00`） |
+| `--page-token` | string | ❌ | — | 分页游标，首页不传；翻页时传入上一次响应的 `next_page_token` |
+| `--page-size` | int | ❌ | `20` | 每页大小，默认 20，最大 50 |
+
+**示例：**
+
+```bash
+# 按关键词搜索
+tmeet minute search --query "季度目标"
+
+# 按时间范围搜索
+tmeet minute search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# 关键词 + 时间范围组合搜索
+tmeet minute search \
+  --query "项目评审" \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# 翻下一页
+tmeet minute search \
+  --query "项目评审" \
+  --page-token "<next_page_token>" --page-size 20
+```
+
+---
+
+#### `minute get` — 查询元宝纪要详情
+
+通过纪要 ID 或会议 ID 查询元宝纪要详情。`--minute-id`、`--meeting-id` 二选一。
+
+```bash
+tmeet minute get (--minute-id <纪要ID> | --meeting-id <会议ID>) [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--minute-id` | string | 二选一 | — | 纪要唯一标识 |
+| `--meeting-id` | string | 二选一 | — | 会议 ID（周期级），需配合 `--sub-meeting-id` 定位实例 |
+| `--sub-meeting-id` | string | — | — | 子会议 ID（周期会议实例）；非周期会议不传 |
+| `--overview` | bool | — | `true` | 是否获取会议概览 |
+| `--summary-points` | bool | — | `true` | 是否获取要点 |
+| `--todos` | bool | — | `true` | 是否获取待办 |
+| `--short-summary` | bool | — | `false` | 是否获取滚动总结历史序列 |
+| `--page-token` | string | — | — | 分页游标，当一个 `meeting_id` 返回多份纪要时可用 |
+| `--page-size` | int | — | `10` | 每页大小，默认 10，最大 30 |
+
+**示例：**
+
+```bash
+# 按纪要 ID 查询
+tmeet minute get --minute-id "minute_abc123"
+
+# 按会议 ID 查询
+tmeet minute get --meeting-id "6953553464429888300"
+
+# 按会议 ID + 子会议 ID 查询（周期性会议）
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --sub-meeting-id "100001"
+
+# 仅获取概览和待办，不获取要点
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --summary-points=false
+
+# 翻下一页（当一个会议有多份纪要时）
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --page-token "<next_page_token>" --page-size 10
 ```
 
 ---

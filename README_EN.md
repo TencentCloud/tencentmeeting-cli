@@ -155,6 +155,8 @@ tmeet record list \
 | `record search` |   30    | 30 | — |
 | `report participants` |   100   | 100 | `--pos` / `--size` |
 | `report waiting-room-log` |   100   | 100 | `--page` |
+| `minute search` |   20    | 50 | — |
+| `minute get` |   10    | 30 | — |
 
 > `record transcript-get` / `record transcript-paragraphs` / `record transcript-search` do not support the new `--page-token` based pagination.
 >
@@ -205,6 +207,9 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── call           # Call members into the meeting (in-meeting invite call)
 │   ├── kick           # Kick members out of the meeting (in-meeting kick-out)
 │   └── waiting-room   # Waiting room management (admit / send back / expel)
+├── minute
+│   ├── search         # Search Yuanbao minutes by keyword/time range
+│   └── get            # Get Yuanbao minutes detail
 └── tshoot
     ├── log            # Export local logs (supports time range filter, optional --upload to server)
     └── feedback       # Report troubleshooting feedback to the server
@@ -1299,6 +1304,96 @@ tmeet control kick \
   --meeting-id "6953553464429888300" \
   --allow-rejoin=false \
   --users "open_id1,open_id2"
+```
+
+---
+
+### minute — Yuanbao Minutes
+
+#### `minute search` — Search Yuanbao Minutes
+
+Search Yuanbao minutes by keyword and/or time range. All filter parameters are optional and can be combined freely.
+
+```bash
+tmeet minute search [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--query` | string | ❌ | — | Search keyword, max 50 characters |
+| `--start` | string | ❌ | — | Lower bound of search time window (ISO 8601, e.g. `2026-03-12T14:00+08:00`) |
+| `--end` | string | ❌ | — | Upper bound of search time window (ISO 8601, e.g. `2026-03-12T14:00+08:00`) |
+| `--page-token` | string | ❌ | — | Pagination cursor; omit for the first page, pass the previous response's `next_page_token` for subsequent pages |
+| `--page-size` | int | ❌ | `20` | Page size, default 20, max 50 |
+
+**Examples:**
+
+```bash
+# Search by keyword
+tmeet minute search --query "quarterly goals"
+
+# Search by time range
+tmeet minute search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# Keyword + time range combined search
+tmeet minute search \
+  --query "project review" \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
+# Next page
+tmeet minute search \
+  --query "project review" \
+  --page-token "<next_page_token>" --page-size 20
+```
+
+---
+
+#### `minute get` — Get Yuanbao Minutes Detail
+
+Query Yuanbao minutes detail by minute ID or meeting ID. One of `--minute-id` or `--meeting-id` is required.
+
+```bash
+tmeet minute get (--minute-id <ID> | --meeting-id <ID>) [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--minute-id` | string | One of two | — | Minute unique identifier |
+| `--meeting-id` | string | One of two | — | Meeting ID (cycle-level), requires `--sub-meeting-id` for recurring meeting instance |
+| `--sub-meeting-id` | string | ❌ | — | Sub-meeting ID (recurring meeting instance); omit for non-recurring meetings |
+| `--overview` | bool | ❌ | `true` | Include meeting overview |
+| `--summary-points` | bool | ❌ | `true` | Include summary points |
+| `--todos` | bool | ❌ | `true` | Include todos |
+| `--short-summary` | bool | ❌ | `false` | Include rolling summary history sequence |
+| `--page-token` | string | ❌ | — | Pagination cursor; used when one `meeting_id` returns multiple minutes |
+| `--page-size` | int | ❌ | `10` | Page size, default 10, max 30 |
+
+**Examples:**
+
+```bash
+# Get by minute ID
+tmeet minute get --minute-id "minute_abc123"
+
+# Get by meeting ID
+tmeet minute get --meeting-id "6953553464429888300"
+
+# Get by meeting ID + sub-meeting ID (recurring meeting)
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --sub-meeting-id "100001"
+
+# Only get overview and todos, skip summary points
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --summary-points=false
+
+# Next page (when one meeting has multiple minutes)
+tmeet minute get \
+  --meeting-id "6953553464429888300" \
+  --page-token "<next_page_token>" --page-size 10
 ```
 
 ---
