@@ -84,6 +84,9 @@ func (o *GetOptions) Run(cmd *cobra.Command, args []string) error {
 	// Enrich meeting with full recording snapshot via paginated API.
 	rsp.Data = string(enrichMeetingWithFullRecords(cmd.Context(), o.tmeet, []byte(rsp.Data), "meeting_info_list"))
 
+	// Enrich each meeting with its Yuanbao minute summary.
+	rsp.Data = string(enrichMeetingsWithMinutes(cmd.Context(), o.tmeet, []byte(rsp.Data), "meeting_info_list", false))
+
 	convertMap := map[string]utils.FieldConverter{
 		"start_time":                        utils.TimestampConverter,
 		"end_time":                          utils.TimestampConverter,

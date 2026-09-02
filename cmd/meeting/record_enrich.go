@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"tmeet/internal"
-	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/log"
 	restProxy "tmeet/internal/proxy/rest-proxy"
@@ -311,22 +310,6 @@ func fetchFullRecordBasicInfo(ctx context.Context, tmeet *internal.Tmeet, meetin
 // subtree, so subject / url / state / media_start_time etc. are all retained
 // without a sub-field list.
 var recordEnrichmentFields = []string{"records", "records_total_count"}
-
-// compactFieldsWithRecords returns the remote compact whitelist from ctx with
-// recordEnrichmentFields appended, so the client-side injected record subtree
-// survives output.WithCompact trimming (the remote schema does not know about
-// those fields).
-//
-// The result is always a freshly allocated slice: the slice returned by
-// middleware.GetCompactFields is backed by ctx and shared across callers, so
-// appending to it in place could corrupt other readers.
-func compactFieldsWithRecords(ctx context.Context) []string {
-	base := middleWare.GetCompactFields(ctx)
-	merged := make([]string, 0, len(base)+len(recordEnrichmentFields))
-	merged = append(merged, base...)
-	merged = append(merged, recordEnrichmentFields...)
-	return merged
-}
 
 // normalizeRecords ensures the records slice is never nil so every meeting
 // always emits a records array in the output. It also renames the API's
