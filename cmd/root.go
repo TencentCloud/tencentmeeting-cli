@@ -7,6 +7,7 @@ import (
 	"tmeet/cmd/contact"
 	"tmeet/cmd/control"
 	"tmeet/cmd/meeting"
+	"tmeet/cmd/minute"
 	"tmeet/cmd/record"
 	"tmeet/cmd/report"
 	"tmeet/cmd/tshoot"
@@ -107,6 +108,8 @@ func Execute() (exitCode int) {
 	rootCmd.AddCommand(record.NewBaseCmd(tmeet))
 	// Add subcommand: control
 	rootCmd.AddCommand(control.NewBaseCmd(tmeet))
+	// Add subcommand: minute
+	rootCmd.AddCommand(minute.NewBaseCmd(tmeet))
 	// Add subcommand: tshoot
 	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
