@@ -210,9 +210,12 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── minute
 │   ├── search         # Search Yuanbao minutes by keyword/time range
 │   └── get            # Get Yuanbao minutes detail
-└── tshoot
-    ├── log            # Export local logs (supports time range filter, optional --upload to server)
-    └── feedback       # Report troubleshooting feedback to the server
+├── tshoot
+│   ├── log            # Export local logs (supports time range filter, optional --upload to server)
+│   └── feedback       # Report troubleshooting feedback to the server
+└── app
+    ├── get            # Get current CLI app info
+    └── set            # Set current CLI app info
 ```
 
 ---
@@ -1480,6 +1483,54 @@ tmeet tshoot feedback \
 ```
 
 > This command requires login.
+
+---
+
+### app — Application Info
+
+Manage the current CLI app integration info (homepage, in-meeting open layout, and SDK name).
+
+#### `app get` — Get App Info
+
+Query the current CLI app integration info.
+
+```bash
+tmeet app get
+```
+
+> No parameters.
+
+---
+
+#### `app set` — Set App Info
+
+Set the current CLI app integration info. At least one of `--homepage` / `--layout-style` / `--sdk-name` must be provided; only the fields you pass will be updated.
+
+```bash
+tmeet app set [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--homepage` | string | one of three | — | App homepage URL; must use `http://` or `https://`; when `https://` is used, the address must have an SSL/TLS certificate **trusted by the local machine**, otherwise opening it in the meeting will be blocked; up to **200 characters**.<br/>⚠️ Tencent Meeting client versions **prior to 3.45.10 do not support opening `http://` pages** — only `https://` is supported; version 3.45.10 and later support both. If the target user's client version cannot be confirmed, prefer `https://` |
+| `--layout-style` | string | one of three | server default `sidebar` | In-meeting open layout: `sidebar` (narrow sidebar) \| `wide_sidebar` (wide sidebar) \| `popout` (standalone popout window). **When this flag is omitted, the CLI does not send the field**: if the server has no existing value, it defaults to `sidebar`; if a value is already set, it is left unchanged |
+| `--sdk-name` | string | one of three | — | App SDK name; up to **20 in display width** (ASCII counts as 1, non-ASCII such as Chinese counts as 2) |
+
+**Examples:**
+
+```bash
+# Set the app homepage URL
+tmeet app set --homepage "https://example.com"
+
+# Set the in-meeting open layout to a standalone popout window
+tmeet app set --layout-style popout
+
+# Set the SDK name
+tmeet app set --sdk-name "my-sdk"
+
+# Set multiple fields at once
+tmeet app set --homepage "https://example.com" --layout-style wide_sidebar --sdk-name "my-sdk"
+```
 
 ---
 
