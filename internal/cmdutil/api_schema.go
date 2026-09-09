@@ -93,6 +93,11 @@ const (
 	ApiCmdMinuteGet = "minute_get"
 	// ApiCmdMinuteGetTransient apiCmd minute_get_transient
 	ApiCmdMinuteGetTransient = "minute_get_transient"
+
+	// ApiCmdAppInfoSet apiCmd app_info_set
+	ApiCmdAppInfoSet = "app_info_set"
+	// ApiCmdAppInfoGet apiCmd app_info_get
+	ApiCmdAppInfoGet = "app_info_get"
 )
 
 // APISchema defines the api schema.

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 	"tmeet/internal/exception"
@@ -66,6 +67,26 @@ func ValidateEmail(email string) error {
 	// domain must contain dot and cannot start/end with dot
 	if !emailRegex.MatchString(email) {
 		return exception.InvalidArgsError.With("invalid email format: %q", email)
+	}
+	return nil
+}
+
+// ValidateURL validates URL format. The scheme must be http or https, and
+// other parts are parsed according to the standard URL specification.
+func ValidateURL(rawURL string) error {
+	if rawURL == "" {
+		return exception.InvalidArgsError.With("invalid URL format: url cannot be empty")
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return exception.InvalidArgsError.With("invalid URL format: %q, %s", rawURL, err.Error())
+	}
+	if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
+		return exception.InvalidArgsError.With(
+			"invalid URL format: %q, scheme must be http or https", rawURL)
+	}
+	if u.Host == "" {
+		return exception.InvalidArgsError.With("invalid URL format: %q, host cannot be empty", rawURL)
 	}
 	return nil
 }

@@ -210,9 +210,12 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── minute
 │   ├── search         # 按关键词/时间搜索元宝纪要
 │   └── get            # 查询元宝纪要详情
-└── tshoot
-    ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
-    └── feedback          # 上报问题排查反馈到服务器
+├── tshoot
+│   ├── log               # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
+│   └── feedback          # 上报问题排查反馈到服务器
+└── app
+    ├── get            # 获取当前 CLI 应用信息
+    └── set            # 设置当前 CLI 应用信息
 ```
 
 ---
@@ -1483,6 +1486,54 @@ tmeet tshoot feedback \
 
 ---
 
+### app — 应用信息
+
+管理当前 CLI 应用的接入信息（首页地址、会中打开布局、SDK 名称）。
+
+#### `app get` — 获取应用信息
+
+查询当前 CLI 应用的接入信息。
+
+```bash
+tmeet app get
+```
+
+> 无参数。
+
+---
+
+#### `app set` — 设置应用信息
+
+设置当前 CLI 应用的接入信息。至少需要指定 `--homepage` / `--layout-style` / `--sdk-name` 中的一个，仅传入的字段会被更新。
+
+```bash
+tmeet app set [options]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--homepage` | string | 三选一 | — | 应用首页 URL；必须使用 `http://` 或 `https://`；`https://` 时该地址需拥有**被本机信任**的 SSL/TLS 证书，否则会中打开会被拦截；长度上限 **200 个字符**。<br/>⚠️ 腾讯会议客户端 **3.45.10 之前的版本不支持打开 `http://` 页面**，仅支持 `https://`；3.45.10 及以后版本两者均支持。若无法确认目标用户的客户端版本，建议优先使用 `https://` |
+| `--layout-style` | string | 三选一 | 服务端默认 `sidebar` | 会中打开布局：`sidebar`（窄侧边栏）\| `wide_sidebar`（宽侧边栏）\| `popout`（独立弹窗）。**未传该参数时 CLI 不下发该字段**：若服务端当前无值则由服务端置为 `sidebar`，若已有值则保持不变 |
+| `--sdk-name` | string | 三选一 | — | 应用 SDK 名称；长度上限 **20（按显示宽度计算：ASCII 计 1，非 ASCII 如中文计 2）** |
+
+**示例：**
+
+```bash
+# 设置应用首页地址
+tmeet app set --homepage "https://example.com"
+
+# 设置会中打开布局为独立弹窗
+tmeet app set --layout-style popout
+
+# 设置 SDK 名称
+tmeet app set --sdk-name "my-sdk"
+
+# 同时设置多个字段
+tmeet app set --homepage "https://example.com" --layout-style wide_sidebar --sdk-name "my-sdk"
+```
+
+---
+
 ## 安全与风险提示（使用前必读）
 
 ---
@@ -1490,7 +1541,7 @@ tmeet tshoot feedback \
 
 **请您充分理解并接受上述风险后再使用本工具，安装使用CLI后即视为您自愿承担相关责任。**
 
-
+---
 
 ## 配置说明
 

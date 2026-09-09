@@ -243,3 +243,125 @@ func TestValidateEmail(t *testing.T) {
 		})
 	}
 }
+
+// TestValidateURL tests ValidateURL function with various URL formats
+func TestValidateURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantError bool
+	}{
+		{
+			name:      "valid https URL",
+			input:     "https://example.com",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with path",
+			input:     "https://example.com/path/to/resource",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with query string",
+			input:     "https://example.com/search?q=go&page=1",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with port",
+			input:     "https://example.com:8443/api",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with fragment",
+			input:     "https://example.com/docs#section-1",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with userinfo",
+			input:     "https://user:pass@example.com/path",
+			wantError: false,
+		},
+		{
+			name:      "valid https URL with subdomain",
+			input:     "https://api.sub.example.com/v1/resource",
+			wantError: false,
+		},
+		{
+			name:      "valid HTTPS URL uppercase scheme",
+			input:     "HTTPS://example.com",
+			wantError: false,
+		},
+		{
+			name:      "valid mixed case HttpS scheme",
+			input:     "HttpS://example.com",
+			wantError: false,
+		},
+		{
+			name:      "valid http URL",
+			input:     "http://example.com",
+			wantError: false,
+		},
+		{
+			name:      "valid http URL with path",
+			input:     "http://example.com/path/to/resource",
+			wantError: false,
+		},
+		{
+			name:      "valid HTTP URL uppercase scheme",
+			input:     "HTTP://example.com",
+			wantError: false,
+		},
+		{
+			name:      "empty string",
+			input:     "",
+			wantError: true,
+		},
+		{
+			name:      "ftp scheme not allowed",
+			input:     "ftp://example.com/file.txt",
+			wantError: true,
+		},
+		{
+			name:      "ws scheme not allowed",
+			input:     "ws://example.com/socket",
+			wantError: true,
+		},
+		{
+			name:      "missing scheme",
+			input:     "example.com",
+			wantError: true,
+		},
+		{
+			name:      "missing host",
+			input:     "https:///path",
+			wantError: true,
+		},
+		{
+			name:      "malformed URL with control character",
+			input:     "https://exa\x7fmple.com",
+			wantError: true,
+		},
+		{
+			name:      "scheme only without host",
+			input:     "https://",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateURL(tt.input)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("ValidateURL(%q) expected error but got none", tt.input)
+					return
+				}
+				if !exception.Is(err, exception.InvalidArgsError) {
+					t.Errorf("ValidateURL(%q) expected InvalidArgsError, but got: %v", tt.input, err)
+				}
+			} else if err != nil {
+				t.Errorf("ValidateURL(%q) unexpected error: %v", tt.input, err)
+			}
+		})
+	}
+}

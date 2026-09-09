@@ -161,10 +161,10 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	// setting parameters
 	settings := make(map[string]interface{}, 0)
-	if o.OnlyUserJoinType > 0 {
+	if cmd.Flags().Changed("join-type") {
 		settings["only_user_join_type"] = o.OnlyUserJoinType
 	}
-	if o.AutoInWaitingRoom {
+	if cmd.Flags().Changed("waiting-room") {
 		settings["auto_in_waiting_room"] = o.AutoInWaitingRoom
 	}
 	if cmd.Flags().Changed("water-mark-type") {

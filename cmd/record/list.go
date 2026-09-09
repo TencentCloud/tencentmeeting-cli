@@ -1,6 +1,7 @@
 package record
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"tmeet/internal"
@@ -119,6 +120,12 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Copy the raw state code into a sibling "state_int" field.
+	rsp.Data = copyStateRaw(rsp.Data)
+
+	compactFields := middleWare.GetCompactFields(cmd.Context())
+	compactFields = append(compactFields, "state_int")
+
 	convertMap := map[string]utils.FieldConverter{
 		"media_start_time":  utils.TimestampConverter,
 		"record_start_time": utils.TimestampConverter,
@@ -127,8 +134,39 @@ func (o *ListOptions) Run(cmd *cobra.Command, args []string) error {
 		"record_type":       utils.RecordTypeConverter,
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
-		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithCompact(compactFields),
 		output.WithConvert(convertMap),
 		output.WithTotalCountLogic())
 	return nil
+}
+
+// copyStateRaw walks the whole JSON tree and copies the raw value of every
+// "state" field into a sibling "state_int" field.
+func copyStateRaw(data string) string {
+	var root interface{}
+	if err := json.Unmarshal([]byte(data), &root); err != nil {
+		return data
+	}
+	copyStateIntRecursive(root)
+	out, err := json.Marshal(root)
+	if err != nil {
+		return data
+	}
+	return string(out)
+}
+
+func copyStateIntRecursive(node interface{}) {
+	switch v := node.(type) {
+	case map[string]interface{}:
+		if state, ok := v["state"]; ok {
+			v["state_int"] = state
+		}
+		for _, child := range v {
+			copyStateIntRecursive(child)
+		}
+	case []interface{}:
+		for _, item := range v {
+			copyStateIntRecursive(item)
+		}
+	}
 }

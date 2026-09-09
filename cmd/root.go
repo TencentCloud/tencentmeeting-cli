@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"tmeet/cmd/app"
 	"tmeet/cmd/auth"
 	"tmeet/cmd/contact"
 	"tmeet/cmd/control"
@@ -112,6 +113,8 @@ func Execute() (exitCode int) {
 	rootCmd.AddCommand(minute.NewBaseCmd(tmeet))
 	// Add subcommand: tshoot
 	rootCmd.AddCommand(tshoot.NewBaseCmd(tmeet))
+	// Add subcommand: app
+	rootCmd.AddCommand(app.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
 	if err != nil {
 		log.Errorf(rootCmd.Context(), "execute failed: %v", err)
