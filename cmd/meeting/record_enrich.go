@@ -226,8 +226,10 @@ func enrichMeetingWithFullRecords(ctx context.Context, tmeet *internal.Tmeet, da
 			log.Warnf(ctx, "enrichMeetingWithFullRecords: %s[%d] missing meeting_id, skip", meetingInfoPath, idx)
 			continue
 		}
+		startTime := parseUnixSeconds(m["start_time"])
+		endTime := parseUnixSeconds(m["end_time"])
 
-		ri, err := fetchFullRecordBasicInfo(ctx, tmeet, meetingID)
+		ri, err := fetchFullRecordBasicInfo(ctx, tmeet, meetingID, startTime, endTime)
 		if err != nil {
 			log.Errorf(ctx, "enrichMeetingWithFullRecords: fetch failed for meeting_id=%s: %v", meetingID, err)
 			m["records_total_count"] = 0
@@ -254,7 +256,7 @@ func enrichMeetingWithFullRecords(ctx context.Context, tmeet *internal.Tmeet, da
 // Returns the aggregated recordBasicInfo with RecordsTotalCount set to the
 // API's total_count (which may exceed the actual records returned because
 // some records are security-struck and filtered out by the backend).
-func fetchFullRecordBasicInfo(ctx context.Context, tmeet *internal.Tmeet, meetingID string) (recordBasicInfo, error) {
+func fetchFullRecordBasicInfo(ctx context.Context, tmeet *internal.Tmeet, meetingID string, startTime, endTime *int64) (recordBasicInfo, error) {
 	var result recordBasicInfo
 	result.MeetingID = meetingID
 	result.Records = []interface{}{}
@@ -266,6 +268,12 @@ func fetchFullRecordBasicInfo(ctx context.Context, tmeet *internal.Tmeet, meetin
 		queryParams.Set("operator_id", tmeet.UserConfig.OpenId)
 		queryParams.Set("operator_id_type", "2") // OpenId
 		queryParams.Set("page_size", strconv.Itoa(fullRecordPageSize))
+		if startTime != nil {
+			queryParams.Set("start_time", strconv.FormatInt(*startTime, 10))
+		}
+		if endTime != nil {
+			queryParams.Set("end_time", strconv.FormatInt(*endTime, 10))
+		}
 		if pageToken != "" {
 			queryParams.Set("page_token", pageToken)
 		}
