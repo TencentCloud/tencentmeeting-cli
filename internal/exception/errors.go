@@ -81,4 +81,11 @@ var (
 	AuthorizationTimeoutError = NewTmeetError(ClientCodeAuthorizationTimeout, "authorization timeout, please try 'tmeet auth login' again")
 	// AuthorizationFailedError indicates authorization failure.
 	AuthorizationFailedError = NewTmeetError(ClientCodeAuthorizationFailed, "authorization failed, please try 'tmeet auth login' again")
+
+	// EventInternalError indicates an internal runtime error in event operations.
+	EventInternalError = NewTmeetError(ClientCodeEventInternal, "event internal error")
+	// EventBusError indicates a bus-level error.
+	EventBusError = NewTmeetError(ClientCodeEventBus, "event bus error")
+	// EventBusNotRunningError indicates the event bus is not running.
+	EventBusNotRunningError = NewTmeetError(ClientCodeEventBusNotRunning, "event bus not running")
 )

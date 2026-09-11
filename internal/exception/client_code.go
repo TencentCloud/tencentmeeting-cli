@@ -45,6 +45,13 @@ const (
 	// ClientCodeAuthorizationFailed authorization failed error
 	ClientCodeAuthorizationFailed = 3002
 
+	// ClientCodeEventInternal event internal runtime error
+	ClientCodeEventInternal = 4000
+	// ClientCodeEventBus event bus-level error
+	ClientCodeEventBus = 4001
+	// ClientCodeEventBusNotRunning event bus not running error
+	ClientCodeEventBusNotRunning = 4002
+
 	// ClientCodePanic cli process panic error
 	ClientCodePanic = 9000
 )

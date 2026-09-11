@@ -11,6 +11,7 @@ import (
 	"tmeet/internal"
 	"tmeet/internal/auth"
 	"tmeet/internal/cmdutil/apicmdctx"
+	"tmeet/internal/common"
 	"tmeet/internal/config"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -45,7 +46,7 @@ type ProxyErrorInfo struct {
 // RequestProxy is the restapi request proxy.
 func RequestProxy(ctx context.Context, method string, tmeet *internal.Tmeet, req *thttp.Request) (*ProxyRsp, error) {
 	// Validate & refresh token.
-	if err := auth.NewTmeetAuth(tmeet).RefreshToken(ctx); err != nil {
+	if err := auth.NewTmeetAuth(tmeet).RefreshToken(ctx, config.ClearUserConfig); err != nil {
 		return nil, err
 	}
 
@@ -167,7 +168,7 @@ func authenticator(openId, accessToken string) thttp.RequestOptionFunc {
 func header(ctx context.Context, openId, machineId, version,
 	os, agent, model, cmdPath, apiCmd string) thttp.RequestOptionFunc {
 	x := http.Header{}
-	x.Set("Tmeet-Unique-ID", fmt.Sprintf("%s*%s", openId, machineId))
+	x.Set("Tmeet-Unique-ID", common.BuildUniqueID(openId, machineId))
 	x.Set("Tmeet-Device-Info", fmt.Sprintf("%s;%s;%s", os, agent, model))
 	x.Set("Tmeet-Open-Source", OpenSourceCLI)
 	x.Set("Tmeet-Cli-Ver", version)

@@ -17,6 +17,12 @@ type Request struct {
 	header         http.Header
 	serializer     serializable.Serializable
 	authenticators []Authentication
+	// client, when non-nil, overrides the client-level *http.Client for this
+	// single request only.  Used by callers that want to retry a failed
+	// request over a different transport (e.g. a direct-connection client
+	// that bypasses a stale inherited proxy) without mutating the shared
+	// client.  See WithRequestClient and DefaultNoProxyHttpClient.
+	client *http.Client
 }
 
 func (req *Request) GenerateURL(baseURL string) (*url.URL, error) {
@@ -61,6 +67,18 @@ func WithRequestSerializer(serializer serializable.Serializable) RequestOptionFu
 func WithRequestAuthenticator(authenticator Authentication) RequestOptionFunc {
 	return func(request *Request) {
 		request.authenticators = append(request.authenticators, authenticator)
+	}
+}
+
+// WithRequestClient overrides the *http.Client used for this single request.
+// A nil client is ignored (the client-level default is kept).  This is the
+// hook callers use to retry over DefaultNoProxyHttpClient when the default
+// (proxy-aware) transport fails at the network layer.
+func WithRequestClient(clt *http.Client) RequestOptionFunc {
+	return func(request *Request) {
+		if clt != nil {
+			request.client = clt
+		}
 	}
 }
 
