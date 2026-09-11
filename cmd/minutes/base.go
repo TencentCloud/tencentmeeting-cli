@@ -1,4 +1,4 @@
-package minute
+package minutes
 
 import (
 	"tmeet/internal"
@@ -6,11 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewBaseCmd is the minute-related command.
+// NewBaseCmd is the minutes-related command.
 func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "minute",
-		Short: "minute related commands",
+		Use:   "minutes",
+		Short: "minutes related commands",
 	}
 
 	cmd.AddCommand(

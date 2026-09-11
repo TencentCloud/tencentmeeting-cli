@@ -193,6 +193,15 @@ var DurationSecondsConverter FieldConverter = func(value interface{}) interface{
 	return value
 }
 
+// base64Encodings lists the Base64 variants tried by Base64DecodeConverter,
+// in priority order: standard, URL-safe (with padding), raw URL-safe (no padding).
+// Some backends use URL-safe encoding, with or without padding.
+var base64Encodings = []*base64.Encoding{
+	base64.StdEncoding,
+	base64.URLEncoding,
+	base64.RawURLEncoding,
+}
+
 // Base64DecodeConverter decodes a Base64-encoded string value to its original string.
 // Returns the original value unchanged if the value is empty, decoding fails,
 // or the decoded bytes are not valid UTF-8(to avoid leaking garbled output
@@ -202,16 +211,12 @@ func Base64DecodeConverter(value interface{}) interface{} {
 	if !ok || str == "" {
 		return value
 	}
-	decoded, err := base64.StdEncoding.DecodeString(str)
-	if err != nil || !utf8.Valid(decoded) {
-		// Fall back to raw URL-safe Base64 (no padding); some backends use
-		// URL-safe encoding without padding.
-		decoded, err = base64.RawURLEncoding.DecodeString(str)
-		if err != nil || !utf8.Valid(decoded) {
-			return value
+	for _, enc := range base64Encodings {
+		if decoded, err := enc.DecodeString(str); err == nil && utf8.Valid(decoded) {
+			return string(decoded)
 		}
 	}
-	return string(decoded)
+	return value
 }
 
 // intEnumConverter is a helper that builds a FieldConverter for integer-keyed enums.

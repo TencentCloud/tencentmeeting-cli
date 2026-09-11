@@ -890,12 +890,12 @@ func TestRecordStateConverter(t *testing.T) {
 		input interface{}
 		want  interface{}
 	}{
-		{name: "float64 recording", input: float64(1), want: "录制中"},
-		{name: "float64 transcoding", input: float64(2), want: "转码中"},
-		{name: "float64 done", input: float64(3), want: "转码完成"},
+		{name: "float64 recording", input: float64(1), want: "录制中，不可查看或申请"},
+		{name: "float64 transcoding", input: float64(2), want: "转码中，不可查看或申请"},
+		{name: "float64 done", input: float64(3), want: "转码完成，可根据录制文件权限进行下一步"},
 		{name: "float64 unknown", input: float64(99), want: "Unknown"},
-		{name: "string recording", input: "1", want: "录制中"},
-		{name: "string done", input: "3", want: "转码完成"},
+		{name: "string recording", input: "1", want: "录制中，不可查看或申请"},
+		{name: "string done", input: "3", want: "转码完成，可根据录制文件权限进行下一步"},
 		{name: "string unknown", input: "999", want: "Unknown"},
 		{name: "non-numeric string returns as-is", input: "abc", want: "abc"},
 		{name: "nil returns as-is", input: nil, want: nil},

@@ -80,6 +80,31 @@ type Logger struct {
 	date     string
 	seq      int
 	written  int64
+
+	// subDir / prefix override the package-level defaults (logSubDir / logPrefix)
+	// for Loggers built via InitNamed.  Zero value means "use default".
+	subDir string
+	prefix string
+}
+
+// filePrefix returns the file-name prefix this Logger uses; falls back to the
+// package default when the instance was constructed via the legacy Init path
+// (which leaves prefix empty).
+func (l *Logger) filePrefix() string {
+	if l.prefix == "" {
+		return logPrefix
+	}
+	return l.prefix
+}
+
+// fileSubDir returns the sub-directory name beneath logDir's parent.  Only
+// used by InitNamed callers that want a custom layout; legacy Init keeps the
+// historical "logs" sub-dir.
+func (l *Logger) fileSubDir() string {
+	if l.subDir == "" {
+		return logSubDir
+	}
+	return l.subDir
 }
 
 // defaultLogger is the package-level Logger initialised by Init.
@@ -94,9 +119,41 @@ var defaultLogger *Logger
 // 7 days. If initialisation fails the global Logger remains nil and subsequent
 // log calls are silently ignored.
 func Init(logDir string, level Level) error {
-	dir := filepath.Join(logDir, logSubDir)
+	l, err := newLogger(logDir, logSubDir, logPrefix, level)
+	if err != nil {
+		return err
+	}
+	defaultLogger = l
+	return nil
+}
+
+// InitNamed builds a standalone *Logger that writes to <logDir>/<subDir>/ with
+// files named "<prefix><date>.log" (and rotated as "<prefix><date>.N.log").
+//
+// Unlike Init, the returned Logger is NOT registered as the global
+// defaultLogger; the caller owns it and MUST call (*Logger).Close() before
+// process exit to flush buffered entries.  This is intended for long-running
+// auxiliary processes (e.g. the event bus daemon) that want their own log
+// namespace while still benefiting from rotation, retention and async writes.
+//
+// Empty subDir / prefix fall back to the package defaults ("logs" / "tmeet-").
+func InitNamed(logDir, subDir, prefix string, level Level) (*Logger, error) {
+	if subDir == "" {
+		subDir = logSubDir
+	}
+	if prefix == "" {
+		prefix = logPrefix
+	}
+	return newLogger(logDir, subDir, prefix, level)
+}
+
+// newLogger is the shared constructor behind Init and InitNamed.  It creates
+// the on-disk directory, runs cleanup, opens the first file and starts the
+// background writer goroutine.
+func newLogger(logDir, subDir, prefix string, level Level) (*Logger, error) {
+	dir := filepath.Join(logDir, subDir)
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("log: failed to create log directory %s: %w", dir, err)
+		return nil, fmt.Errorf("log: failed to create log directory %s: %w", dir, err)
 	}
 
 	l := &Logger{
@@ -104,6 +161,8 @@ func Init(logDir string, level Level) error {
 		done:     make(chan struct{}),
 		logDir:   dir,
 		lockPath: filepath.Join(dir, "rotate.lock"),
+		subDir:   subDir,
+		prefix:   prefix,
 	}
 	l.levelV.Store(int32(level))
 
@@ -112,14 +171,13 @@ func Init(logDir string, level Level) error {
 
 	// Open (or create) today's log file.
 	if err := l.rotate(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Start the background writer goroutine.
 	go l.loop()
 
-	defaultLogger = l
-	return nil
+	return l, nil
 }
 
 // SetLevel dynamically changes the minimum log level of the global Logger.
@@ -137,8 +195,26 @@ func Close() {
 	if defaultLogger == nil {
 		return
 	}
-	close(defaultLogger.ch) // signal the background goroutine that no more entries will arrive
-	<-defaultLogger.done    // wait until the background goroutine has fully exited
+	defaultLogger.Close()
+}
+
+// Close drains the channel and waits for the background goroutine to finish
+// flushing buffered entries to disk.  Safe to call multiple times: subsequent
+// calls are no-ops once the channel has been closed.
+//
+// Must be invoked before the owning process exits when the Logger was created
+// via InitNamed; legacy callers that go through the package-level Init/Close
+// pair never touch this method directly.
+func (l *Logger) Close() {
+	if l == nil {
+		return
+	}
+	// Recover from a double-close: closing an already-closed channel panics,
+	// but we still want the second Close() to wait for done so callers can
+	// rely on "after Close returns, nothing is writing".
+	defer func() { _ = recover() }()
+	close(l.ch)
+	<-l.done
 }
 
 // Debug writes a DEBUG-level log record.
@@ -179,6 +255,34 @@ func Error(ctx context.Context, args ...interface{}) {
 // Errorf writes a formatted ERROR-level log record.
 func Errorf(ctx context.Context, format string, args ...interface{}) {
 	defaultLogger.send(ctx, LevelError, fmt.Sprintf(format, args...), 2)
+}
+
+// ---- instance-level formatted helpers (used by InitNamed callers) ----
+//
+// These mirror the package-level Debugf/Infof/Warnf/Errorf but write to a
+// specific Logger instance instead of the global defaultLogger.  They are
+// intended for long-running processes (e.g. the event bus daemon) that own
+// their own Logger via InitNamed.  Behaviour — level filtering, caller
+// capture, async dispatch — is identical to the package-level helpers.
+
+// Debugf writes a formatted DEBUG-level record to this Logger instance.
+func (l *Logger) Debugf(ctx context.Context, format string, args ...interface{}) {
+	l.send(ctx, LevelDebug, fmt.Sprintf(format, args...), 2)
+}
+
+// Infof writes a formatted INFO-level record to this Logger instance.
+func (l *Logger) Infof(ctx context.Context, format string, args ...interface{}) {
+	l.send(ctx, LevelInfo, fmt.Sprintf(format, args...), 2)
+}
+
+// Warnf writes a formatted WARN-level record to this Logger instance.
+func (l *Logger) Warnf(ctx context.Context, format string, args ...interface{}) {
+	l.send(ctx, LevelWarn, fmt.Sprintf(format, args...), 2)
+}
+
+// Errorf writes a formatted ERROR-level record to this Logger instance.
+func (l *Logger) Errorf(ctx context.Context, format string, args ...interface{}) {
+	l.send(ctx, LevelError, fmt.Sprintf(format, args...), 2)
 }
 
 // ---- internal implementation ----
@@ -295,7 +399,7 @@ func (l *Logger) findLastSeq(date string) int {
 	if err != nil {
 		return 0
 	}
-	datePrefix := logPrefix + date
+	datePrefix := l.filePrefix() + date
 	maxSeq := -1
 	for _, e := range entries {
 		if e.IsDir() {
@@ -364,10 +468,11 @@ func (l *Logger) openFile() error {
 
 // currentPath returns the full path of the current log file.
 func (l *Logger) currentPath() string {
+	prefix := l.filePrefix()
 	if l.seq == 0 {
-		return filepath.Join(l.logDir, logPrefix+l.date+logExt)
+		return filepath.Join(l.logDir, prefix+l.date+logExt)
 	}
-	return filepath.Join(l.logDir, fmt.Sprintf("%s%s.%d%s", logPrefix, l.date, l.seq, logExt))
+	return filepath.Join(l.logDir, fmt.Sprintf("%s%s.%d%s", prefix, l.date, l.seq, logExt))
 }
 
 // cleanup removes log files older than maxRetainDay days.
@@ -385,15 +490,16 @@ func (l *Logger) cleanup() {
 	}
 	var files []logFile
 
+	prefix := l.filePrefix()
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
 		name := e.Name()
-		if !strings.HasPrefix(name, logPrefix) || !strings.HasSuffix(name, logExt) {
+		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, logExt) {
 			continue
 		}
-		rest := strings.TrimPrefix(name, logPrefix)
+		rest := strings.TrimPrefix(name, prefix)
 		if len(rest) < 10 {
 			continue
 		}

@@ -16,6 +16,14 @@ fi
 BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS="-s -w -X tmeet/cmd.Version=${VERSION} -X tmeet/cmd.BuildTime=${BUILD_TIME}"
 
+# ── 单元测试（失败即中止，依赖脚本顶部的 set -e）─────────────────────────────
+echo "🧪 运行单元测试: go test -count=1 ./..."
+echo "────────────────────────────────────────"
+go test -count=1 ./...
+echo "────────────────────────────────────────"
+echo "✅ 单元测试全部通过"
+echo ""
+
 # ── 编译目标 ──────────────────────────────────────────────────────────────────
 # 格式：GOOS/GOARCH/平台友好名称
 TARGETS=(

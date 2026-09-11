@@ -7,9 +7,9 @@ func TestRecordStateName(t *testing.T) {
 		id   int
 		want string
 	}{
-		{1, "录制中"},
-		{2, "转码中"},
-		{3, "转码完成"},
+		{1, "录制中，不可查看或申请"},
+		{2, "转码中，不可查看或申请"},
+		{3, "转码完成，可根据录制文件权限进行下一步"},
 	}
 
 	for _, tt := range tests {
