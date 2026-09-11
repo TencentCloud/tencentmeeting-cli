@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
-version: 1.0.17
-description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/播放地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室/导出参会成员明细/异步任务结果）、通讯录（严格限定：仅存在\"会议邀请/呼叫入会\"动作的前置步骤通过用户名/手机号/邮箱搜索成员；严禁单独用于查询任何人的姓名/部门/职位/联系方式/是否存在，无下游会议动作时一律拒绝）、会中控制（呼叫成员入会/踢出会议成员）、元宝纪要（按关键词/时间搜索、获取稳态纪要详情、获取滚动瞬态纪要）、CLI 应用信息管理（设置/查询自己的 CLI 应用在会中的展示配置）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
+version: 1.0.18
+description: "腾讯会议 CLI（tmeet）：OAuth 授权登录/登出/状态查询、会议管理（创建/更新/取消/查询/受邀者）、录制管理（列表/播放地址/智能纪要/转写/录制权限申请）、会议报告（参会人/等候室/导出参会成员明细/异步任务结果）、通讯录（严格限定：仅存在\"会议邀请/呼叫入会\"动作的前置步骤通过用户名/手机号/邮箱搜索成员；严禁单独用于查询任何人的姓名/部门/职位/联系方式/是否存在，无下游会议动作时一律拒绝）、会中控制（呼叫成员入会/踢出会议成员）、元宝纪要（按关键词/时间搜索、获取稳态纪要详情、获取滚动瞬态纪要）、CLI 应用信息管理（设置/查询自己的 CLI 应用在会中的展示配置）、实时事件订阅（会议/录制/纪要等事件流）、问题排查（导出本地日志，反馈工具缺失/失败/能力不足等问题给平台）。当用户需要通过命令行操作腾讯会议，或 Agent 在使用过程中遇到工具缺失、调用失败、能力不足等情况想反馈给平台时使用本技能。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -40,7 +40,7 @@ tmeet auth logout
 tmeet auth status
 ```
 
-> **注意**：除 `auth login`,`auth status` 外，所有命令都需要先完成登录。未登录时命令会提示 `user config is empty`。
+> **注意**：除 `auth login`，`auth status` 与 `event list` / `event schema` / `event status` / `event stop` 外，所有命令都需要先完成登录。未登录时命令会提示 `user config is empty`。
 
 > **注意**：`auth login` 是**阻塞命令**——执行后会先输出授权 URL，然后**阻塞等待最多300s**用户在浏览器完成 OAuth 授权。**必须前台运行**：前台运行保持进程与终端连接，OAuth 回调能正常将凭证写入本地。**不要**用后台方式（`&`）运行——后台进程脱离控制终端会导致凭证写入失败。
  
@@ -95,15 +95,21 @@ tmeet
 │   ├── call                      # 呼叫成员入会（会中邀请呼叫）
 │   ├── kick                      # 踢出会议成员（会中踢人）
 │   └── waiting-room              # 等候室管理（移入会议/移回等候室/移出踢出）
-├── minute                        # 元宝纪要 → [references/tmeet-minute.md](references/tmeet-minute.md)
+├── minutes                       # 元宝纪要 → [references/tmeet-minutes.md](references/tmeet-minutes.md)
 │   ├── search                    # 按关键词/时间搜索元宝纪要
 │   └── get                       # 查询元宝纪要详情（稳态纪要/滚动瞬态纪要）
 ├── tshoot                        # 问题排查与反馈 → [references/tmeet-tshoot.md](references/tmeet-tshoot.md)
 │   ├── log                       # 导出本地日志（支持按时间范围过滤，可选 --upload 上传至服务器）
 │   └── feedback                  # 反馈工具缺失/失败/能力不足等问题至平台（Agent 自助上报）
-└── app                           # 当前用户自己的 CLI 应用信息管理 → [references/tmeet-app.md](references/tmeet-app.md)
-    ├── get                       # 查询当前 CLI 应用配置（应用名称/主页/打开方式）
-    └── set                       # 设置 CLI 应用配置：--homepage 控制会中是否下发（空值 = 不下发），--sdk-name 修改应用名称，--layout-style 修改会中打开方式
+├── app                           # 当前用户自己的 CLI 应用信息管理 → [references/tmeet-app.md](references/tmeet-app.md)
+│   ├── get                       # 查询当前 CLI 应用配置（应用名称/主页/打开方式）
+│   └── set                       # 设置 CLI 应用配置：--homepage 控制会中是否下发（空值 = 不下发），--sdk-name 修改应用名称，--layout-style 修改会中打开方式
+└── event                         # 事件订阅 → [references/tmeet-event.md](references/tmeet-event.md)
+    ├── list                      # 列出可订阅的 EventKey（不依赖登录）
+    ├── schema                    # 查看 EventKey 的 params/payload schema 及 jq_root_path（不依赖登录）
+    ├── consume                   # 订阅事件并按 NDJSON 流式输出（需登录；批处理/常驻两种模式）
+    ├── status                    # 查看本机 bus 守护进程状态（不依赖登录）
+    └── stop                      # 停止本机 bus 守护进程（不依赖登录；--force 为写操作，需二次确认）
 
 ```
 
@@ -121,12 +127,12 @@ tmeet
 >
 > | 用户要什么 | 走哪条链路 |
 > |---|---|
-> | 纪要 / 总结 / 要点 / 待办（**AI 加工后的内容**） | 先判录制权限：有权限 → `record smart-minutes`；无权限 → `minute get` / `minute search`（详见「元宝纪要查询」） |
+> | 纪要 / 总结 / 要点 / 待办（**AI 加工后的内容**） | 先判录制权限：有权限 → `record smart-minutes`；无权限 → `minutes get` / `minutes search`（详见「元宝纪要查询」） |
 > | 发言原话 / 逐字稿 / 谁说了哪句 | `record transcript-*`（录制链路，需权限） |
 > | 会议本身（时间 / 主题 / 参会人 / 会议号） | `meeting list` / `list-ended` / `search` |
 >
-> **「按时间找纪要」应走 `minute search --start/--end`，不是 `meeting list-ended`**
-> —— `minute search` 原生支持时间范围检索，一次即可返回多场纪要；
+> **「按时间找纪要」应走 `minutes search --start/--end`，不是 `meeting list-ended`**
+> —— `minutes search` 原生支持时间范围检索，一次即可返回多场纪要；
 > 用 `meeting list-ended` 再逐场取纪要会造成 N+1 次调用。
 
 ### 会议查询
@@ -145,7 +151,7 @@ tmeet
 ### 元宝纪要查询
 
 **本节自包含 —— 路由决策直接按本节执行，不需要先读 reference。**
-（仅当需要具体参数/响应字段时再读 [`references/tmeet-minute.md`](references/tmeet-minute.md)）
+（仅当需要具体参数/响应字段时再读 [`references/tmeet-minutes.md`](references/tmeet-minutes.md)）
 
 腾讯会议一场会议可能产生两类独立纪要：**元宝纪要**（基于会中 ASR、参会者人人可取无需权限、无逐字稿）、**录制纪要**（基于录制文件、创建者所有、需权限、有逐字稿）。**不得仅凭命令名字面匹配。**
 
@@ -161,14 +167,14 @@ tmeet
 先 `meeting get` 拿 `permission_status`（顺带返回，零额外调用成本）：
 
 - `can_view` → 录制纪要 `record smart-minutes`（内容更全，含逐字稿）
-- `can_apply` / `closed` / 无录制 → 元宝纪要 `minute get`
-- 录制侧取不到内容时（权限被拒/文件异常）→ **降级 `minute get`**，并告知用户实际用的是元宝纪要
+- `can_apply` / `closed` / 无录制 → 元宝纪要 `minutes get`
+- 录制侧取不到内容时（权限被拒/文件异常）→ **降级 `minutes get`**，并告知用户实际用的是元宝纪要
 
 **② 跨会议检索 —— 两条都搜，不能只搜一条**
 
 此类请求**无法先查权限**（还不知道是哪些会），因此：
 
-- `minute search --query`（搜元宝纪要文本：概览/要点/待办/滚动总结）
+- `minutes search --query`（搜元宝纪要文本：概览/要点/待办/滚动总结）
 - `record search --query-field transcript_content`（搜录制转写原文）
 - **两条都要执行**，按会议去重（同一会议多个录制文件只算一场），**每条标注来源**
 
@@ -261,6 +267,8 @@ tmeet
 | `json`（默认） | 单行紧凑 JSON，体积小、便于管道传递 | 模型解析、脚本处理、`jq` 过滤 |
 | `json-pretty` | 多行缩进 JSON，可读性强 | 需要将原始结果直接呈现给用户阅读时 |
 
+> **例外**：`event` 子命令族（`event list` / `event schema` / `event consume` / `event status` / `event stop`）输出的是 **bare JSON**，**不带 `{trace_id, message, data}` 信封**——例如 `event consume` 每行 NDJSON 形如 `{event, trace_id, payload}`，`event list` 直接是 `[{...}, ...]`。具体形态详见 [references/tmeet-event.md](references/tmeet-event.md)。
+
 **使用示例**：
 
 ```bash
@@ -297,6 +305,7 @@ tmeet record list --meeting-id 123456789 --compact --format json-pretty
 > **使用准则**：
 > - **查询类命令优先启用**：模型在调用查询/读取类命令时，**默认追加 `--compact`** 以降低上下文占用；
 > - **何时不使用**：当用户明确要求"完整结果"、"原始字段"或需要某个非必要字段时，**不要**使用 `--compact`。
+> - **`event` 子命令族不适用**：`event list` / `event schema` / `event consume` / `event status` / `event stop` 的输出**不经过 compact 中间件**，加 `--compact` 不会有任何精简效果。需要精简事件输出，请改用 `event consume --jq` 做投影。
 
 ### 分页
 
@@ -389,3 +398,4 @@ Agent 应识别以下 5 种场景之一并触发反馈：`tool_not_found`（工�
 | `--start format error` | 时间格式不合法（如缺少时区） | 改用 `2026-03-12T14:00:00+08:00` 格式 |
 | `user has been initialized` | 已登录，重复执行 login | 直接使用，或先 logout 再 login |
 | 错误码 `500284` / `该功能暂不可使用` | 当前用户无该功能使用权限（可能未灰度、商业化权益不足等） | **严禁重试**（重试无意义，权限问题非临时故障）；如实告知用户「该功能当前账号暂不可使用，可能因未开通灰度或商业化权益不足，具体解释所有权归腾讯会议所有」，不得自行推测具体原因或承诺开通方式 |
+| `event consume` 相关错误（ready 标记不出现 / 退出码 1 / `event stop` 返回 `refused` 等） | — | 见 [`references/tmeet-event.md`](references/tmeet-event.md) «典型故障速查» |
