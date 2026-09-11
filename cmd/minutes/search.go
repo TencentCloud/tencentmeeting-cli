@@ -1,4 +1,4 @@
-package minute
+package minutes
 
 import (
 	"net/http"
