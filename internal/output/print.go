@@ -88,7 +88,7 @@ func FormatPrint(cmd *cobra.Command, traceId, message, data string, opts ...Opti
 	default:
 		b, _ = marshalNoEscape(fo, false)
 	}
-	PrintInfof(cmd, string(b))
+	PrintInfof(cmd, "%s", string(b))
 }
 
 // GetFormat gets the format.
