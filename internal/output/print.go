@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -38,20 +39,37 @@ type formatOutput struct {
 
 // PrintInfof prints informational messages.
 func PrintInfof(cmd *cobra.Command, format string, args ...interface{}) {
+	// When there are no args, treat format as a plain string to avoid
+	// stray '%' in the content being interpreted as format verbs
+	// (which would produce output like "%!(MISSING)").
+	var msg string
+	if len(args) == 0 {
+		msg = format
+	} else {
+		msg = fmt.Sprintf(format, args...)
+	}
 	if cmd == nil {
-		fmt.Printf(format+"\n", args...)
+		fmt.Println(msg)
 		return
 	}
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(format, args...))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), msg)
 }
 
 // PrintErrorf prints error messages.
 func PrintErrorf(cmd *cobra.Command, format string, args ...interface{}) {
+	// Same rationale as PrintInfof: skip formatting when no args are
+	// provided so that literal '%' characters are preserved.
+	var msg string
+	if len(args) == 0 {
+		msg = format
+	} else {
+		msg = fmt.Sprintf(format, args...)
+	}
 	if cmd == nil {
-		fmt.Printf("Error: "+format+"\n", args...)
+		fmt.Fprintln(os.Stderr, "Error:", msg)
 		return
 	}
-	_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Error:", fmt.Sprintf(format, args...))
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Error:", msg)
 }
 
 // FormatPrint prints data in the specified format.
