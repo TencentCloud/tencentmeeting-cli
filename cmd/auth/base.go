@@ -20,6 +20,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newLogoutCmd(tmeet),
 		// Status query
 		newStatusCmd(tmeet),
+		// Exchange current login session for a short-lived one-time auth code (hidden, program-to-program).
+		newExchangeCodeCmd(tmeet),
 	)
 
 	return cmd
