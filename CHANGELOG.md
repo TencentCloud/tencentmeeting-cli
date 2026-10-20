@@ -2,6 +2,18 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.0.19] - 2026-10-20
+
+### Added
+
+- **New hidden subcommand `auth exchange-code`** (`cmd/auth/exchange_code.go`, `cmd/auth/base.go`): Exchanges the current CLI login session for a short-lived, one-time authorization code issued by the Open Platform, intended for upstream callers' backends to resolve the user's identity.
+- **Comprehensive unit tests for `internal/output/print_test.go`** (524 lines): Covers the five core functions `marshalNoEscape`, `PrintInfof`, `PrintErrorf`, `FormatPrint`, and `GetFormat`. Primarily locks in the literal-`%` regression fixed in the "Changed" section below, and explicitly asserts that: error messages must route through `cmd.ErrOrStderr()` and must not be diverted onto stdout by `SetOut`; `FormatPrint` does not escape `<` / `>` / `&`; an unknown `--format` value falls back to compact JSON; empty `trace_id` / `message` are elided via `omitempty`; and the `WithHints` option correctly injects the `hints` field.
+
+### Changed
+
+- **`PrintInfof` / `PrintErrorf` no longer format `format` when no variadic args are provided** (`internal/output/print.go`): The previous implementation always went through `fmt.Sprintf(format, args...)` regardless of whether `args` was supplied. When callers passed an already-assembled string as the sole argument (e.g. one containing `50%`, URL-encoded `%20` / `%2F`, or a server-returned error description), `fmt.Sprintf` interpreted those `%` characters as format verbs lacking arguments, leaking artefacts such as `%!x(MISSING)` / `%!(MISSING)` into the output. Both functions now branch explicitly: when `len(args) == 0` the `format` string is printed verbatim; otherwise it is still fed through `fmt.Sprintf`. This keeps both "pass a complete sentence" and "pass a printf-style template" call styles correct.
+- **`PrintErrorf` now writes to `cmd.ErrOrStderr()`, and the `cmd == nil` branch uses `fmt.Fprintln(os.Stderr, ...)`** (`internal/output/print.go`): It previously used `cmd.OutOrStderr()`, which is overridden by `SetOut` — so when a caller set only `SetOut` (e.g. piping stdout into a buffer for structured consumption), error messages were incorrectly interleaved into the stdout stream and polluted agents' JSON parsing of business data. Switching to `ErrOrStderr()` guarantees error output stays strictly on the error stream, consistent with the long-standing convention that "stdout carries business data, stderr carries diagnostics". The `cmd == nil` branch is likewise moved from `fmt.Printf` to `fmt.Fprintln(os.Stderr, ...)` so it also routes through stderr.
+
 ## [v1.0.18] - 2026-09-11
 
 ### Added
