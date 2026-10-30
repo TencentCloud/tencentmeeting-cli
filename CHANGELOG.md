@@ -2,6 +2,65 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.1.0] - 2026-10-30
+
+This release is the first minor version bump since the v1.0.x line. Highlights:
+1. **A brand-new `update` subcommand group** that plugs into the server-side "version-info push + user remind preference" mechanism, covering interactive check / query / preference-set / self-upgrade, and additionally injecting a top-level `_notice.update` prompt into every command response (gated by user preference and a throttle window).
+2. **`record` subcommand group consolidation and expansion**: the 8 shipped record subcommands, together with a batch of new capabilities (sharing-config read/write, grant-member management, smart-recording config, structured todos, AI timeline, ...), are collapsed into 6 subcommands dispatched via `--action`.
+
+### Added
+
+- **New `update` subcommand group** (`cmd/update/`): wires up `/v1/cli/version-info` and friends, end-to-end covering "check latest → user decides → download + verify + install → persist preference". All four subcommands require login.
+  - `update check` — reports current version, server-advertised latest version, whether an upgrade is actionable (combining blacklist), and the user's current preference. Returns a fully-populated `CheckInfo` even in the "already latest" case so the Agent sees a stable shape.
+  - `update get` — pure-local inspection of the persisted preference and the most recent cache, intended for diagnostics.
+  - `update set --preference remind|never_remind` — the local file is written first as the authoritative source, then a best-effort report is sent to the server-side `never_remind` allowlist; upload failures are only logged and never propagated so a transient network blip does not loop the Agent through repeated retries.
+  - `update run` — the actual upgrade entry point: enforces cross-process single-flight via `filelock.ProcessLock`; default path is "download the CDN tgz → `npm install -g <local tarball>`", and when the server flips `target_from_npm=true` it falls through to `npm install -g @tencentcloud/tmeet@<ver>`. On Windows the "replace the running exe" problem is solved by npm's postinstall shim, so Linux / macOS / Windows share a single code path.
+- **Automatic `_notice.update` injection** (`internal/output/print.go`, `internal/notice/`): every success response rendered via `FormatPrint` automatically appends a top-level `_notice.update` payload (opt-out via the new `WithoutUpdateNotice()` option). The shape of the injection is decided jointly by the local preference (unset / `remind` / `never_remind`), the server-advertised `notice_gap` throttle window, and the feedback-channel special case; within one window each account is prompted at most once.
+- **New `record` capabilities** (`cmd/record/`):
+  - `record share-set` — a single call can simultaneously "update sharing config + batch add members + batch remove members". The CLI dispatches to the relevant downstream APIs as needed and aggregates `succeeded` / `failed` / `results[]` so partial-success outcomes are visible without ambiguity. Core flags cover the sharing master switch, the permission-point mode (1~6: public / corp × view / password / approve), access password, expiration type and custom expiration time, viewer-download / view-transcript-and-minutes / Rooms-visibility toggles, and member add/remove. Write operation; added to the dangerous-operation confirmation table.
+  - `record settings-set` — modifies the record file's "subtitle switch" and "AI smart-recording switch" (1 = off / 2 = on); at least one of the two flags must be provided, and `Flags().Changed(...)` ensures unchanged fields are not sent. Write operation.
+  - `record access --action sharing|members|settings` — query sharing config, authorized members, or smart-recording config (previously only `address` was supported).
+  - `record content --action todos|timeline` — structured smart-todos retrieval and AI smart-timeline retrieval; `transcript` / `minutes` additionally gain the "paginated list by share URL" form.
+  - `record search --query-field` grows two new values: `todo` (search smart-minutes todo content) and `smart_minutes` (includes todos).
+- **New `internal/upgrade` upgrade-primitives package** (`internal/upgrade/`): a cobra-free toolkit extracted from `cmd/update` so it can be reused by future commands or test harnesses.
+  - `DownloadToTemp` — 10-minute wall-clock timeout combined with a 60-second idle timeout, honors `context` cancellation, shares a package-level `*http.Client` for connection pooling, and computes SHA-256 inline while streaming.
+  - `InstallSkill` + `SkillInstallPath` — downloads the skills zip archive, verifies the checksum, extracts into a staging directory, then atomically swaps it into place via a rename-rename-remove sequence. Any failure rolls back; there is no window where the final path points at half-extracted contents. The payload format is also switched from tarball to zip.
+  - `RunNpmInstall` — wraps `npm install -g` with explicit `npm_config_prefix` injection (so a stray `~/.npmrc` cannot redirect installs), a 15-second "still installing" heartbeat tick, and captures the tail of npm's output on failure as a diagnostic.
+  - `ResolveNpmPrefix` — prefers env vars such as `TMEET_NPM_PACKAGE_DIR`, falling back to `npm root -g`, so the global install location stays consistent with where the CLI actually lives.
+  - Full unit tests for the whole package.
+- **New `internal/notice` notice-and-preference package** (`internal/notice/`): centralises every "CLI upgrade prompt" policy decision without taking a reverse dependency on `internal/output`.
+  - Three assembly entry points: `BuildWithOutcome` / `AssembleForCheck` / `BuildForFeedback`. The throttle "window" is simply the filecache envelope's own TTL — there is no separate "last_notified_at" field.
+  - `CompareVersion` / `IsNewer` use segment-based pre-release comparison, so `v1.1.0-beta.3` and `v1.1.0-rc.1` order correctly against each other.
+  - `LoadPreference` / `SavePreference` persist to `~/.tmeet/data/<open_id>/preference.json`.
+- **`cmdutil.ActionRegistry` / `FlagRule` / `SingleStringVar`** (`internal/cmdutil/action.go`, `flags.go`, `single_string.go`): the `--action` dispatch framework. Each action declares its own `ApiCmd` / `FlagRules` / `Validate` / `Run`, and the framework uniformly enforces flag rejection, resolves the api cmd, and dispatches. Unconditional and conditional rules live in the same `FlagRules` table; rule-table bugs surface at test time as internal errors rather than silently masking unrelated flags. `SingleStringVar` makes `--action`-style flags fail command parsing when passed twice instead of silently taking the last value.
+- **Eight new record-related enums and converters** (`internal/utils/enumerate/`): `RecordPermissionPoint` / `RecordMemberPermission` / `RecordExpiredTimeType` / `RecordCorpShareScope` / `RecordSettingType` / `SmartMinutesType` / `RecordingTimelineStatus` / `TranscriptType`, consumed by the new `record` commands for output field translation and input validation.
+- **New exception codes** (`internal/exception/`): `UpdateLockError` / `UpdateServerPayloadError` / `UpdateDownloadError` / `UpdateTempFileError` / `UpdateChecksumError` / `UpdateNpmMissingError` / `UpdateNpmInstallError` / `UpdateExtractError` / `UpdateInstallError` / `UpdatePreferenceSaveError`.
+- **npm uninstall helper script** (`scripts/uninstall.js`): standalone, idempotent three-step cleanup — stop the event bus daemon → run `tmeet auth logout` through the official logout path (which fires `ResourceReleaseHook`s) → remove `TMEET_CLI_CONFIG_DIR` (defaults to `~/.tmeet/`). Any failing step only logs and never aborts the next step. README gains an "Uninstall" section.
+
+### Changed
+
+- **`record` subcommand group fully restructured** (`cmd/record/base.go`): the 8 shipped record subcommands, together with the new capabilities added in this release (sharing-config read/write, grant-member management, smart-recording config, structured todos, AI timeline, ...), are consolidated into 6 `--action`-dispatched commands — `search` / `content --action` / `access --action` / `share-set` / `settings-set` / `permission-apply --action`. Mapping of the 8 shipped subcommands to the new surface:
+  - `record list` + `record search` → `record search`
+  - `record address` → `record access --action address`
+  - `record smart-minutes` → `record content --action minutes`
+  - `record transcript-get` → `record content --action transcript`
+  - `record transcript-search` → `record content --action transcript --text ...`
+  - `record transcript-paragraphs` → `record content --action paragraphs`
+  - `record permission-apply-prepare` → `record permission-apply --action prepare`
+  - `record permission-apply-commit` → `record permission-apply --action commit`
+- **Default time-window behaviour of `meeting search` / `meeting list-ended` / `minutes search` / `record search` is now documented inline**: the server-side fallback used when both `--start` and `--end` are omitted is spelled out in `--help` (`list-ended`: last 30 days / `meeting search`: 30 days before and after now / `minutes search`: last 1 year / `record search`: last 30 days).
+- **Minutes terminology unified** (`cmd/minutes/get.go`, SKILL `references/tmeet-minutes.md`): "steady-state / transient" → "global summary / real-time summary", aligning with the Yuanbao product terminology ("global minutes vs. real-time minutes"). `--short-summary`'s help text is updated accordingly.
+- **SKILL version bumped to 1.1.0** (`skills/tmeet-skill/SKILL.md` and `references/*.md`):
+  - Command tree redrawn around the new record surface.
+  - `tmeet-record.md` substantially rewritten (~±620-line diff), reorganised around "meeting-domain rules", with form matrices and a common-failure lookup table.
+  - `tmeet-minutes.md` fully rewritten in the global-summary / real-time-summary vocabulary.
+- **`package.json` version bumped to `v1.1.0`**.
+- **`docs/command.md` / `docs/command_en.md`** fully refreshed to reflect the record consolidation and the new `update` command group.
+
+### Removed
+
+- **Eight record subcommand implementation files removed** (`cmd/record/`): `list.go`, `address.go`, `smart_minutes.go`, `transcript_get.go`, `transcript_search.go`, `transcript_paragraphs.go`, `permission_apply_prepare.go`, `permission_apply_commit.go`. All of their capabilities are preserved on the new surface via `--action`; for already-shipped users this is purely a path change with no capability loss.
+
 ## [v1.0.19] - 2026-10-20
 
 ### Added
