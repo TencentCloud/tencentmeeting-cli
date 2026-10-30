@@ -117,9 +117,22 @@ try {
     process.exit(1);
 }
 
-// 透传所有参数并继承 stdio，保持与直接调用二进制完全一致的体验
+// 透传所有参数并继承 stdio，保持与直接调用二进制完全一致的体验。
+//
+// 注入 TMEET_NPM_PACKAGE_DIR：Go 侧的 update 流程需要定位本次运行所属
+// 的 npm 包根目录来反推全局 prefix（供 `npm install -g --prefix=<>` 使用）。
+// 单纯依赖 os.Executable() 不够可靠——当 ensureExecutable 的沙箱兜底
+// 把二进制拷贝到 os.tmpdir() 时，Go 看到的路径就与 npm 布局完全脱节。
+// 由 shim 把真实 package root 透传给子进程，是最权威、最廉价的信号。
+// 使用 path.resolve 确保始终是绝对路径。
+const pkgDir = path.resolve(__dirname, "..");
 try {
-    execFileSync(execPath, process.argv.slice(2), { stdio: "inherit" });
+    execFileSync(execPath, process.argv.slice(2), {
+        stdio: "inherit",
+        env: Object.assign({}, process.env, {
+            TMEET_NPM_PACKAGE_DIR: pkgDir,
+        }),
+    });
 } catch (err) {
     process.exit(err.status != null ? err.status : 1);
 }

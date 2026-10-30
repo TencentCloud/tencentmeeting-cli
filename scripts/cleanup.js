@@ -2,6 +2,21 @@
 
 "use strict";
 
+// postinstall hook (overlay-install / upgrade).
+//
+// Behaviour change:
+//   • We no longer run `tmeet auth logout` on overlay install — the user's
+//     login state is now preserved across upgrades.
+//   • We DO still need to stop the previous version's long-lived processes
+//     (event-bus daemon in particular) so new-vs-old binaries don't end up
+//     speaking slightly different protocols against the same socket. The
+//     stop command is idempotent: no bus running → exit 0 with
+//     state=stopped.
+//
+// Any failure here is intentionally swallowed — a crashed postinstall must
+// not break the user's npm install. The worst case (stale bus survives
+// the upgrade) is handled on next `tmeet event *` invocation anyway.
+
 const { execFileSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -22,7 +37,8 @@ const key = `${platform}-${arch}`;
 const binaryName = PLATFORM_MAP[key];
 
 if (!binaryName) {
-    process.exit(1);
+    // Unsupported platform: nothing we can call. Exit 0 to not block npm.
+    process.exit(0);
 }
 
 const binaryPath = path.join(__dirname, "..", "dist", binaryName);
@@ -34,12 +50,14 @@ if (!fs.existsSync(binaryPath)) {
 
 // 确保可执行权限（Windows 不需要）
 if (platform !== "win32") {
-    fs.chmodSync(binaryPath, 0o755);
+    try { fs.chmodSync(binaryPath, 0o755); } catch (_) { /* best-effort */ }
 }
 
-// 执行 tmeet auth logout 清理登录态
+// 结束上一个版本仍在跑的长进程（event-bus 等）。
+// --force 保证就算 bus 死锁也能被强制清理。
 try {
-    execFileSync(binaryPath, ["auth", "logout"], { stdio: "inherit" });
-} catch (err) {
+    execFileSync(binaryPath, ["event", "stop", "--force"], { stdio: "inherit" });
+} catch (_) {
+    // 失败不阻塞 npm 安装流程。
     process.exit(0);
 }
