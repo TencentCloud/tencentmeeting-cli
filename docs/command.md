@@ -451,74 +451,9 @@ tmeet meeting invitees-replace \
 
 ### record — 录制管理
 
-#### `record list` — 查询录制列表
-
-以下三组参数**任选其一**（均不传则报错）：
-- `--start` + `--end`（时间范围）
-- `--meeting-id`（会议 ID）
-- `--meeting-code`（会议号）
-
-```bash
-tmeet record list (--start <开始时间> --end <结束时间> | --meeting-id <ID> | --meeting-code <会议号>) [选项]
-```
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|:----:|--------|------|
-| `--start` | string | 三选一 | — | 查询开始时间，ISO 8601，如 `2026-03-12T14:00+08:00` |
-| `--end` | string | 三选一 | — | 查询结束时间，ISO 8601，如 `2026-03-12T14:00+08:00`（与 `--start` 配合使用） |
-| `--meeting-id` | string | 三选一 | — | 会议 ID |
-| `--meeting-code` | string | 三选一 | — | 会议号 |
-| `--page-token` | string | — | — | 分页游标，从上一次响应中返回的 `next_page_token` 获取，首页不传 |
-| `--page-size` | int | — | `30` | 每页大小，默认 30，最大 30 |
-| `--page` | int | — | — | ⚠️ **已弃用**：页码（从 1 开始），请改用 `--page-token` |
-
-**示例：**
-
-```bash
-# 按时间范围查询
-tmeet record list \
-  --start "2026-04-01T00:00+08:00" \
-  --end "2026-04-30T23:59+08:00" \
-  --page-token "<next_page_token>" --page-size 30
-
-# 按会议 ID 查询
-tmeet record list --meeting-id "6953553464429888300"
-
-# 按会议号查询
-tmeet record list --meeting-code "931945029"
-```
-
----
-
-#### `record address` — 获取录制下载地址
-
-```bash
-tmeet record address --meeting-record-id <录制ID> [选项]
-```
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|:----:|--------|------|
-| `--meeting-record-id` | string | ✅ | — | 会议录制 ID |
-| `--page-token` | string | — | — | 分页游标，从上一次响应中返回的 `next_page_token` 获取，首页不传 |
-| `--page-size` | int | — | `30` | 每页大小，默认 30，最大 30 |
-| `--page` | int | — | — | ⚠️ **已弃用**：页码（从 1 开始），请改用 `--page-token` |
-
-**示例：**
-
-```bash
-tmeet record address --meeting-record-id "record_abc123"
-
-# 翻下一页
-tmeet record address \
-  --meeting-record-id "record_abc123" \
-  --page-token "<next_page_token>" --page-size 30
-```
-
----
-
 #### `record search` — 搜索录制
 
-按关键词、会议号、会议 ID、时间范围、文件类型等条件搜索录制。所有过滤参数均为可选，可任意组合。
+按关键词、会议号、会议 ID、时间范围、文件类型等条件搜索或列出录制。所有过滤参数均为可选，可任意组合；不传 `--query` 时以“按范围列录制”语义运行。
 
 ```bash
 tmeet record search [选项]
@@ -526,8 +461,8 @@ tmeet record search [选项]
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `--query` | string | — | — | 搜索关键词 |
-| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-录制主题；`creator`-会议创建者昵称/备注名；`transcript_content`-文件中的原始转写内容；`smart_minutes`-文件中的智能纪要内容（摘要 + 待办）；`timeline`-文件中的时间轴内容；`all`-搜索所有字段 |
+| `--query` | string | — | — | 搜索关键词（最大长度 50） |
+| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-录制主题；`creator`-会议创建者昵称/备注名；`transcript_content`-文件中的原始转写内容；`smart_minutes`-文件中的智能纪要内容（摘要 + 待办）；`timeline`-文件中的时间轴内容；`todo`-智能纪要待办；`all`-搜索所有字段 |
 | `--file-type` | string | — | `all` | 文件类型：`video`、`audio`、`transcript`、`upload`、`external`、`all` |
 | `--meeting-id` | string | — | — | 按会议 ID 过滤 |
 | `--meeting-code` | string | — | — | 按会议号过滤（精确匹配，仅数字，无短横线） |
@@ -539,6 +474,13 @@ tmeet record search [选项]
 **示例：**
 
 ```bash
+# 只按范围列录制
+tmeet record search --meeting-id "6953553464429888300"
+tmeet record search --meeting-code "931945029"
+tmeet record search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
 # 按转写内容关键词搜索
 tmeet record search --query "季度目标" --query-field transcript_content
 
@@ -562,114 +504,239 @@ tmeet record search \
 
 ---
 
-#### `record smart-minutes` — 获取智能纪要
+#### `record content` — 读录制内容（`--action` 五选一）
+
+`record content` 用于读取录制文件的各类内容，通过 `--action` 指定具体能力：`minutes`（智能纪要）/ `todos`（智能待办）/ `transcript`（转写详情 / 分享链接列表 / 文件内搜索）/ `paragraphs`（转写段落列表）/ `timeline`（智能时间轴）。
 
 ```bash
-tmeet record smart-minutes --record-file-id <文件ID> [选项]
+tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [选项]
 ```
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `--record-file-id` | string | ✅ | — | 录制文件 ID |
-| `--lang` | string | — | `default` | 翻译语言选择：`default`-原文（不翻译），`zh`-简体中文，`en`-英文，`ja`-日语 |
-| `--pwd` | string | — | — | 录制文件访问密码 |
+| `--action` | string | ✅ | — | 子类型：`minutes` \| `todos` \| `transcript` \| `paragraphs` \| `timeline` |
+| `--record-file-id` | string | 视 action | — | 录制文件 ID。`todos` / `paragraphs` / `timeline` 必填；`minutes` / `transcript` 与 `--share-url` 二选一 |
+| `--share-url` | string | 视 action | — | 录制访问链接（分享 URL）。仅 `minutes` / `transcript` 支持，传入即走"分享链接列表"分支 |
+| `--meeting-id` | string | — | — | 会议 ID（用于 `transcript` 的详情/搜索分支、`paragraphs`） |
+| `--lang` | string | — | 视 action | 语言：`default`/空-原文，`zh`-简体中文，`en`-英文，`ja`-日语。适用于 `minutes` / `todos` / `timeline` |
+| `--pwd` | string | — | — | 录制文件访问密码。适用于 `minutes` / `todos` |
+| `--pid` | string | — | — | 起始段落 ID。仅 `transcript` 详情分支 |
+| `--limit` | string | — | — | 查询段落数。仅 `transcript` 详情分支 |
+| `--text` | string | — | — | 文件内搜索关键词。仅 `transcript`；与 `--share-url` 互斥 |
+| `--page-token` | string | — | — | 分页游标（仅 `--share-url` 分支），首页不传 |
+| `--page-size` | int | — | `5` | 每页数量（仅 `--share-url` 分支），默认 5，最大 5 |
+
+> **参数隐式判定（`--action transcript`）**：
+> 1. 传 `--share-url` → 分享链接列表分支；
+> 2. 否则传 `--text` → 文件内搜索分支；
+> 3. 否则 → 转写详情分支。
+> `--share-url` 与 `--text` **不能同时传入**（CLI 会精确报错）。
 
 **示例：**
 
 ```bash
-tmeet record smart-minutes --record-file-id "file_abc123" --lang zh
-```
+# minutes：单文件智能纪要
+tmeet record content --action minutes --record-file-id "file_abc123" --lang zh
 
----
+# minutes：按分享链接分页拉取智能纪要列表
+tmeet record content --action minutes \
+  --share-url "https://meeting.tencent.com/recording/xxxxx" \
+  --page-size 5
 
-#### `record transcript-get` — 获取转写详情
+# todos：单独获取智能待办（省 token）
+tmeet record content --action todos --record-file-id "file_abc123" --lang zh
 
-```bash
-tmeet record transcript-get --record-file-id <文件ID> [选项]
-```
+# transcript：转写详情（默认分支）
+tmeet record content --action transcript --record-file-id "file_abc123"
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|:----:|--------|------|
-| `--record-file-id` | string | ✅ | — | 录制文件 ID |
-| `--meeting-id` | string | — | — | 会议 ID |
-| `--pid` | string | — | — | 查询的起始段落 ID |
-| `--limit` | string | — | — | 查询的段落数 |
-
-**示例：**
-
-```bash
-tmeet record transcript-get --record-file-id "file_abc123"
-
-# 指定起始段落与数量
-tmeet record transcript-get --record-file-id "file_abc123" --pid "<paragraph_id>" --limit "30"
-```
-
----
-
-#### `record transcript-paragraphs` — 获取转写段落列表
-
-```bash
-tmeet record transcript-paragraphs --record-file-id <文件ID> [选项]
-```
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|:----:|--------|------|
-| `--record-file-id` | string | ✅ | — | 录制文件 ID |
-| `--meeting-id` | string | — | — | 会议 ID |
-
-**示例：**
-
-```bash
-tmeet record transcript-paragraphs --record-file-id "file_abc123"
-
-# 指定会议 ID
-tmeet record transcript-paragraphs \
+# transcript：指定起始段落 + 数量
+tmeet record content --action transcript \
   --record-file-id "file_abc123" \
-  --meeting-id "6953553464429888300"
+  --pid "<paragraph_id>" --limit "30"
+
+# transcript：文件内搜索关键词
+tmeet record content --action transcript \
+  --record-file-id "file_abc123" \
+  --text "季度目标"
+
+# transcript：按分享链接分页拉取转写文字稿
+tmeet record content --action transcript \
+  --share-url "https://meeting.tencent.com/recording/xxxxx" \
+  --page-size 5
+
+# paragraphs：转写段落列表
+tmeet record content --action paragraphs \
+  --record-file-id "file_abc123" --meeting-id "6953553464429888300"
+
+# timeline：录制智能时间轴
+tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 ```
 
 ---
 
-#### `record transcript-search` — 搜索转写内容
+#### `record access` — 查录制访问信息（`--action` 四选一）
+
+`record access` 用于查询录制的访问相关信息，通过 `--action` 指定具体能力：`address`（播放地址）/ `sharing`（分享设置）/ `members`（已授权成员列表）/ `settings`（智能录制配置）。
 
 ```bash
-tmeet record transcript-search --record-file-id <文件ID> --text <关键词> [选项]
+tmeet record access --action <address|sharing|members|settings> [选项]
 ```
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `--record-file-id` | string | ✅ | — | 录制文件 ID |
-| `--text` | string | ✅ | — | 搜索关键词 |
-| `--meeting-id` | string | — | — | 会议 ID |
+| `--action` | string | ✅ | — | 子类型：`address` \| `sharing` \| `members` \| `settings` |
+| `--meeting-record-id` | string | 视 action | — | 会议录制 ID。`address` / `sharing` / `members` 必填 |
+| `--record-file-id` | string | 视 action | — | 录制文件 ID。`settings` 必填 |
+| `--page-token` | string | — | — | 分页游标（`address` / `members` 支持），首页不传 |
+| `--page-size` | int | — | `30` | 每页数量（仅 `address`），默认 30，最大 30 |
 
 **示例：**
 
 ```bash
-tmeet record transcript-search --record-file-id "file_abc123" --text "季度目标"
+# address：获取录制文件播放地址
+tmeet record access --action address --meeting-record-id "record_abc123"
+
+# address：翻页
+tmeet record access --action address \
+  --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>" --page-size 30
+
+# sharing：查询当前分享配置
+tmeet record access --action sharing --meeting-record-id "record_abc123"
+
+# members：查询已授权成员列表
+tmeet record access --action members --meeting-record-id "record_abc123"
+
+# members：翻页
+tmeet record access --action members \
+  --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>"
+
+# settings：查询智能录制配置（逐字稿开关 / AI 录制开关）
+tmeet record access --action settings --record-file-id "file_abc123"
 ```
 
 ---
 
-#### `record permission-apply-prepare` — 预览录制权限申请
+#### `record share-set` — 提交分享配置与授权成员变更（写操作）
 
-申请录制权限前先调用本命令获取审批文案/会议主题/录制所有者等信息，**展示给用户二次确认后**再执行 `record permission-apply-commit` 真正提交申请。
+> ⚠️ **写操作**：修改录制的分享配置（分享总开关 / 分享模式 / 访问密码 / 链接有效期）或批量增删授权成员。执行前必须向用户展示将要变更的内容，并在获得明确确认后再执行。
+
+单次调用可同时组合以下三类操作，至少提供其中一类，否则报错：分享配置变更（任意分享配置 flag）、批量添加成员（`--add-members`）、批量移除成员（`--remove-members`）。
 
 ```bash
-tmeet record permission-apply-prepare --meeting-record-id <录制ID> [选项]
+tmeet record share-set --meeting-record-id <录制ID> [选项]
 ```
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
 | `--meeting-record-id` | string | ✅ | — | 会议录制 ID |
+| `--switch-state` | bool | — | — | 分享总开关；传 `--switch-state=false` 关闭分享；**不可与 `--permission-point-id` 同时传** |
+| `--permission-point-id` | int | — | — | 分享模式 ID：`1`-所有人可查看，`2`-所有人需输入密码查看，`3`-所有人需申请权限查看，`4`-同企业可查看，`5`-同企业需输入密码查看，`6`-同企业需申请权限查看 |
+| `--pwd` | string | — | — | 访问密码（4~10 位字母或数字）；所选分享模式要求密码时必填 |
+| `--expired-time-type` | int | — | — | 链接有效期类型：`0`-永久，`1`-7天，`2`-15天，`3`-30天，`4`-自定义（须同时传 `--expired-time`） |
+| `--expired-time` | string | — | — | 自定义过期时间（ISO 8601，如 `2026-12-31T23:59+08:00`）；仅 `--expired-time-type=4` 时生效 |
+| `--download-enable` | bool | — | — | 是否允许观看者下载录制。企业锁定下载时后端忽略本项，变更后应以后端实际响应为准 |
+| `--view-minutes-enable` | bool | — | — | 是否允许观看者查看转写与纪要 |
+| `--rooms-enable` | bool | — | — | 是否允许 Rooms 会议室设备查看本录制 |
+| `--add-members` | stringArray | — | — | 批量添加授权成员，格式 `openid:permission`（`0`=查看 `1`=管理，默认 `0`），可重复传入 |
+| `--remove-members` | stringArray | — | — | 批量移除授权成员，格式 `openid`，可重复传入 |
+
+**示例：**
+
+```bash
+# 设置为"所有人需输入密码查看"并给出密码
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --permission-point-id 2 --pwd "ab1234"
+
+# 关闭分享总开关
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --switch-state=false
+
+# 自定义链接到期时间
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --expired-time-type 4 \
+  --expired-time "2026-12-31T23:59+08:00"
+
+# 批量添加授权成员
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --add-members "openid_a:0" --add-members "openid_b:1"
+
+# 组合：改分享配置 + 加成员 + 删成员
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --permission-point-id 4 \
+  --add-members "openid_c:0" \
+  --remove-members "openid_d"
+```
+
+响应 `data` 为 JSON 字符串，含 `results[]`（各子操作结果，`op`=`settings`/`add`/`remove`）/ `succeeded` / `failed`。若多个子操作中有部分失败，命令整体返回非零退出码。
+
+---
+
+#### `record settings-set` — 修改智能录制配置（写操作）
+
+> ⚠️ **写操作**：修改录制文件的逐字稿开关或 AI 录制开关。执行前必须向用户展示将要变更的内容，并在获得明确确认后再执行。
+
+```bash
+tmeet record settings-set --record-file-id <文件ID> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--record-file-id` | string | ✅ | — | 录制文件 ID |
+| `--subtitle-switch` | int | — | — | 逐字稿开关：`1`-关闭，`2`-开启；至少传一个开关参数 |
+| `--enable-ai-switch` | int | — | — | 智能录制开关：`1`-关闭，`2`-开启；至少传一个开关参数 |
+
+**示例：**
+
+```bash
+# 开启逐字稿
+tmeet record settings-set --record-file-id "file_abc123" --subtitle-switch 2
+
+# 关闭 AI 录制
+tmeet record settings-set --record-file-id "file_abc123" --enable-ai-switch 1
+
+# 同时设置
+tmeet record settings-set --record-file-id "file_abc123" \
+  --subtitle-switch 2 --enable-ai-switch 2
+```
+
+---
+
+#### `record permission-apply` — 录制权限申请（`--action prepare|commit`）
+
+- `--action prepare`（默认）：拉取审批文案 / 会议主题 / 录制所有者等**预览信息**，用于展示给用户二次确认。只读。
+- `--action commit`：**正式提交**录制权限申请，触发审批流程。⚠️ 写操作，**必须先用户确认**。
+
+```bash
+tmeet record permission-apply [--action prepare|commit] --meeting-record-id <录制ID> [选项]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--action` | string | — | `prepare` | 动作：`prepare`-预览（默认，只读）/ `commit`-提交（写操作）|
+| `--meeting-record-id` | string | ✅ | — | 会议录制 ID（prepare / commit 必须使用相同的 `meeting_record_id`）|
 | `--meeting-id` | string | — | — | 会议 ID |
 
 **示例：**
 
 ```bash
-tmeet record permission-apply-prepare --meeting-record-id "record_abc123"
+# 预览（--action 可省略，默认即 prepare）
+tmeet record permission-apply --meeting-record-id "record_abc123"
+
+# 显式预览
+tmeet record permission-apply --action prepare --meeting-record-id "record_abc123"
+
+# 提交（写操作）
+tmeet record permission-apply --action commit --meeting-record-id "record_abc123"
 ```
 
-响应 `data` 主要字段：
+`--action prepare` 响应 `data` 主要字段：
 
 | 字段 | 说明 |
 |------|------|
@@ -681,28 +748,7 @@ tmeet record permission-apply-prepare --meeting-record-id "record_abc123"
 | `preview.applicant` | 申请人名称 |
 | `expires_in` | 过期时间（秒） |
 
----
-
-#### `record permission-apply-commit` — 提交录制权限申请
-
-**写操作**：在 `permission-apply-prepare` 获取预览信息并经用户确认后调用，正式发起权限申请审批流程。
-
-```bash
-tmeet record permission-apply-commit --meeting-record-id <录制ID> [选项]
-```
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|:----:|--------|------|
-| `--meeting-record-id` | string | ✅ | — | 会议录制 ID |
-| `--meeting-id` | string | — | — | 会议 ID |
-
-**示例：**
-
-```bash
-tmeet record permission-apply-commit --meeting-record-id "record_abc123"
-```
-
-响应 `data` 主要字段：
+`--action commit` 响应 `data` 主要字段：
 
 | 字段 | 说明 |
 |------|------|
@@ -1152,7 +1198,7 @@ tmeet minutes get (--minute-id <纪要ID> | --meeting-id <会议ID>) [选项]
 | `--overview` | bool | — | `true` | 是否获取会议概览 |
 | `--summary-points` | bool | — | `true` | 是否获取要点 |
 | `--todos` | bool | — | `true` | 是否获取待办 |
-| `--short-summary` | bool | — | `false` | 是否获取滚动总结历史序列 |
+| `--short-summary` | bool | — | `false` | 是否获取实时总结历史序列 |
 | `--page-token` | string | — | — | 分页游标，当一个 `meeting_id` 返回多份纪要时可用 |
 | `--page-size` | int | — | `10` | 每页大小，默认 10，最大 30 |
 
@@ -1254,7 +1300,7 @@ tmeet tshoot feedback \
 tmeet tshoot feedback \
   --category "tool_error" \
   --intent "获取录制下载地址" \
-  --tool-name "record address" \
+  --tool-name "record access" \
   --error-code "200003" \
   --result "接口返回权限不足"
 
