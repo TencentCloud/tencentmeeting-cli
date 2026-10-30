@@ -46,16 +46,41 @@ const (
 	ApiCmdRecordSearch = "record_search"
 	// ApiCmdRecordSmartMinutes apiCmd record_smart_minutes
 	ApiCmdRecordSmartMinutes = "record_smart_minutes"
+	// ApiCmdRecordSmartTodos apiCmd record_smart_todos
+	ApiCmdRecordSmartTodos = "record_smart_todos"
 	// ApiCmdRecordTranscriptGet apiCmd record_transcript_get
 	ApiCmdRecordTranscriptGet = "record_transcript_get"
 	// ApiCmdRecordTranscriptParagraphs apiCmd record_transcript_paragraphs
 	ApiCmdRecordTranscriptParagraphs = "record_transcript_paragraphs"
 	// ApiCmdRecordTranscriptSearch apiCmd record_transcript_search
 	ApiCmdRecordTranscriptSearch = "record_transcript_search"
+	// ApiCmdRecordTranscriptListByUrl apiCmd record_transcript_list_by_url
+	ApiCmdRecordTranscriptListByUrl = "record_transcript_list_by_url"
+	// ApiCmdRecordSmartMinutesListByUrl apiCmd record_smart_minutes_list_by_url
+	ApiCmdRecordSmartMinutesListByUrl = "record_smart_minutes_list_by_url"
 	// ApiCmdRecordPermissionApplyPrepare apiCmd record_permission_apply_prepare
 	ApiCmdRecordPermissionApplyPrepare = "record_permission_apply_prepare"
 	// ApiCmdRecordPermissionApplyCommit apiCmd record_permission_apply_commit
 	ApiCmdRecordPermissionApplyCommit = "record_permission_apply_commit"
+
+	// ApiCmdRecordModifySharingConfig apiCmd record_modify_sharing_config
+	ApiCmdRecordModifySharingConfig = "record_modify_sharing_config"
+	// ApiCmdRecordQuerySharingConfig apiCmd record_query_sharing_config
+	ApiCmdRecordQuerySharingConfig = "record_query_sharing_config"
+	// ApiCmdRecordBatchAddGrantUsers apiCmd record_batch_add_grant_users
+	ApiCmdRecordBatchAddGrantUsers = "record_batch_add_grant_users"
+	// ApiCmdRecordBatchRemGrantUsers apiCmd record_batch_rem_grant_users
+	ApiCmdRecordBatchRemGrantUsers = "record_batch_rem_grant_users"
+	// ApiCmdRecordGetGrantedUserList apiCmd record_get_granted_user_list
+	ApiCmdRecordGetGrantedUserList = "record_get_granted_user_list"
+
+	// ApiCmdRecordQuerySmartConfig apiCmd record_query_smart_config
+	ApiCmdRecordQuerySmartConfig = "record_query_smart_config"
+	// ApiCmdRecordModifySmartConfig apiCmd record_modify_smart_config
+	ApiCmdRecordModifySmartConfig = "record_modify_smart_config"
+
+	// ApiCmdRecordRecordingTimeline apiCmd record_recording_timeline
+	ApiCmdRecordRecordingTimeline = "record_recording_timeline"
 
 	// ApiCmdReportParticipants apiCmd report_participants
 	ApiCmdReportParticipants = "report_participants"
@@ -98,6 +123,16 @@ const (
 	ApiCmdAppInfoSet = "app_info_set"
 	// ApiCmdAppInfoGet apiCmd app_info_get
 	ApiCmdAppInfoGet = "app_info_get"
+
+	// ApiCmdUpdateCheck apiCmd update_check — surfaces the server-side
+	// handler for `tmeet update check` (and the --force refresh path).
+	ApiCmdUpdateCheck = "update_check"
+	// ApiCmdUpdateSet apiCmd update_set — the preference-report call made
+	// by `tmeet update set --preference ...`.
+	ApiCmdUpdateSet = "update_set"
+	// ApiCmdUpdateRun apiCmd update_run — surfaces the version-info fetch
+	// performed by `tmeet update run` when the local cache is cold.
+	ApiCmdUpdateRun = "update_run"
 )
 
 // APISchema defines the api schema.
