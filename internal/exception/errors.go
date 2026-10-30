@@ -88,4 +88,25 @@ var (
 	EventBusError = NewTmeetError(ClientCodeEventBus, "event bus error")
 	// EventBusNotRunningError indicates the event bus is not running.
 	EventBusNotRunningError = NewTmeetError(ClientCodeEventBusNotRunning, "event bus not running")
+
+	// UpdateLockError indicates failure to prepare or acquire the update lock.
+	UpdateLockError = NewTmeetError(ClientCodeUpdateLock, "update lock error")
+	// UpdateServerPayloadError indicates the server returned an invalid update payload (missing version or download URL).
+	UpdateServerPayloadError = NewTmeetError(ClientCodeUpdateServerPayload, "update server payload invalid")
+	// UpdateDownloadError indicates failure to download the update tarball from CDN.
+	UpdateDownloadError = NewTmeetError(ClientCodeUpdateDownload, "update tarball download failed")
+	// UpdateTempFileError indicates failure to create/sync/close the tempfile holding the downloaded tarball.
+	UpdateTempFileError = NewTmeetError(ClientCodeUpdateTempFile, "update tempfile operation failed")
+	// UpdateChecksumError indicates the downloaded tarball failed sha256 verification.
+	UpdateChecksumError = NewTmeetError(ClientCodeUpdateChecksum, "update tarball checksum mismatch")
+	// UpdateNpmMissingError indicates npm is required but not found in PATH.
+	UpdateNpmMissingError = NewTmeetError(ClientCodeUpdateNpmMissing, "npm not found in PATH")
+	// UpdateNpmInstallError indicates `npm install -g` failed or timed out.
+	UpdateNpmInstallError = NewTmeetError(ClientCodeUpdateNpmInstall, "npm install failed")
+	// UpdateExtractError indicates failure to extract the update archive (tar/gzip/path safety/size cap).
+	UpdateExtractError = NewTmeetError(ClientCodeUpdateExtract, "update archive extract failed")
+	// UpdateInstallError indicates failure during the staging/promote phase of the update install.
+	UpdateInstallError = NewTmeetError(ClientCodeUpdateInstall, "update install failed")
+	// UpdatePreferenceSaveError indicates failure to persist the update preference locally.
+	UpdatePreferenceSaveError = NewTmeetError(ClientCodeUpdatePreferenceSave, "save update preference failed")
 )
