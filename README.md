@@ -244,10 +244,10 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── status         # 查看本机 bus 守护进程状态
 │   └── stop           # 停止本机 bus 守护进程（可选 --force 清理残留）
 └── update
-    ├── check          # 查询是否有新版本（支持 --force 强制联网刷新）
-    ├── get            # 查看本地版本缓存与更新偏好（纯本地）
+    ├── check          # 查询是否有新版本
+    ├── get            # 查看更新偏好
     ├── set            # 设置更新偏好（remind | never_remind）
-    └── run            # 下载并替换为最新版 CLI（支持 --force 强制联网刷新）
+    └── run            # 下载并替换为最新版 CLI
 ```
 
 ---

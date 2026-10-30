@@ -244,10 +244,10 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── status         # Show the local bus daemon status
 │   └── stop           # Stop the local bus daemon (with optional --force cleanup)
 └── update
-    ├── check          # Check whether a newer CLI version is available (supports --force)
-    ├── get            # Show the local update cache and preference (offline)
+    ├── check          # Check whether a newer CLI version is available
+    ├── get            # Show the update preference
     ├── set            # Set the update preference (remind | never_remind)
-    └── run            # Download and install the latest CLI (supports --force)
+    └── run            # Download and install the latest CLI
 ```
 
 ---
