@@ -16,6 +16,12 @@ type optionsMsg struct {
 	traceId string   // output traceId
 	message string   // output message
 	hints   []string // output hints
+
+	// skipUpdateNotice, when true, tells FormatPrint not to append the
+	// `_notice.update` block. Used by `tmeet update get` and related
+	// commands whose primary payload IS the update notice content; the
+	// outer wrapper would otherwise be redundant.
+	skipUpdateNotice bool
 }
 
 // Option defines the options.
@@ -127,6 +133,18 @@ func WithMetaFieldFilter(metaKey string) Option {
 	}
 }
 
+// WithFnFilterFunc defines the filter function.
+func WithFnFilterFunc(fn func(string) []string) Option {
+	return func(msg *optionsMsg) {
+		if fn == nil {
+			return
+		}
+		deleteFields := fn(msg.data)
+
+		msg.data = string(utils.DeleteFields([]byte(msg.data), 10, deleteFields))
+	}
+}
+
 // WithTotalCountLogic defines the total count logic.
 func WithTotalCountLogic() Option {
 	return func(msg *optionsMsg) {
@@ -140,5 +158,16 @@ func WithTotalCountLogic() Option {
 			// if total_count is 0, not show this field
 			msg.data = string(utils.DeleteFields([]byte(msg.data), 10, []string{"total_count"}))
 		}
+	}
+}
+
+// WithoutUpdateNotice suppresses the automatic `_notice.update` injection
+// performed by FormatPrint. It is intended for commands whose payload is
+// already the update notice itself (notably `tmeet update get`), where
+// wrapping the same information in a redundant _notice block would just
+// clutter the output and confuse Agent-side rendering.
+func WithoutUpdateNotice() Option {
+	return func(msg *optionsMsg) {
+		msg.skipUpdateNotice = true
 	}
 }
