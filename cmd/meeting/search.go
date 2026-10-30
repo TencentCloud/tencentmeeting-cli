@@ -26,10 +26,11 @@ type SearchOptions struct {
 	Query       string // search keyword
 	QueryField  string // search field for Query
 	MeetingCode string // meeting code
-	From        string // start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	To          string // end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	PageSize    int    // Page size
-	PageToken   string // Page token for pagination
+	// if both --start and --end are omitted, server defaults to a window of 30 days before and after the current time
+	From      string // start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	To        string // end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	PageSize  int    // Page size
+	PageToken string // Page token for pagination
 }
 
 // newSearchCmd searches meetings.
@@ -52,8 +53,12 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 		note: user's note on the meeting
 		all: search all fields)`)
 	cmd.Flags().StringVar(&opts.MeetingCode, "meeting-code", "", "filter by meeting code, exact match (digits only, no dashes)")
-	cmd.Flags().StringVar(&opts.From, "start", "", "lower bound of search time window (ISO 8601). Matches if meeting's scheduled start time OR actual start time OR user's join time falls within the window (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
-	cmd.Flags().StringVar(&opts.To, "end", "", "upper bound of search time window (ISO 8601). Same semantics as above (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().StringVar(&opts.From, "start", "", "lower bound of search time window (ISO 8601). "+
+		"Matches if meeting's scheduled start time OR actual start time OR user's join time falls within the window (ISO 8601, e.g. 2026-03-12T15:00+08:00); "+
+		"if both --start and --end are omitted, server defaults to a window of 30 days before and after the current time")
+	cmd.Flags().StringVar(&opts.To, "end", "", "upper bound of search time window (ISO 8601). "+
+		"Same semantics as above (ISO 8601, e.g. 2026-03-12T15:00+08:00); "+
+		"if both --start and --end are omitted, server defaults to a window of 30 days before and after the current time")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 30, "page size, default 30, max 30")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
 

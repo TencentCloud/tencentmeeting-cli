@@ -2,10 +2,11 @@ package record
 
 import (
 	"net/http"
-	"tmeet/internal"
+
 	"tmeet/internal/cmdutil"
 	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
+	"tmeet/internal/exception"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
@@ -13,41 +14,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TranscriptsParagraphsOptions holds the options for transcript paragraphs.
-type TranscriptsParagraphsOptions struct {
-	tmeet        *internal.Tmeet
-	RecordFileID string // Record file ID
-	MeetingID    string // Meeting ID
-}
-
-// newTranscriptParagraphsCmd gets transcript paragraphs.
-func newTranscriptParagraphsCmd(tmeet *internal.Tmeet) *cobra.Command {
-	opts := &TranscriptsParagraphsOptions{tmeet: tmeet}
-	cmd := &cobra.Command{
-		Use:   "transcript-paragraphs",
-		Short: "get transcript paragraphs",
-		RunE: middleWare.Chain(
-			opts.Run,
-			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdRecordTranscriptParagraphs)),
-			middleWare.WithCompact(tmeet),
-		),
+// buildParagraphsHandler declares the `--action paragraphs` branch,
+// corresponding to legacy `transcript-paragraphs`. Returns transcript
+// paragraph list with speaker / start_time / end_time fields.
+func (o *ContentOptions) buildParagraphsHandler() *cmdutil.ActionHandler {
+	return &cmdutil.ActionHandler{
+		ApiCmd: cmdutil.ApiCmdRecordTranscriptParagraphs,
+		FlagRules: []cmdutil.FlagRule{
+			{Reject: []string{
+				"share-url", "lang", "pwd", "pid", "limit", "text",
+				"page-token", "page-size",
+			}},
+		},
+		Validate: func(cmd *cobra.Command) error {
+			if o.RecordFileID == "" {
+				return exception.InvalidArgsError.With("--action paragraphs requires --record-file-id")
+			}
+			return nil
+		},
+		Run: o.runParagraphs,
 	}
-
-	cmd.Flags().StringVar(&opts.RecordFileID, "record-file-id", "", "record file id (required)")
-	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "meeting id")
-
-	// mark required flags
-	_ = cmd.MarkFlagRequired("record-file-id")
-
-	return cmd
 }
 
-func (o *TranscriptsParagraphsOptions) Run(cmd *cobra.Command, args []string) error {
+// runParagraphs corresponds to legacy `transcript-paragraphs`.
+func (o *ContentOptions) runParagraphs(cmd *cobra.Command) error {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("operator_id", o.tmeet.UserConfig.OpenId)
 	queryParams.Set("operator_id_type", "2") // OpenId
 	queryParams.Set("record_file_id", o.RecordFileID)
-
 	if o.MeetingID != "" {
 		queryParams.Set("meeting_id", o.MeetingID)
 	}

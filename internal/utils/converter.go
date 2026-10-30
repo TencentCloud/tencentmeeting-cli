@@ -256,6 +256,27 @@ var RecordStateConverter = intEnumConverter(enumerate.RecordStateName)
 // RecordAudioDetectConverter converts record audio detect IDs to their human-readable record audio detect names.
 var RecordAudioDetectConverter = intEnumConverter(enumerate.RecordAudioDetectName)
 
+// RecordSettingTypeConverter converts record setting on/off IDs (1-off, 2-on) to their human-readable names.
+var RecordSettingTypeConverter = intEnumConverter(enumerate.RecordSettingTypeName)
+
+// RecordPermissionPointConverter converts record permission-point IDs (1~6, see
+// record-SetRecordPermissionConfigMcp / record-GetRecordPermissionConfigMcp) to their human-readable names.
+var RecordPermissionPointConverter = intEnumConverter(enumerate.RecordPermissionPointName)
+
+// RecordMemberPermissionConverter converts the per-member recording
+// permission IDs returned by record-GetGrantedUserList (0-view, 1-manage)
+// to their human-readable names.
+var RecordMemberPermissionConverter = intEnumConverter(enumerate.RecordMemberPermissionName)
+
+// RecordExpiredTimeTypeConverter converts record share-link expiration type IDs
+// (0-forever, 7/15/30-days, 4-custom) to their human-readable names.
+var RecordExpiredTimeTypeConverter = intEnumConverter(enumerate.RecordExpiredTimeTypeName)
+
+// RecordCorpShareScopeConverter converts record enterprise-level share-scope
+// control IDs (corp_share_scope: 1-unlimited, 2-disabled, 3-corp only) to
+// their human-readable names.
+var RecordCorpShareScopeConverter = intEnumConverter(enumerate.RecordCorpShareScopeName)
+
 // MeetingTypeConverter converts meeting type IDs to their human-readable meeting type names.
 var MeetingTypeConverter = intEnumConverter(enumerate.MeetingTypeName)
 
@@ -285,3 +306,21 @@ var MeetingStatusInSearchConverter = stringEnumConverter(enumerate.MeetingStatus
 
 // ExportJobStatusConverter converts export job status IDs to their human-readable status names.
 var ExportJobStatusConverter = intEnumConverter(enumerate.ExportJobStatusName)
+
+// TranscriptTypeConverter converts transcript type IDs to their human-readable transcript type names.
+var TranscriptTypeConverter = intEnumConverter(enumerate.TranscriptTypeName)
+
+// SmartMinutesMinuteTypeConverter converts smart minutes minute type IDs to their human-readable names.
+var SmartMinutesMinuteTypeConverter = intEnumConverter(enumerate.SmartMinutesMinuteTypeName)
+
+// SmartMinutesTextTypeConverter converts smart minutes text type IDs to their human-readable names.
+var SmartMinutesTextTypeConverter = intEnumConverter(enumerate.SmartMinutesTextTypeName)
+
+// SmartMinutesIndustryConverter converts smart minutes industry model IDs to their human-readable names.
+var SmartMinutesIndustryConverter = intEnumConverter(enumerate.SmartMinutesIndustryName)
+
+// SmartMinutesLLMConverter converts smart minutes LLM selection IDs to their human-readable names.
+var SmartMinutesLLMConverter = intEnumConverter(enumerate.SmartMinutesLLMName)
+
+// RecordingTimelineStatusConverter converts recording timeline generation status IDs to their human-readable names.
+var RecordingTimelineStatusConverter = intEnumConverter(enumerate.RecordingTimelineStatusName)

@@ -11,7 +11,7 @@
 
 - 🔐 **OAuth2 授权登录** — 设备码授权流程，安全无密码
 - 📅 **会议管理** — 创建、查询、更新、取消会议，支持周期性会议，管理受邀成员
-- 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、转写详情与搜索
+- 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、智能待办、转写详情与搜索、按分享链接查询转写与纪要、录制权限申请、分享设置与授权成员管理、智能录制配置查询与修改
 - 📊 **参会报告** — 查询参会人列表、等候室成员记录
 - 👥 **通讯录** — 按用户名/职位/部门检索企业通讯录成员
 - 🛠️ **问题排查** — 导出本地日志，支持按时间范围过滤，打包为 zip 文件
@@ -46,6 +46,29 @@ make build VERSION=v1.0.0
 
 ```bash
 npx skills add TencentCloud/tencentmeeting-cli -y -g
+```
+
+## 卸载
+
+### 方式一：通过 npm 安装的用户
+
+先运行官方卸载脚本完成清理（停止守护进程 → 清除凭证 → 删除 `~/.tmeet/`），然后卸载 npm 包：
+
+```bash
+node $(npm root -g)/@tencentcloud/tmeet/scripts/uninstall.js
+npm uninstall -g @tencentcloud/tmeet
+npx skills remove TencentCloud/tencentmeeting-cli -g   # 可选：同时卸载 CLI-SKILL
+```
+
+### 方式二：从源码构建的用户
+
+依次手动清理守护进程、凭证、配置目录和自建的二进制：
+
+```bash
+tmeet event stop --force
+tmeet auth logout
+rm -rf ~/.tmeet
+rm -f /usr/local/bin/tmeet   # 替换为你的二进制实际路径
 ```
 
 ## 快速开始
@@ -109,7 +132,7 @@ tmeet -V
 tmeet meeting get --meeting-id "6953553464429888300" --format json-pretty
 
 # 以精简模式输出查询结果（仅保留关键字段）
-tmeet record list --meeting-id "6953553464429888300" --compact
+tmeet record search --meeting-id "6953553464429888300" --compact
 ```
 
 ---
@@ -118,7 +141,7 @@ tmeet record list --meeting-id "6953553464429888300" --compact
 
 自 `v1.0.5` 起，所有支持分页的命令统一采用 **`--page-token` + `--page-size`** 方案。原先的 `--page` / `--pos` / `--size` 参数被标记为 **deprecated**，仍可使用但不再推荐，未来版本可能移除。
 
-> 说明：`record transcript-get` 的 `--pid` / `--limit` 是该命令用于段落定位的独立参数，**不属于**通用分页参数，未被弃用。
+> 说明：`record content --action transcript` 的 `--pid` / `--limit` 是该分支用于段落定位的独立参数，**不属于**通用分页参数，未被弃用。
 
 **统一用法：**
 
@@ -131,10 +154,10 @@ tmeet record list --meeting-id "6953553464429888300" --compact
 
 ```bash
 # 1) 首次查询（不传 page-token）
-tmeet record list --meeting-id "6953553464429888300" --page-size 30
+tmeet record search --meeting-id "6953553464429888300" --page-size 30
 
 # 2) 从响应中取出 next_page_token，用于下一页
-tmeet record list \
+tmeet record search \
   --meeting-id "6953553464429888300" \
   --page-size 30 \
   --page-token "<next_page_token>"
@@ -150,15 +173,16 @@ tmeet record list \
 | `meeting list-ended` | 30  | 30 | `--page` |
 | `meeting search` | 30  | 30 | — |
 | `meeting invitees-list` | 30  | 30 | `--pos` |
-| `record list` | 30  | 30 | `--page` |
-| `record address` | 30  | 30 | `--page` |
 | `record search` | 30  | 30 | — |
+| `record access --action address` | 30  | 30 | — |
+| `record content --action minutes --share-url` | 5  | 5 | — |
+| `record content --action transcript --share-url` | 5  | 5 | — |
 | `report participants` | 100 | 100 | `--pos` / `--size` |
 | `report waiting-room-log` | 100 | 100 | `--page` |
 | `minutes search` | 20  | 50 | — |
 | `minutes get` | 10  | 30 | — |
 
-> `record transcript-get` / `record transcript-paragraphs` / `record transcript-search` 暂不支持基于 `--page-token` 的新分页方案。
+> `record content --action transcript`（transcript details / search 分支）与 `record content --action paragraphs` 暂不支持基于 `--page-token` 的新分页方案。
 >
 > 兼容性说明：当未传入 `--page-token` 且同时传入了旧分页参数（如 `--page`、`--pos`）时，CLI 会按旧模式发起请求（`page_type=0`）；否则一律按新模式（`page_type=1`）发起请求。
 
@@ -189,15 +213,12 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── lookup-by-email # 通过邮箱反查用户信息
 │   └── lookup-by-phone # 通过手机号反查用户信息
 ├── record
-│   ├── list           # 查询录制列表
-│   ├── address        # 获取录制文件下载地址
-│   ├── search         # 按关键词/会议号/会议ID/时间范围搜索录制
-│   ├── smart-minutes  # 获取智能纪要
-│   ├── transcript-get          # 获取转写详情
-│   ├── transcript-paragraphs   # 获取转写段落列表
-│   ├── transcript-search       # 搜索转写内容
-│   ├── permission-apply-prepare # 预览录制权限申请信息（申请前确认）
-│   └── permission-apply-commit  # 提交录制权限申请（用户确认后执行）
+│   ├── search         # 按关键词/会议号/会议ID/时间范围/文件类型搜索或列出录制
+│   ├── content        # 读内容：--action minutes|todos|transcript|paragraphs|timeline
+│   ├── access         # 查访问：--action address|sharing|members|settings
+│   ├── share-set      # 修改录制分享设置与授权成员（写操作，执行前确认）
+│   ├── settings-set   # 修改录制文件智能录制配置（写操作，执行前确认）
+│   └── permission-apply # 录制权限申请：--action prepare|commit（默认 prepare 预览）
 ├── report
 │   ├── participants         # 获取参会人列表
 │   ├── waiting-room-log     # 获取等候室成员列表
@@ -216,12 +237,17 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── app
 │   ├── get            # 获取当前 CLI 应用信息
 │   └── set            # 设置当前 CLI 应用信息
-└── event
-    ├── list           # 列出可订阅的 EventKey
-    ├── schema         # 查看 EventKey 的参数 / 输出 schema
-    ├── consume        # 订阅 EventKey，按 NDJSON 流式输出事件
-    ├── status         # 查看本机 bus 守护进程状态
-    └── stop           # 停止本机 bus 守护进程（可选 --force 清理残留）
+├── event
+│   ├── list           # 列出可订阅的 EventKey
+│   ├── schema         # 查看 EventKey 的参数 / 输出 schema
+│   ├── consume        # 订阅 EventKey，按 NDJSON 流式输出事件
+│   ├── status         # 查看本机 bus 守护进程状态
+│   └── stop           # 停止本机 bus 守护进程（可选 --force 清理残留）
+└── update
+    ├── check          # 查询是否有新版本
+    ├── get            # 查看更新偏好
+    ├── set            # 设置更新偏好（remind | never_remind）
+    └── run            # 下载并替换为最新版 CLI
 ```
 
 ---

@@ -451,74 +451,9 @@ tmeet meeting invitees-replace \
 
 ### record — Recording Management
 
-#### `record list` — Query Recording List
-
-Choose **one** of the following three parameter groups (error if none provided):
-- `--start` + `--end` (time range)
-- `--meeting-id` (meeting ID)
-- `--meeting-code` (meeting code)
-
-```bash
-tmeet record list (--start <start-time> --end <end-time> | --meeting-id <id> | --meeting-code <code>) [options]
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--start` | string | one of three | — | Query start time, ISO 8601, e.g. `2026-03-12T14:00+08:00` |
-| `--end` | string | one of three | — | Query end time, ISO 8601, e.g. `2026-03-12T14:00+08:00` (used with `--start`) |
-| `--meeting-id` | string | one of three | — | Meeting ID |
-| `--meeting-code` | string | one of three | — | Meeting code |
-| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
-| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
-| `--page` | int | — | — | ⚠️ **Deprecated**: page number (starting from 1); use `--page-token` instead |
-
-**Examples:**
-
-```bash
-# Query by time range
-tmeet record list \
-  --start "2026-04-01T00:00+08:00" \
-  --end "2026-04-30T23:59+08:00" \
-  --page-token "<next_page_token>" --page-size 30
-
-# Query by meeting ID
-tmeet record list --meeting-id "6953553464429888300"
-
-# Query by meeting code
-tmeet record list --meeting-code "931945029"
-```
-
----
-
-#### `record address` — Get Recording Download URL
-
-```bash
-tmeet record address --meeting-record-id <record-id> [options]
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--meeting-record-id` | string | ✅ | — | Meeting recording ID |
-| `--page-token` | string | — | — | Pagination cursor; take `next_page_token` from the previous response; omit on first request |
-| `--page-size` | int | — | `30` | Page size, default 30, max 30 |
-| `--page` | int | — | — | ⚠️ **Deprecated**: page number (starting from 1); use `--page-token` instead |
-
-**Examples:**
-
-```bash
-tmeet record address --meeting-record-id "record_abc123"
-
-# Fetch the next page
-tmeet record address \
-  --meeting-record-id "record_abc123" \
-  --page-token "<next_page_token>" --page-size 30
-```
-
----
-
 #### `record search` — Search Recordings
 
-Search recordings by keyword, meeting code, meeting ID, time range, file type, or other filters. All filter parameters are optional and can be combined freely.
+Search or list recordings by keyword, meeting code, meeting ID, time range, or file type. All filter parameters are optional and can be combined freely. When `--query` is omitted, the command simply lists recordings by the provided range.
 
 ```bash
 tmeet record search [options]
@@ -526,8 +461,8 @@ tmeet record search [options]
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `--query` | string | — | — | Search keyword |
-| `--query-field` | string | — | `all` | Search field for `--query`: `subject`-recording subject; `creator`-meeting creator's nickname/remark name; `transcript_content`-original transcript content within the file; `smart_minutes`-smart minutes content within the file (summary + todos); `timeline`-timeline content within the file; `all`-search all fields |
+| `--query` | string | — | — | Search keyword (max length 50) |
+| `--query-field` | string | — | `all` | Search field for `--query`: `subject`-recording subject; `creator`-meeting creator's nickname/remark name; `transcript_content`-original transcript content within the file; `smart_minutes`-smart minutes content within the file (summary + todos); `timeline`-timeline content within the file; `todo`-smart minutes todo content; `all`-search all fields |
 | `--file-type` | string | — | `all` | File type: `video`, `audio`, `transcript`, `upload`, `external`, `all` |
 | `--meeting-id` | string | — | — | Filter by meeting ID |
 | `--meeting-code` | string | — | — | Filter by meeting code, exact match (digits only, no dashes) |
@@ -539,6 +474,13 @@ tmeet record search [options]
 **Examples:**
 
 ```bash
+# List by range only
+tmeet record search --meeting-id "6953553464429888300"
+tmeet record search --meeting-code "931945029"
+tmeet record search \
+  --start "2026-04-01T00:00+08:00" \
+  --end "2026-04-30T23:59+08:00"
+
 # Search transcript content by keyword
 tmeet record search --query "quarterly goals" --query-field transcript_content
 
@@ -562,114 +504,239 @@ tmeet record search \
 
 ---
 
-#### `record smart-minutes` — Get Smart Minutes
+#### `record content` — Read Recording Content (`--action`, one of five)
+
+`record content` reads various types of content from a recording file, selected via `--action`: `minutes` (smart minutes) / `todos` (smart todos) / `transcript` (transcript details / share-URL list / in-file search) / `paragraphs` (transcript paragraph list) / `timeline` (smart timeline).
 
 ```bash
-tmeet record smart-minutes --record-file-id <file-id> [options]
+tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [options]
 ```
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `--record-file-id` | string | ✅ | — | Recording file ID |
-| `--lang` | string | — | `default` | Translation language: `default`-original (no translation), `zh`-Simplified Chinese, `en`-English, `ja`-Japanese |
-| `--pwd` | string | — | — | Recording file access password |
+| `--action` | string | ✅ | — | Sub-type: `minutes` \| `todos` \| `transcript` \| `paragraphs` \| `timeline` |
+| `--record-file-id` | string | depends on action | — | Recording file ID. Required by `todos` / `paragraphs` / `timeline`. For `minutes` / `transcript`, mutually exclusive with `--share-url` |
+| `--share-url` | string | depends on action | — | Recording access share URL. Only supported by `minutes` / `transcript`; when set, switches to the list-by-URL branch |
+| `--meeting-id` | string | — | — | Meeting ID (used by `transcript` details/search branches and `paragraphs`) |
+| `--lang` | string | — | depends on action | Language: `default`/empty-original, `zh`-Simplified Chinese, `en`-English, `ja`-Japanese. Applies to `minutes` / `todos` / `timeline` |
+| `--pwd` | string | — | — | Recording file access password. Applies to `minutes` / `todos` |
+| `--pid` | string | — | — | Starting paragraph ID. Only for the `transcript` details branch |
+| `--limit` | string | — | — | Number of paragraphs to query. Only for the `transcript` details branch |
+| `--text` | string | — | — | In-file search keyword. Only for `transcript`; mutually exclusive with `--share-url` |
+| `--page-token` | string | — | — | Pagination cursor (only the `--share-url` branch); omit on first request |
+| `--page-size` | int | — | `5` | Page size (only the `--share-url` branch), default 5, max 5 |
 
-**Example:**
-
-```bash
-tmeet record smart-minutes --record-file-id "file_abc123" --lang zh
-```
-
----
-
-#### `record transcript-get` — Get Transcript Details
-
-```bash
-tmeet record transcript-get --record-file-id <file-id> [options]
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--record-file-id` | string | ✅ | — | Recording file ID |
-| `--meeting-id` | string | — | — | Meeting ID |
-| `--pid` | string | — | — | Starting paragraph ID |
-| `--limit` | string | — | — | Number of paragraphs to query |
+> **Implicit branch selection (`--action transcript`)**:
+> 1. `--share-url` provided → share-URL list branch;
+> 2. Otherwise `--text` provided → in-file search branch;
+> 3. Otherwise → transcript details branch.
+> `--share-url` and `--text` **cannot be used together** (the CLI will return a precise error).
 
 **Examples:**
 
 ```bash
-tmeet record transcript-get --record-file-id "file_abc123"
+# minutes: single-file smart minutes
+tmeet record content --action minutes --record-file-id "file_abc123" --lang zh
 
-# Specify starting paragraph and count
-tmeet record transcript-get --record-file-id "file_abc123" --pid "<paragraph_id>" --limit "30"
-```
+# minutes: paginated smart minutes list by share URL
+tmeet record content --action minutes \
+  --share-url "https://meeting.tencent.com/recording/xxxxx" \
+  --page-size 5
 
----
+# todos: fetch smart todos only (saves tokens)
+tmeet record content --action todos --record-file-id "file_abc123" --lang zh
 
-#### `record transcript-paragraphs` — Get Transcript Paragraph List
+# transcript: transcript details (default branch)
+tmeet record content --action transcript --record-file-id "file_abc123"
 
-```bash
-tmeet record transcript-paragraphs --record-file-id <file-id> [options]
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--record-file-id` | string | ✅ | — | Recording file ID |
-| `--meeting-id` | string | — | — | Meeting ID |
-
-**Examples:**
-
-```bash
-tmeet record transcript-paragraphs --record-file-id "file_abc123"
-
-# Specify meeting ID
-tmeet record transcript-paragraphs \
+# transcript: specify starting paragraph and count
+tmeet record content --action transcript \
   --record-file-id "file_abc123" \
-  --meeting-id "6953553464429888300"
+  --pid "<paragraph_id>" --limit "30"
+
+# transcript: in-file keyword search
+tmeet record content --action transcript \
+  --record-file-id "file_abc123" \
+  --text "quarterly goals"
+
+# transcript: paginated transcript by share URL
+tmeet record content --action transcript \
+  --share-url "https://meeting.tencent.com/recording/xxxxx" \
+  --page-size 5
+
+# paragraphs: transcript paragraph list
+tmeet record content --action paragraphs \
+  --record-file-id "file_abc123" --meeting-id "6953553464429888300"
+
+# timeline: recording smart timeline
+tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 ```
 
 ---
 
-#### `record transcript-search` — Search Transcript Content
+#### `record access` — Query Recording Access Info (`--action`, one of four)
+
+`record access` queries recording access-related information via `--action`: `address` (download URL) / `sharing` (sharing config) / `members` (authorized member list) / `settings` (smart recording config).
 
 ```bash
-tmeet record transcript-search --record-file-id <file-id> --text <keyword> [options]
+tmeet record access --action <address|sharing|members|settings> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--action` | string | ✅ | — | Sub-type: `address` \| `sharing` \| `members` \| `settings` |
+| `--meeting-record-id` | string | depends on action | — | Meeting recording ID. Required by `address` / `sharing` / `members` |
+| `--record-file-id` | string | depends on action | — | Recording file ID. Required by `settings` |
+| `--page-token` | string | — | — | Pagination cursor (supported by `address` / `members`); omit on first request |
+| `--page-size` | int | — | `30` | Page size (only `address`), default 30, max 30 |
+
+**Examples:**
+
+```bash
+# address: get recording file playback URL
+tmeet record access --action address --meeting-record-id "record_abc123"
+
+# address: paginate
+tmeet record access --action address \
+  --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>" --page-size 30
+
+# sharing: query current sharing config
+tmeet record access --action sharing --meeting-record-id "record_abc123"
+
+# members: query authorized member list
+tmeet record access --action members --meeting-record-id "record_abc123"
+
+# members: paginate
+tmeet record access --action members \
+  --meeting-record-id "record_abc123" \
+  --page-token "<next_page_token>"
+
+# settings: query smart recording config (subtitle switch / AI switch)
+tmeet record access --action settings --record-file-id "file_abc123"
+```
+
+---
+
+#### `record share-set` — Modify Sharing Config & Authorized Members (write operation)
+
+> ⚠️ **Write operation**: Modifies the recording's sharing config (sharing master switch / sharing mode / access password / link expiration) or batch add/remove authorized members. Show the pending changes to the user and obtain explicit confirmation before executing.
+
+A single invocation can combine the following three types of operations. At least one type must be provided or the command errors: sharing config change (any sharing config flag), batch add members (`--add-members`), batch remove members (`--remove-members`).
+
+```bash
+tmeet record share-set --meeting-record-id <record-id> [options]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-record-id` | string | ✅ | — | Meeting recording ID |
+| `--switch-state` | bool | — | — | Sharing master switch; pass `--switch-state=false` to disable sharing; **must not be combined with `--permission-point-id`** |
+| `--permission-point-id` | int | — | — | Sharing mode id: `1`-public view, `2`-public with password, `3`-public with approval, `4`-corp view, `5`-corp with password, `6`-corp with approval |
+| `--pwd` | string | — | — | Access password (4~10 digits or letters); required when the chosen sharing mode requires a password |
+| `--expired-time-type` | int | — | — | Share link expiration type: `0`-forever, `1`-7days, `2`-15days, `3`-30days, `4`-custom (requires `--expired-time`) |
+| `--expired-time` | string | — | — | Custom expiration time (ISO 8601, e.g. `2026-12-31T23:59+08:00`); only effective when `--expired-time-type=4` |
+| `--download-enable` | bool | — | — | Whether viewers can download the recording; ignored by backend when the enterprise locks download, verify via the GET response |
+| `--view-minutes-enable` | bool | — | — | Whether viewers can view transcripts and smart minutes |
+| `--rooms-enable` | bool | — | — | Whether Rooms devices can view this recording |
+| `--add-members` | stringArray | — | — | Batch add authorized members; format `openid:permission` (`0`=view `1`=manage, default `0`); repeatable |
+| `--remove-members` | stringArray | — | — | Batch remove authorized members; format `openid`; repeatable |
+
+**Examples:**
+
+```bash
+# Set sharing mode to "public with password" and provide the password
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --permission-point-id 2 --pwd "ab1234"
+
+# Disable the sharing master switch
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --switch-state=false
+
+# Custom link expiration time
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --expired-time-type 4 \
+  --expired-time "2026-12-31T23:59+08:00"
+
+# Batch add authorized members
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --add-members "openid_a:0" --add-members "openid_b:1"
+
+# Combined: change sharing config + add members + remove members
+tmeet record share-set \
+  --meeting-record-id "record_abc123" \
+  --permission-point-id 4 \
+  --add-members "openid_c:0" \
+  --remove-members "openid_d"
+```
+
+Response `data` is a JSON string containing `results[]` (per-sub-operation result with `op`=`settings`/`add`/`remove`), `succeeded`, and `failed`. If any sub-operation fails, the overall exit code is non-zero.
+
+---
+
+#### `record settings-set` — Modify Smart Recording Config (write operation)
+
+> ⚠️ **Write operation**: Modifies the recording file's subtitle switch or AI recording switch. Show the pending changes to the user and obtain explicit confirmation before executing.
+
+```bash
+tmeet record settings-set --record-file-id <file-id> [options]
 ```
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
 | `--record-file-id` | string | ✅ | — | Recording file ID |
-| `--text` | string | ✅ | — | Search keyword |
-| `--meeting-id` | string | — | — | Meeting ID |
+| `--subtitle-switch` | int | — | — | Subtitle switch: `1`-off, `2`-on; at least one of `--subtitle-switch` / `--enable-ai-switch` is required |
+| `--enable-ai-switch` | int | — | — | Smart recording switch: `1`-off, `2`-on; at least one of `--subtitle-switch` / `--enable-ai-switch` is required |
 
-**Example:**
+**Examples:**
 
 ```bash
-tmeet record transcript-search --record-file-id "file_abc123" --text "quarterly goals"
+# Turn on subtitle
+tmeet record settings-set --record-file-id "file_abc123" --subtitle-switch 2
+
+# Turn off AI recording
+tmeet record settings-set --record-file-id "file_abc123" --enable-ai-switch 1
+
+# Set both at once
+tmeet record settings-set --record-file-id "file_abc123" \
+  --subtitle-switch 2 --enable-ai-switch 2
 ```
 
 ---
 
-#### `record permission-apply-prepare` — Preview Record Permission Application
+#### `record permission-apply` — Record Permission Application (`--action prepare|commit`)
 
-Call this command before applying for record permission to fetch the approval text / meeting subject / record owner info. **Show the preview to the user for confirmation**, then call `record permission-apply-commit` to actually submit the application.
+- `--action prepare` (default): fetch the approval text / meeting subject / record owner info as a **preview** for user confirmation. Read-only.
+- `--action commit`: **submit** the record permission application, triggering the approval workflow. ⚠️ Write operation, **user confirmation required first**.
 
 ```bash
-tmeet record permission-apply-prepare --meeting-record-id <record-id> [options]
+tmeet record permission-apply [--action prepare|commit] --meeting-record-id <record-id> [options]
 ```
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `--meeting-record-id` | string | ✅ | — | Meeting record ID |
+| `--action` | string | — | `prepare` | Action: `prepare`-preview (default, read-only) / `commit`-submit (write) |
+| `--meeting-record-id` | string | ✅ | — | Meeting recording ID (prepare and commit must use the same `meeting_record_id`) |
 | `--meeting-id` | string | — | — | Meeting ID |
 
-**Example:**
+**Examples:**
 
 ```bash
-tmeet record permission-apply-prepare --meeting-record-id "record_abc123"
+# Preview (--action can be omitted; defaults to prepare)
+tmeet record permission-apply --meeting-record-id "record_abc123"
+
+# Explicit preview
+tmeet record permission-apply --action prepare --meeting-record-id "record_abc123"
+
+# Commit (write operation)
+tmeet record permission-apply --action commit --meeting-record-id "record_abc123"
 ```
 
-Key fields in response `data`:
+Key fields in `--action prepare` response `data`:
 
 | Field | Description |
 |-------|-------------|
@@ -681,28 +748,7 @@ Key fields in response `data`:
 | `preview.applicant` | Applicant name |
 | `expires_in` | Expiration time in seconds |
 
----
-
-#### `record permission-apply-commit` — Commit Record Permission Application
-
-**Write operation**: Call this command after `permission-apply-prepare` returns a preview and the user has confirmed the application. This formally kicks off the permission approval workflow.
-
-```bash
-tmeet record permission-apply-commit --meeting-record-id <record-id> [options]
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|:--------:|---------|-------------|
-| `--meeting-record-id` | string | ✅ | — | Meeting record ID |
-| `--meeting-id` | string | — | — | Meeting ID |
-
-**Example:**
-
-```bash
-tmeet record permission-apply-commit --meeting-record-id "record_abc123"
-```
-
-Key fields in response `data`:
+Key fields in `--action commit` response `data`:
 
 | Field | Description |
 |-------|-------------|
@@ -1152,7 +1198,7 @@ tmeet minutes get (--minute-id <ID> | --meeting-id <ID>) [options]
 | `--overview` | bool | ❌ | `true` | Include meeting overview |
 | `--summary-points` | bool | ❌ | `true` | Include summary points |
 | `--todos` | bool | ❌ | `true` | Include todos |
-| `--short-summary` | bool | ❌ | `false` | Include rolling summary history sequence |
+| `--short-summary` | bool | ❌ | `false` | Include real-time summary history sequence |
 | `--page-token` | string | ❌ | — | Pagination cursor; used when one `meeting_id` returns multiple minutes |
 | `--page-size` | int | ❌ | `10` | Page size, default 10, max 30 |
 
@@ -1254,7 +1300,7 @@ tmeet tshoot feedback \
 tmeet tshoot feedback \
   --category "tool_error" \
   --intent "Get recording download URL" \
-  --tool-name "record address" \
+  --tool-name "record access" \
   --error-code "200003" \
   --result "API returned permission denied"
 

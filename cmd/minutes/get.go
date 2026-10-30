@@ -25,7 +25,7 @@ type GetOptions struct {
 	Overview      bool   // whether to include meeting overview, default true
 	SummaryPoints bool   // whether to include summary points, default true
 	Todos         bool   // whether to include todos, default true
-	ShortSummary  bool   // whether to fetch transient (rolling) minutes
+	ShortSummary  bool   // whether to fetch real-time summary (rolling) minutes
 	PageToken     string // page token for pagination
 	PageSize      int    // page size
 }
@@ -48,32 +48,32 @@ func newGetCmd(tmeet *internal.Tmeet) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.MinuteID, "minute-id", "",
-		"minute unique identifier (required for transient minutes)")
+		"minute unique identifier (required for real-time summary minutes)")
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "",
-		"meeting ID (cycle-level), used for stable minutes")
+		"meeting ID (cycle-level), used for global summary minutes")
 	cmd.Flags().StringVar(&opts.MeetingCode, "meeting-code", "",
-		"meeting code (9-12 digits), will be resolved to meeting ID for stable minutes")
+		"meeting code (9-12 digits), will be resolved to meeting ID for global summary minutes")
 	cmd.Flags().StringVar(&opts.SubMeetingID, "sub-meeting-id", "",
 		"sub-meeting ID (recurring meeting instance); omit for non-recurring meetings")
 	cmd.Flags().BoolVar(&opts.Overview, "overview", true, "include meeting overview, default true")
 	cmd.Flags().BoolVar(&opts.SummaryPoints, "summary-points", true, "include summary points, default true")
 	cmd.Flags().BoolVar(&opts.Todos, "todos", true, "include todos, default true")
 	cmd.Flags().BoolVar(&opts.ShortSummary, "short-summary", false,
-		"fetch transient (rolling) minutes; requires --minute-id")
+		"fetch real-time summary (rolling) minutes; requires --minute-id")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
-	cmd.Flags().IntVar(&opts.PageSize, "page-size", 0, "page size (stable: default 10, max 30; transient: default 100, max 300)")
+	cmd.Flags().IntVar(&opts.PageSize, "page-size", 0, "page size (global summary: default 10, max 30; real-time summary: default 100, max 300)")
 
 	return cmd
 }
 
 const (
-	// pageSizeDefaultStable is the default page size for stable minute get.
+	// pageSizeDefaultStable is the default page size for global summary minute get.
 	pageSizeDefaultStable = 10
-	// pageSizeMaxStable is the max page size for stable minute get.
+	// pageSizeMaxStable is the max page size for global summary minute get.
 	pageSizeMaxStable = 30
-	// pageSizeDefaultTransient is the default page size for transient minute get.
+	// pageSizeDefaultTransient is the default page size for real-time summary minute get.
 	pageSizeDefaultTransient = 100
-	// pageSizeMaxTransient is the max page size for transient minute get.
+	// pageSizeMaxTransient is the max page size for real-time summary minute get.
 	pageSizeMaxTransient = 300
 )
 
@@ -85,9 +85,9 @@ func (o *GetOptions) Run(cmd *cobra.Command, args []string) error {
 	return o.runStable(cmd)
 }
 
-// runStable fetches stable (steady-state) minutes via meeting-id.
+// runStable fetches global summary minutes via meeting-id.
 func (o *GetOptions) runStable(cmd *cobra.Command) error {
-	// meeting-id, meeting-code or minute-id is required for stable minutes
+	// meeting-id, meeting-code or minute-id is required for global summary minutes
 	hasMinuteID := o.MinuteID != ""
 	hasMeetingID := o.MeetingID != ""
 	hasMeetingCode := o.MeetingCode != ""
@@ -123,7 +123,7 @@ func (o *GetOptions) runStable(cmd *cobra.Command) error {
 		queryParams.Set("sub_meeting_id", o.SubMeetingID)
 	}
 
-	// content selection flags — short_summary is always false for stable minutes
+	// content selection flags — short_summary is always false for global summary minutes
 	queryParams.Set("overview", strconv.FormatBool(o.Overview))
 	queryParams.Set("summary_points", strconv.FormatBool(o.SummaryPoints))
 	queryParams.Set("todos", strconv.FormatBool(o.Todos))
@@ -155,7 +155,7 @@ func (o *GetOptions) runStable(cmd *cobra.Command) error {
 	return nil
 }
 
-// transientMinutesRsp is the response structure for transient minutes pagination.
+// transientMinutesRsp is the response structure for real-time summary minutes pagination.
 type transientMinutesRsp struct {
 	MinuteID      string                   `json:"minute_id,omitempty"`
 	Items         []map[string]interface{} `json:"items,omitempty"`
@@ -164,10 +164,10 @@ type transientMinutesRsp struct {
 	NextPageToken string                   `json:"next_page_token,omitempty"`
 }
 
-// runTransient fetches transient (rolling) minutes via minute-id.
+// runTransient fetches real-time summary (rolling) minutes via minute-id.
 // 默认获取全量数据，循环分页拉取直到 has_more 为 false。
 func (o *GetOptions) runTransient(cmd *cobra.Command) error {
-	// minute-id is required for transient minutes
+	// minute-id is required for real-time summary minutes
 	if o.MinuteID == "" {
 		return exception.InvalidArgsError.With("--minute-id is required when --short-summary is set")
 	}
@@ -184,7 +184,7 @@ func (o *GetOptions) runTransient(cmd *cobra.Command) error {
 	return o.fetchAllTransient(cmd, pageSize)
 }
 
-// fetchAllTransient fetches all pages of transient minutes and merges them.
+// fetchAllTransient fetches all pages of real-time summary minutes and merges them.
 func (o *GetOptions) fetchAllTransient(cmd *cobra.Command, pageSize int) error {
 	const maxPages = 100
 	var allItems []map[string]interface{}
@@ -233,7 +233,7 @@ func (o *GetOptions) fetchAllTransient(cmd *cobra.Command, pageSize int) error {
 	return nil
 }
 
-// fetchTransientPage fetches a single page of transient minutes.
+// fetchTransientPage fetches a single page of real-time summary minutes.
 func (o *GetOptions) fetchTransientPage(cmd *cobra.Command, pageSize int, pageToken string) (*restProxy.ProxyRsp, error) {
 	queryParams := thttp.QueryParams{}
 	queryParams.Set("operator_id", o.tmeet.UserConfig.OpenId)

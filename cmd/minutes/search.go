@@ -25,8 +25,9 @@ const pageSizeMaxMinutes = 50
 
 // SearchOptions holds the options for searching minutes.
 type SearchOptions struct {
-	tmeet     *internal.Tmeet
-	Query     string // search keyword, max 50 characters
+	tmeet *internal.Tmeet
+	Query string // search keyword, max 50 characters
+	// if both --start and --end are omitted, defaults to the last 1 year (up to now)
 	From      string // start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
 	To        string // end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
 	PageSize  int    // page size, default 20, max 50
@@ -46,8 +47,10 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.Query, "query", "", "search keyword, max 50 characters")
-	cmd.Flags().StringVar(&opts.From, "start", "", "lower bound of search time window (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
-	cmd.Flags().StringVar(&opts.To, "end", "", "upper bound of search time window (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().StringVar(&opts.From, "start", "", "lower bound of search time window (ISO 8601, e.g. 2026-03-12T15:00+08:00);"+
+		"if both --start and --end are omitted, defaults to the last 1 year (up to now)")
+	cmd.Flags().StringVar(&opts.To, "end", "", "upper bound of search time window (ISO 8601, e.g. 2026-03-12T15:00+08:00); "+
+		"if both --start and --end are omitted, defaults to the last 1 year (up to now)")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size, default 20, max 50")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
 

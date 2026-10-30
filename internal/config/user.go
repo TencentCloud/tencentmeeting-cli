@@ -63,6 +63,11 @@ func validateOpenId(openId string) error {
 	return nil
 }
 
+// ValidateOpenId is internal func proxy
+func ValidateOpenId(openId string) error {
+	return validateOpenId(openId)
+}
+
 // GetUserConfig retrieves the user configuration for the currently active application.
 //
 // Internally decrypts and reads from the encrypted .enc file; callers do not need to know the encryption details.

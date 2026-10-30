@@ -28,10 +28,11 @@ type SearchOptions struct {
 	FileType    string // file type: video / audio / transcript / upload / external / all (default all)
 	MeetingID   string // meeting id
 	MeetingCode string // meeting code
-	From        string // start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	To          string // end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	PageSize    int    // page size
-	PageToken   string // page token for pagination
+	// if both --start and --end are omitted, defaults to the last 30 days (up to now)
+	From      string // start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	To        string // end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
+	PageSize  int    // page size
+	PageToken string // page token for pagination
 }
 
 // newSearchCmd searches records.
@@ -54,9 +55,12 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 		transcript_content: original transcript content within the file;
 		smart_minutes: smart minutes content within the file (summary + todos);
 		timeline: timeline content within the file;
+		todo: search smart minutes todo content;
 		all: search all fields)`)
-	cmd.Flags().StringVar(&opts.From, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
-	cmd.Flags().StringVar(&opts.To, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T14:00+08:00)")
+	cmd.Flags().StringVar(&opts.From, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T14:00+08:00); "+
+		"if both --start and --end are omitted, defaults to the last 30 days (up to now)")
+	cmd.Flags().StringVar(&opts.To, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T14:00+08:00); "+
+		"if both --start and --end are omitted, defaults to the last 30 days (up to now)")
 	cmd.Flags().StringVar(&opts.FileType, "file-type", "all", "file type: video / audio / transcript / upload / external / all (default all)")
 	cmd.Flags().StringVar(&opts.MeetingID, "meeting-id", "", "filter by meeting id")
 	cmd.Flags().StringVar(&opts.MeetingCode, "meeting-code", "", "filter by meeting code, exact match (digits only, no dashes)")

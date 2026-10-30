@@ -11,7 +11,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 
 - 🔐 **OAuth2 Authorization** — Device code authorization flow, secure and passwordless
 - 📅 **Meeting Management** — Create, query, update, and cancel meetings; supports recurring meetings and invitee management
-- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, transcript details and search
+- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, smart todos, transcript details and search, query transcripts and smart minutes by share link, recording permission application, sharing settings and authorized member management, smart recording config query and modification
 - 📊 **Attendance Reports** — Query participant lists and waiting room member records
 - 👥 **Contacts** — Search enterprise contact members by username, job title, or department
 - 🛠️ **Troubleshooting** — Export local logs with optional time range filter, packaged as a zip file
@@ -46,6 +46,29 @@ make build VERSION=v1.0.0
 
 ```bash
 npx skills add TencentCloud/tencentmeeting-cli -y -g
+```
+
+## Uninstall
+
+### Option 1: Installed via npm
+
+Run the official uninstall script (stop daemon → wipe credentials → remove `~/.tmeet/`), then uninstall the npm package:
+
+```bash
+node $(npm root -g)/@tencentcloud/tmeet/scripts/uninstall.js
+npm uninstall -g @tencentcloud/tmeet
+npx skills remove TencentCloud/tencentmeeting-cli -g   # Optional: also uninstall CLI-SKILL
+```
+
+### Option 2: Built from Source
+
+Manually clean up the daemon, credentials, config directory, and your self-built binary:
+
+```bash
+tmeet event stop --force
+tmeet auth logout
+rm -rf ~/.tmeet
+rm -f /usr/local/bin/tmeet   # Replace with the actual path of your binary
 ```
 
 ## Quick Start
@@ -109,7 +132,7 @@ tmeet -V
 tmeet meeting get --meeting-id "6953553464429888300" --format json-pretty
 
 # Output query results in compact mode (only key fields)
-tmeet record list --meeting-id "6953553464429888300" --compact
+tmeet record search --meeting-id "6953553464429888300" --compact
 ```
 
 ---
@@ -118,7 +141,7 @@ tmeet record list --meeting-id "6953553464429888300" --compact
 
 Starting from `v1.0.5`, all list/query commands that support pagination use a unified **`--page-token` + `--page-size`** model. The legacy `--page` / `--pos` / `--size` flags are marked as **deprecated** — they still work for backward compatibility but are discouraged and may be removed in a future release.
 
-> Note: The `--pid` / `--limit` flags of `record transcript-get` are dedicated paragraph-locating parameters of that specific command, **not** part of the generic pagination scheme, and are **not deprecated**.
+> Note: The `--pid` / `--limit` flags of `record content --action transcript` are dedicated paragraph-locating parameters of that branch, **not** part of the generic pagination scheme, and are **not deprecated**.
 
 **Unified usage:**
 
@@ -131,10 +154,10 @@ Starting from `v1.0.5`, all list/query commands that support pagination use a un
 
 ```bash
 # 1) First request (no page-token)
-tmeet record list --meeting-id "6953553464429888300" --page-size 30
+tmeet record search --meeting-id "6953553464429888300" --page-size 30
 
 # 2) Take next_page_token from the response and request the next page
-tmeet record list \
+tmeet record search \
   --meeting-id "6953553464429888300" \
   --page-size 30 \
   --page-token "<next_page_token>"
@@ -150,15 +173,16 @@ tmeet record list \
 | `meeting list-ended` |   30    | 30 | `--page` |
 | `meeting search` |   30    | 30 | — |
 | `meeting invitees-list` |   30    | 30 | `--pos` |
-| `record list` |   30    | 30 | `--page` |
-| `record address` |   30    | 30 | `--page` |
 | `record search` |   30    | 30 | — |
+| `record access --action address` |   30    | 30 | — |
+| `record content --action minutes --share-url` |   5    | 5 | — |
+| `record content --action transcript --share-url` |   5    | 5 | — |
 | `report participants` |   100   | 100 | `--pos` / `--size` |
 | `report waiting-room-log` |   100   | 100 | `--page` |
 | `minutes search` |   20    | 50 | — |
 | `minutes get` |   10    | 30 | — |
 
-> `record transcript-get` / `record transcript-paragraphs` / `record transcript-search` do not support the new `--page-token` based pagination.
+> `record content --action transcript` (transcript details / search branches) and `record content --action paragraphs` do not support the new `--page-token` based pagination.
 >
 > Compatibility: when `--page-token` is not provided but a legacy flag (e.g. `--page`, `--pos`) is set, the CLI falls back to the legacy mode (`page_type=0`); otherwise the new mode (`page_type=1`) is used.
 
@@ -189,15 +213,12 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 │   ├── lookup-by-email # Look up user information by email address
 │   └── lookup-by-phone # Look up user information by phone number
 ├── record
-│   ├── list                     # Query recording list
-│   ├── address                  # Get recording file download URL
-│   ├── search                   # Search recordings by keyword/code/meeting-id/time range
-│   ├── smart-minutes            # Get smart minutes
-│   ├── transcript-get           # Get transcript details
-│   ├── transcript-paragraphs    # Get transcript paragraph list
-│   ├── transcript-search        # Search transcript content
-│   ├── permission-apply-prepare # Preview record permission application (before commit)
-│   └── permission-apply-commit  # Commit record permission application (after user confirmation)
+│   ├── search           # Search or list recordings by keyword/code/meeting-id/time range/file type
+│   ├── content          # Read content: --action minutes|todos|transcript|paragraphs|timeline
+│   ├── access           # Query access info: --action address|sharing|members|settings
+│   ├── share-set        # Modify sharing settings & authorized members (write; confirm before executing)
+│   ├── settings-set     # Modify smart recording config of a record file (write; confirm before executing)
+│   └── permission-apply # Apply for record permission: --action prepare|commit (default prepare = preview)
 ├── report
 │   ├── participants         # Get participant list
 │   ├── waiting-room-log     # Get waiting room member list
@@ -216,12 +237,17 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── app
 │   ├── get            # Get current CLI app info
 │   └── set            # Set current CLI app info
-└── event
-    ├── list           # List available EventKeys
-    ├── schema         # Show the params / output schema of an EventKey
-    ├── consume        # Subscribe to an EventKey and emit events as NDJSON
-    ├── status         # Show the local bus daemon status
-    └── stop           # Stop the local bus daemon (with optional --force cleanup)
+├── event
+│   ├── list           # List available EventKeys
+│   ├── schema         # Show the params / output schema of an EventKey
+│   ├── consume        # Subscribe to an EventKey and emit events as NDJSON
+│   ├── status         # Show the local bus daemon status
+│   └── stop           # Stop the local bus daemon (with optional --force cleanup)
+└── update
+    ├── check          # Check whether a newer CLI version is available
+    ├── get            # Show the update preference
+    ├── set            # Set the update preference (remind | never_remind)
+    └── run            # Download and install the latest CLI
 ```
 
 ---

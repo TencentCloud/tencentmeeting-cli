@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"tmeet/internal/notice"
+
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +33,12 @@ func marshalNoEscape(v interface{}, indent bool) ([]byte, error) {
 
 // formatOutput defines the output format.
 type formatOutput struct {
+	// Notice carries top-level side-channel notifications appended by the
+	// CLI itself (not by the backend). Currently only "update" is populated;
+	// the shape is a map to leave room for future keys (e.g. "security")
+	// without a breaking Schema change. Absent via omitempty.
+	Notice map[string]interface{} `json:"_notice,omitempty"`
+
 	TraceId string      `json:"trace_id,omitempty"`
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
@@ -94,6 +102,33 @@ func FormatPrint(cmd *cobra.Command, traceId, message, data string, opts ...Opti
 		fo.Data = optMsg.data
 	} else {
 		fo.Data = dataMap
+	}
+
+	// Append `_notice.update` when:
+	//   • the caller has not explicitly opted out (WithoutUpdateNotice),
+	//   • a *Tmeet has been registered via SetTmeet (done once at CLI
+	//     startup in cmd/root.go's Execute), and
+	//   • notice.BuildWithOutcome decides there is something to say.
+	//
+	// BuildWithOutcome is deliberately synchronous. Throttled commands
+	// pay only a tiny stat() on the per-account sentinel; a window-
+	// crossing command additionally performs the version-info fetch.
+	//
+	// When BuildWithOutcome signals markOnEmit=true, we immediately
+	// arm the throttle gate so subsequent commands inside the same
+	// notice_gap window stay silent. The one case where markOnEmit is
+	// false is the feedback+never_remind re-prompt (see notice/builder.go);
+	// it emits a payload but intentionally does not consume the gap
+	// budget of the regular response path.
+	if !optMsg.skipUpdateNotice && cmd != nil {
+		if tmeet := getTmeet(); tmeet != nil {
+			if info, gap, mark := notice.BuildWithOutcome(cmd.Context(), tmeet); info != nil {
+				fo.Notice = map[string]interface{}{"update": info}
+				if mark && tmeet.UserConfig != nil {
+					notice.MarkNotified(tmeet.UserConfig.OpenId, gap)
+				}
+			}
+		}
 	}
 
 	var b []byte

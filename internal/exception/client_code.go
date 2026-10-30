@@ -52,6 +52,27 @@ const (
 	// ClientCodeEventBusNotRunning event bus not running error
 	ClientCodeEventBusNotRunning = 4002
 
+	// ClientCodeUpdateLock update lock acquire/prepare error
+	ClientCodeUpdateLock = 6000
+	// ClientCodeUpdateServerPayload update server payload invalid error
+	ClientCodeUpdateServerPayload = 6001
+	// ClientCodeUpdateDownload update tarball download error
+	ClientCodeUpdateDownload = 6002
+	// ClientCodeUpdateTempFile update tempfile operation error
+	ClientCodeUpdateTempFile = 6003
+	// ClientCodeUpdateChecksum update tarball checksum mismatch error
+	ClientCodeUpdateChecksum = 6004
+	// ClientCodeUpdateNpmMissing npm not found in PATH error
+	ClientCodeUpdateNpmMissing = 6005
+	// ClientCodeUpdateNpmInstall npm install subprocess error
+	ClientCodeUpdateNpmInstall = 6006
+	// ClientCodeUpdateExtract update archive extract error
+	ClientCodeUpdateExtract = 6007
+	// ClientCodeUpdateInstall update install (staging/promote) error
+	ClientCodeUpdateInstall = 6008
+	// ClientCodeUpdatePreferenceSave save update preference locally error
+	ClientCodeUpdatePreferenceSave = 6009
+
 	// ClientCodePanic cli process panic error
 	ClientCodePanic = 9000
 )
