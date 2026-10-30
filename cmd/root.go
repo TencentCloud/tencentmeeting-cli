@@ -12,6 +12,7 @@ import (
 	"tmeet/cmd/record"
 	"tmeet/cmd/report"
 	"tmeet/cmd/tshoot"
+	"tmeet/cmd/update"
 	"tmeet/internal"
 	"tmeet/internal/common"
 	"tmeet/internal/config"
@@ -45,6 +46,14 @@ func Execute() (exitCode int) {
 		output.PrintErrorf(nil, "failed to initialize Tmeet: %v", err)
 		return 1
 	}
+
+	// Expose the process-wide *Tmeet to the output package so FormatPrint
+	// can append `_notice.update` without each subcommand plumbing the
+	// instance manually. Done ONCE here at CLI startup — *Tmeet is a
+	// process-level singleton, so a package-level setter is the right
+	// shape; threading it through context.Context would conflate
+	// per-request cancellation with a per-process service dependency.
+	output.SetTmeet(tmeet)
 
 	// Initialise the file logging system FIRST so its defer is registered
 	// before the panic-safety defer below. Under LIFO defer ordering that
@@ -126,6 +135,8 @@ func Execute() (exitCode int) {
 	rootCmd.AddCommand(app.NewBaseCmd(tmeet))
 	// Add subcommand: event
 	rootCmd.AddCommand(event.NewBaseCmd(tmeet))
+	// Add subcommand: update
+	rootCmd.AddCommand(update.NewBaseCmd(tmeet))
 	err = rootCmd.Execute()
 	if err != nil {
 		log.Errorf(rootCmd.Context(), "execute failed: %v", err)

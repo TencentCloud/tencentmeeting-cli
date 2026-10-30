@@ -17,7 +17,8 @@ import (
 
 // ListEndedOptions holds the options for listing ended meetings.
 type ListEndedOptions struct {
-	tmeet     *internal.Tmeet
+	tmeet *internal.Tmeet
+	// if both --start and --end are omitted, defaults to the last 30 days (up to now)
 	StartTime string // Query start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
 	EndTime   string // Query end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
 	Page      int    // Page number, starting from 1, deprecated use PageToken instead
@@ -38,8 +39,10 @@ func newListEndedCmd(tmeet *internal.Tmeet) *cobra.Command {
 		),
 	}
 
-	cmd.Flags().StringVar(&opts.StartTime, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
-	cmd.Flags().StringVar(&opts.EndTime, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().StringVar(&opts.StartTime, "start", "", "query start time (ISO 8601, e.g. 2026-03-12T15:00+08:00); "+
+		"if both --start and --end are omitted, defaults to the last 30 days (up to now)")
+	cmd.Flags().StringVar(&opts.EndTime, "end", "", "query end time (ISO 8601, e.g. 2026-03-12T15:00+08:00); "+
+		"if both --start and --end are omitted, defaults to the last 30 days (up to now)")
 	cmd.Flags().IntVar(&opts.Page, "page", 0, "page number, starting from 1, (deprecated, use --page-token instead)")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 30, "page size, default 30, max 30")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
