@@ -2,6 +2,21 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.1.1] - 2026-11-23
+
+### Added
+
+- **Meeting attachments end-to-end**: `meeting create` gains `--description` and repeatable `--attachment`; `meeting update` gains `--description` plus the mutually exclusive `--attachment-add` / `--attachment-remove` / `--attachment-clear` triplet; new `meeting attachment-download` subcommand (per-meeting cap of 20 files and 100MB aggregate).
+- **`--query` aliasing for search commands**: `meeting search` / `record search` / `minutes search` transparently normalise `--keyword` / `--keywords` / `--text` / `--subject` to `--query` at parse time; aliases are hidden from `--help`, and passing an alias together with the canonical name is reported as an unknown flag.
+- **`UserName` surfaced in `auth status`**: `UserConfig` now persists `user_name`; both `auth login` and `RefreshToken` populate it.
+- **New output enum conversions**: `participants_invitees_scope` on `record access --action sharing`, `transcript_state` on `record search`, and attachment `type` / `upload_time` / `expire_time` on `meeting get` / `list` / `list-ended` / `search`.
+
+### Changed
+
+- **`auth status` is now fully offline**: dropped the `/v1/cli/get-user-info` call and its associated dependencies; status is rendered purely from the local user config.
+- **Shared COS primitives**: extracted `utils.PutFileToCOS` / `utils.DownloadFromCOS`, now reused by both `tshoot log --upload` and meeting attachments; `utils.CalcFileInfo` returns a structured `FileDigests` (Size / SHA1 / SHA256 / MD5 / CRC64 computed in a single streaming pass).
+- **SKILL bumped to 1.1.1**: terminology unified to "transcript" (dropping the "transcription" wording); `record` is explicitly mapped to the client-side "Review" entry point; recording-query flow adds preconditions (skip content reads while `state=recording/transcoding`, honour `transcript_state=generating/not-generated`, state the visible range when limited to the user's own attended window, surface existing links before offering a permission `prepare`), plus a batch-read gate (>5 meetings prompts for scope/granularity before fanning out).
+
 ## [v1.1.0] - 2026-10-30
 
 This release is the first minor version bump since the v1.0.x line. Highlights:
