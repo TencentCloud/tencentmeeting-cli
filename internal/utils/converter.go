@@ -298,6 +298,10 @@ var MeetingUserJoinRoleConverter = stringEnumConverter(enumerate.MeetingUserJoin
 // MeetingJoinTypeConverter converts meeting join type IDs to their human-readable meeting join type names.
 var MeetingJoinTypeConverter = intEnumConverter(enumerate.MeetingJoinTypeName)
 
+// MeetingAttachmentTypeConverter converts meeting attachment source type IDs
+// (1-Tencent Docs, 2-local upload) to their human-readable names.
+var MeetingAttachmentTypeConverter = intEnumConverter(enumerate.MeetingAttachmentTypeName)
+
 // ShowAllSubMeetingsConverter converts show all sub meetings flag to its human-readable name.
 var ShowAllSubMeetingsConverter = intEnumConverter(enumerate.ShowAllSubMeetingsName)
 
@@ -324,3 +328,10 @@ var SmartMinutesLLMConverter = intEnumConverter(enumerate.SmartMinutesLLMName)
 
 // RecordingTimelineStatusConverter converts recording timeline generation status IDs to their human-readable names.
 var RecordingTimelineStatusConverter = intEnumConverter(enumerate.RecordingTimelineStatusName)
+
+// RecordTranscriptStateConverter converts record transcript state IDs to their human-readable names.
+var RecordTranscriptStateConverter = intEnumConverter(enumerate.RecordTranscriptStateName)
+
+// ParticipantsInviteesScopeConverter converts participants-invitees scope IDs to their
+// human-readable names, and outputs an empty string for unrecognized IDs.
+var ParticipantsInviteesScopeConverter = intEnumConverter(enumerate.ParticipantsInviteesScopeName)

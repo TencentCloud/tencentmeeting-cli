@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"tmeet/internal"
 	"tmeet/internal/cmdutil"
+	"tmeet/internal/cmdutil/flagalias"
 	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -61,6 +62,10 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 		"if both --start and --end are omitted, server defaults to a window of 30 days before and after the current time")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 30, "page size, default 30, max 30")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
+
+	flagalias.Bind(cmd, []flagalias.Spec{
+		{Canonical: "query", Aliases: []string{"keyword", "keywords", "text", "subject"}},
+	})
 
 	return cmd
 }
@@ -132,6 +137,9 @@ func (o *SearchOptions) Run(cmd *cobra.Command, args []string) error {
 		"media_start_time":         utils.TimestampConverter,       // recording start time
 		"duration":                 utils.DurationSecondsConverter, // recording duration (seconds -> HH:MM:SS)
 		"meetings.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
+		"meetings.description.attachments.expire_time": utils.TimestampConverter,
+		"meetings.description.attachments.upload_time": utils.TimestampConverter,
+		"meetings.description.attachments.type":        utils.MeetingAttachmentTypeConverter,
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithCompact(compactFieldsWithAllEnrichments(cmd.Context())),

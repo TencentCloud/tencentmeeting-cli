@@ -36,6 +36,8 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newInviteesRemoveCmd(tmeet),
 		// Replace meeting invitees
 		newInviteesReplaceCmd(tmeet),
+		// Download a meeting attachment to local disk
+		newAttachmentDownloadCmd(tmeet),
 	)
 	return cmd
 }

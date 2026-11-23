@@ -1,6 +1,7 @@
 package meeting
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,6 +66,10 @@ type UpdateOptions struct {
 	AudioWatermark    bool     // Audio watermark, true=on, false=off
 	AutoRecordType    string   // Auto record when host joins, none=off, local=local recording, cloud=cloud recording
 	AutoASR           bool     // Auto speech recognition, true=on, false=off
+	Description       string   // Replacement description text; explicit empty string clears existing text.
+	AttachmentsAdd    []string // Local file paths to append as new attachments.
+	AttachmentsRemove []string // File IDs to remove from the existing attachment list.
+	AttachmentsClear  bool     // Remove ALL attachments; mutually exclusive with add/remove.
 }
 
 // newUpdateCmd updates a meeting.
@@ -105,6 +110,14 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.AudioWatermark, "audio-watermark", false, "audio watermark")
 	cmd.Flags().StringVar(&opts.AutoRecordType, "auto-record-type", "none", "auto record when host joins: none=off, local=local recording, cloud=cloud recording")
 	cmd.Flags().BoolVar(&opts.AutoASR, "auto-asr", false, "auto speech recognition")
+	cmd.Flags().StringVar(&opts.Description, "description", "",
+		"replacement description text (<=2000 UTF-8 chars); pass empty string to clear text")
+	cmd.Flags().StringArrayVar(&opts.AttachmentsAdd, "attachment-add", nil,
+		"local attachment path to append; repeat the flag for multiple files")
+	cmd.Flags().StringSliceVar(&opts.AttachmentsRemove, "attachment-remove", nil,
+		"file_id list to remove from the current attachments (repeat or comma-separated)")
+	cmd.Flags().BoolVar(&opts.AttachmentsClear, "attachment-clear", false,
+		"clear ALL attachments; mutually exclusive with --attachment-add / --attachment-remove")
 
 	// Set required parameters.
 	_ = cmd.MarkFlagRequired("meeting-id")
@@ -190,6 +203,13 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 	// The strategy is forwarded as `invitees_operate_type` and the userid
 	// list is sent verbatim; the server applies the mutation.
 	if err := o.applyInvitees(cmd, params); err != nil {
+		return err
+	}
+
+	// Resolve description / attachment flags and inject the merged
+	// `description` payload. Empty text is sent only when --description is
+	// explicitly set (see applyDescription).
+	if err := o.applyDescription(cmd, params); err != nil {
 		return err
 	}
 
@@ -282,4 +302,161 @@ func (o *UpdateOptions) applyInvitees(cmd *cobra.Command, params map[string]inte
 	params["invitees"] = inviteesList
 	params["invitees_operate_type"] = operateType
 	return nil
+}
+
+// applyDescription merges --description / --attachment-* flags into a single
+// `description` payload. The logic mirrors applyInvitees' Changed()-driven
+// style, but attachments are integrated locally instead of leaving the merge
+// to the server (open-platform ModifyMeeting replaces the whole attachments
+// array). The resulting matrix:
+//
+//   - none of the flags set  -> no-op.
+//   - --attachment-clear + add/remove -> rejected (mutually exclusive).
+//   - --description (even empty)     -> writes `text` (empty string clears).
+//   - --attachment-clear             -> writes `attachments: []`.
+//   - --attachment-add/remove        -> GET current attachments, merge
+//     locally (filter out --attachment-remove first, then append the newly
+//     uploaded ones), and send the merged list.
+func (o *UpdateOptions) applyDescription(cmd *cobra.Command, params map[string]interface{}) error {
+	descChanged := cmd.Flags().Changed("description")
+	addChanged := cmd.Flags().Changed("attachment-add")
+	rmChanged := cmd.Flags().Changed("attachment-remove")
+	clrChanged := cmd.Flags().Changed("attachment-clear") && o.AttachmentsClear
+
+	if !descChanged && !addChanged && !rmChanged && !clrChanged {
+		return nil
+	}
+	if clrChanged && (addChanged || rmChanged) {
+		return exception.InvalidArgsError.With(
+			"--attachment-clear is mutually exclusive with --attachment-add / --attachment-remove")
+	}
+	if descChanged {
+		if err := ValidateDescription(o.Description); err != nil {
+			return err
+		}
+	}
+
+	desc := map[string]interface{}{}
+	if descChanged {
+		desc["text"] = o.Description // empty string == clear text
+	}
+
+	switch {
+	case clrChanged:
+		desc["attachments"] = []submitAttachmentRef{}
+	case addChanged || rmChanged:
+		existing, err := o.fetchExistingAttachments(cmd)
+		if err != nil {
+			return err
+		}
+		merged := existing
+		if rmChanged {
+			merged, err = filterOutAttachments(existing, o.AttachmentsRemove)
+			if err != nil {
+				return err
+			}
+		}
+		if addChanged && len(o.AttachmentsAdd) > 0 {
+			uploaded, err := UploadLocalAttachments(cmd.Context(), o.tmeet,
+				o.AttachmentsAdd, len(merged), sumAttachmentSize(merged))
+			if err != nil {
+				return err
+			}
+			merged = append(merged, uploaded...)
+		}
+		// Project to the minimal submit DTO: the server only needs
+		// file_id + file_name on description.attachments[]; local-only
+		// fields (FileSize, FileSuffix) must not leak into the request.
+		desc["attachments"] = toSubmitAttachmentRefs(merged)
+	}
+
+	params["description"] = desc
+	return nil
+}
+
+// fetchExistingAttachments queries the current meeting detail and returns the
+// `description.attachments` list. A nil slice is returned when no description
+// / attachments exist yet, which is a valid state for add/remove-on-empty.
+func (o *UpdateOptions) fetchExistingAttachments(cmd *cobra.Command) ([]AttachmentRef, error) {
+	pathParams := thttp.PathParams{}
+	pathParams.Set("meetingId", o.MeetingID)
+	queryParams := thttp.QueryParams{}
+	queryParams.Set("instanceid", "1") // PC
+	queryParams.Set("operator_id", o.tmeet.UserConfig.OpenId)
+	queryParams.Set("operator_id_type", "2") // openId
+
+	req := &thttp.Request{
+		ApiURI:      "/v1/meetings/{meetingId}",
+		PathParams:  pathParams,
+		QueryParams: queryParams,
+	}
+	rsp, err := restProxy.RequestProxy(cmd.Context(), http.MethodGet, o.tmeet, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode only the fields we need; unknown fields are ignored.
+	var detail struct {
+		MeetingInfoList []struct {
+			Description struct {
+				Attachments []AttachmentRef `json:"attachments"`
+			} `json:"description"`
+		} `json:"meeting_info_list"`
+	}
+	if err = json.Unmarshal([]byte(rsp.Data), &detail); err != nil {
+		return nil, exception.InvalidArgsError.With("parse meeting detail: %v", err)
+	}
+	if len(detail.MeetingInfoList) == 0 {
+		return nil, nil
+	}
+	return detail.MeetingInfoList[0].Description.Attachments, nil
+}
+
+// filterOutAttachments removes entries whose FileID appears in the removeIDs
+// list. It fails fast when any removeID is NOT found in `existing`, so the
+// caller never silently drops a bad request.
+func filterOutAttachments(existing []AttachmentRef, removeIDs []string) ([]AttachmentRef, error) {
+	if len(removeIDs) == 0 {
+		return existing, nil
+	}
+	index := make(map[string]struct{}, len(existing))
+	for _, a := range existing {
+		index[a.FileID] = struct{}{}
+	}
+	toRemove := make(map[string]struct{}, len(removeIDs))
+	for _, id := range removeIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := index[id]; !ok {
+			return nil, exception.InvalidArgsError.With(
+				"--attachment-remove: file_id %q is not an attachment of this meeting", id)
+		}
+		toRemove[id] = struct{}{}
+	}
+	out := make([]AttachmentRef, 0, len(existing))
+	for _, a := range existing {
+		if _, drop := toRemove[a.FileID]; drop {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// sumAttachmentSize returns the aggregate byte count of attachments whose
+// FileSize field is a valid integer string. Missing / malformed FileSize
+// values contribute zero \u2014 this is safe because the server authoritatively
+// enforces the per-meeting cap; the local sum exists only to short-circuit
+// oversized add operations before any network call.
+func sumAttachmentSize(refs []AttachmentRef) int64 {
+	var total int64
+	for _, a := range refs {
+		if a.FileSize == 0 {
+			continue
+		}
+		total += a.FileSize
+	}
+	return total
 }

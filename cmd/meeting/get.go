@@ -99,6 +99,9 @@ func (o *GetOptions) Run(cmd *cobra.Command, args []string) error {
 		"media_start_time":                  utils.TimestampConverter,       // recording start time
 		"duration":                          utils.DurationSecondsConverter, // recording duration (seconds -> HH:MM:SS)
 		"meeting_info_list.records.subject": utils.Base64DecodeConverter,    // recording subject (base64 -> plain text)
+		"meeting_info_list.description.attachments.expire_time": utils.TimestampConverter,
+		"meeting_info_list.description.attachments.upload_time": utils.TimestampConverter,
+		"meeting_info_list.description.attachments.type":        utils.MeetingAttachmentTypeConverter,
 	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithConvert(convertMap))
