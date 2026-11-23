@@ -37,6 +37,18 @@ const (
 	ApiCmdMeetingSearch = "meeting_search"
 	// ApiCmdMeetingUpdate apiCmd meeting_update
 	ApiCmdMeetingUpdate = "meeting_update"
+	// ApiCmdMeetingAttachmentUploadAuth is the first step of the attachment
+	// upload flow (request a COS pre-signed URL + file_id). Triggered
+	// internally by `tmeet meeting create/update` when local files are
+	// attached.
+	ApiCmdMeetingAttachmentUploadAuth = "meeting_attachment_upload_auth"
+	// ApiCmdMeetingAttachmentUploadNotify is the third step of the
+	// attachment upload flow (notify the server that a pending file_id has
+	// been finalized or aborted on COS).
+	ApiCmdMeetingAttachmentUploadNotify = "meeting_attachment_upload_notify"
+	// ApiCmdMeetingAttachmentDownload is the attachment download-address
+	// endpoint backing `tmeet meeting attachment-download`.
+	ApiCmdMeetingAttachmentDownload = "meeting_attachment_download"
 
 	// ApiCmdRecordAddress apiCmd record_address
 	ApiCmdRecordAddress = "record_address"
