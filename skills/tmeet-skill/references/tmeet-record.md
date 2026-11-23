@@ -13,10 +13,10 @@
   - [minutes(file) — 单文件智能纪要](#minutes--file---单文件智能纪要)
   - [minutes(url) — 分享链接纪要](#minutes--url---分享链接纪要)
   - [todos — 单文件待办](#todos--单文件待办)
-  - [transcript(details) — 单文件转写正文](#transcript--details---单文件转写正文)
+  - [transcript(details) — 单文件逐字稿正文](#transcript--details---单文件逐字稿正文)
   - [transcript(search) — 单文件内检索](#transcript--search---单文件内检索)
-  - [transcript(url) — 分享链接转写](#transcript--url---分享链接转写)
-  - [paragraphs — 转写段落列表](#paragraphs--转写段落列表)
+  - [transcript(url) — 分享链接逐字稿](#transcript--url---分享链接逐字稿)
+  - [paragraphs — 逐字稿段落列表](#paragraphs--逐字稿段落列表)
   - [timeline — 智能时间轴](#timeline--智能时间轴)
 - [access — 查访问信息与配置](#access--查访问信息与配置)
 - [share-set — 修改分享与授权成员](#share-set--修改分享与授权成员)
@@ -35,11 +35,12 @@
 
 | 用户已有信息或目标 | 入口 | 注意 |
 |------|------|------|
-| 文件 ID，要纪要/待办/原文 | `content --record-file-id`，选择对应 action | 直接读，不固定补查地址或会议权限 |
+| 文件 ID，要纪要/待办/逐字稿 | `content --record-file-id`，选择对应 action | 直接读，不固定补查地址或会议权限 |
 | 录制 ID，要地址/分享配置/成员 | `access --meeting-record-id`，选择对应 action | 不把录制 ID 当文件 ID |
-| 录制访问链接，要纪要或转写 | `content --share-url`，选 minutes 或 transcript | 无需先补文件 ID 或查询会议 |
+| 查参会人/受邀人可查看范围（能看什么、能否看逐字稿） | `access --action sharing --meeting-record-id`，读 current.participants_invitees_scope | access 无 participant-permission，勿臆造；文案原样转述 |
+| 录制访问链接，要纪要或逐字稿 | `content --share-url`，选 minutes 或 transcript | 无需先补文件 ID 或查询会议 |
 | 查自己已有权限的录制、录音或上传文件 | `record search` | 时间、关键词、会议范围和文件类型可组合 |
-| 记得原文关键词，不知哪条录制 | `record search --query-field transcript_content --query` | 跨录制检索，仅覆盖已有访问权的录制 |
+| 记得逐字稿关键词，不知哪条录制 | `record search --query-field transcript_content --query` | 跨录制检索，仅覆盖已有访问权的录制 |
 | 已知文件，在其中找原话 | `content --action transcript --record-file-id --text` | 单文件检索；只有位置时再取正文 |
 | 指定会议号/ID，需发现该会录制及权限 | `meeting get` | 可发现无权限录制及 permission_status |
 | 按会议主题/创建人找某场会议的录制 | `meeting search`；缺必要录制信息时再 `meeting get` | 会议主题与录制标题可能不同 |
@@ -49,9 +50,13 @@
 
 | 已知状态 | 处理 |
 |------|------|
-| state 为录制中/转码中 | 等待就绪，不读内容或申请权限 |
+| state 为录制中/转码中 | 本轮不调 `content` 任何 action（含 minutes/todos/transcript/paragraphs/timeline），也不重试；告知「纪要/录制还在生成中，暂时取不到，一般几分钟到十几分钟，稍后再问」。此阶段可能无 transcript_state，按 state 判断 |
+| transcript_state 为逐字稿生成中 | 告知仍在生成，本轮不调 `content --action transcript / paragraphs`，也不重试 |
+| transcript_state 为未生成逐字稿（或 has_transcript_content=false） | 告知这场回顾没有逐字稿内容，不读取、不换 pid/链接重试 |
+| transcript_state 为逐字稿生成完成 | 有内容才按需读取；若 has_transcript_content=false（完成但无内容），告知没有逐字稿、不读取，不把空结果当报错换 pid/链接重试 |
 | permission_status 为 can_view | 按需求读取 |
-| permission_status 为 can_apply，且已转码完成 | 需要申请时先 prepare，展示后由用户确认 commit |
+| 仅可查看参会期间（participants_invitees_scope=0，或读取返回无权限/仅部分/ is_transcripts_complete=false） | 说明「只能查看参会期间逐字稿，以下为可见部分」并列不可见时段；搜索未命中只说「可见范围内未找到」，不断言「会上没提到」；如需整场引导 `permission-apply`（未确认不提交）；不建议索要密码或改设置 |
+| permission_status 为 can_apply，且已转码完成 | 若响应已带录制/回顾链接（如 url），先把链接给用户并说明打开后需申请权限，再问是否现在申请；没链接才直接申请。申请时先 prepare，展示后由用户确认 commit |
 | permission_status 为 closed/deleted | 告知不可申请或已删除，不进入申请流程 |
 | permission_status 为 password_required | 仅在支持 pwd 的路径使用用户提供的密码，不转为权限申请 |
 | search 空结果、缺少 records 字段或一般读取错误 | 说明已查询范围；必要时查询会议权限，不能据此判定不存在或可申请 |
@@ -60,7 +65,7 @@
 
 **目标与内容边界**：会议 ID 用于会议范围；meeting_record_id 用于地址、分享、成员、申请（**申请前的 can_apply/转码状态只能从 meeting 域查，见 permission-apply 节**）；record_file_id 用于内容和智能配置。分享链接使用用户提供的录制访问链接或地址响应的 view_address，不把任意媒体下载地址当分享链接。同一录制可能有多个文件，需唯一操作目标但无法确定时请用户选择。
 
-只要待办且已有文件 ID 就选 todos；已取纪要中的待办足够时复用。原话只能引用实际转写正文，纪要、时间轴、段落目录及检索位置都不能代替原话。
+只要待办且已有文件 ID 就选 todos；已取纪要中的待办足够时复用。原话只能引用实际逐字稿正文，纪要、时间轴、段落目录及检索位置都不能代替原话。
 
 ---
 
@@ -69,13 +74,13 @@
 统一查询已有权限的录制；无关键词也可使用。**默认只查最近 30 天。** 用户指定更早或明确的时间范围时，同时填写 start/end，避免依赖单边时间参数的默认行为。不能把默认窗口未命中当作全部历史无结果。
 
 ```bash
-# 最近 30 天内按原文关键词检索
+# 最近 30 天内按逐字稿关键词检索
 tmeet record search --query "季度目标" --query-field transcript_content
 
 # 指定更早时间段；按需增加会议范围或文件类型
 tmeet record search --start "2026-07-01T00:00+08:00" --end "2026-07-31T23:59:59+08:00" --file-type video
 
-# 同一原文检索继续下一页，保留原筛选条件
+# 同一逐字稿检索继续下一页，保留原筛选条件
 tmeet record search --query "季度目标" --query-field transcript_content --page-size 30 --page-token "<next_page_token>"
 ```
 
@@ -84,7 +89,7 @@ tmeet record search --query "季度目标" --query-field transcript_content --pa
 | 参数 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--query <text>` | 否 | — | 关键词，最大长度 50 |
-| `--query-field <f>` | 否 | `all` | `subject`-录制主题；`creator`-创建者昵称/备注；`transcript_content`-原始转写；`smart_minutes`-纪要和待办；`timeline`-时间轴；`todo`-待办；`all`-全部 |
+| `--query-field <f>` | 否 | `all` | `subject`-录制主题；`creator`-创建者昵称/备注；`transcript_content`-逐字稿；`smart_minutes`-纪要和待办；`timeline`-时间轴；`todo`-待办；`all`-全部 |
 | `--file-type <t>` | 否 | `all` | `video`、`audio`、`transcript`、`upload`、`external`、`all` |
 | `--meeting-id <id>` | 否 | — | 会议 ID 过滤 |
 | `--meeting-code <code>` | 否 | — | 会议号精确过滤，纯数字、不带短横线 |
@@ -102,6 +107,7 @@ tmeet record search --query "季度目标" --query-field transcript_content --pa
 | meeting_record_id | 后续地址、分享、成员和申请的录制 ID |
 | meeting_id / meeting_code | 会议上下文 |
 | subject / state / record_type | 标题、录制状态、类型 |
+| transcript_state | 逐字稿生成状态：未生成逐字稿 / 逐字稿生成中 / 逐字稿生成完成；读逐字稿前据此判断，生成中不读不重试，未生成告知无内容 |
 | media_start_time / host_user_id | 录制开始时间、主持人 ID |
 | record_files[] | 文件列表，含 record_file_id、record_start_time、record_end_time；部分条目可能不含此列表 |
 
@@ -112,6 +118,8 @@ tmeet record search --query "季度目标" --query-field transcript_content --pa
 ## content — 读录制内容
 
 每次必填一个 action：minutes、todos、transcript、paragraphs 或 timeline。目标为 record-file-id 与 share-url 二选一。只传当前路径支持的业务参数；适用的全局参数仍按主 SKILL 执行。
+
+批量读取：search 命中超过 5 场、需逐场取逐字稿/纪要时，先告知场次数与耗时、建议分批并询问要全文还是要点，经用户确认后再读，不直接逐场全量读取。
 
 ### 子形态总览
 
@@ -138,7 +146,7 @@ form 只是文档和报错中的路径名称，**不是额外的 CLI 参数**。
 | `--record-file-id <id>` | 真实文件 ID |
 | `--share-url <url>` | 录制访问链接，可对应多个文件；不是任意下载地址 |
 | `--meeting-id <id>` | 仅表中支持的文件路径接收会议上下文 |
-| `--lang <lang>` | `default`-原文、`zh`-简体中文、`en`-英文、`ja`-日语；minutes/todos 默认 default，timeline 不传或空值为原文 |
+| `--lang <lang>` | `default`-原始语言、`zh`-简体中文、`en`-英文、`ja`-日语；minutes/todos 默认 default，timeline 不传或空值为原始语言 |
 | `--pwd <pwd>` | 访问密码；仅表中支持的路径接收，缺密码时不猜测 |
 | `--text <keyword>` | 非空的单文件检索关键词；不是 search 命令的 query 参数 |
 | `--pid <id>` | 文件正文起始段落 ID，来自真实返回值，不是页码或 token |
@@ -179,13 +187,13 @@ tmeet record content --action todos --record-file-id "file_abc123"
 
 结构与纪要中的 meeting_minute.todos[] 一致。空数组表示本次未返回结构化待办；历史纪要也可能缺该字段，不据此断言会议从未产生待办。内容未生成、无权限或文件 ID 无效时保留原错误，不能把无权限错误直接转为申请。
 
-### transcript(details) — 单文件转写正文
+### transcript(details) — 单文件逐字稿正文
 
 ```bash
 tmeet record content --action transcript --record-file-id "file_abc123" --pid "<paragraph_id>" --limit 10
 ```
 
-不定位时省略 pid/limit。正文中实际返回的文字、说话人、时间与段落标识用于回答；有限范围读取不能称为全文。后续需要其他段落时使用真实定位信息，不计算 pid+1、不把 token 填到 pid；只有缺定位信息时才补查 paragraphs。
+不定位时省略 pid/limit。正文中实际返回的文字、说话人、时间与段落标识用于回答；有限范围读取不能称为全文。后续需要其他段落时使用真实定位信息，不计算 pid+1、不把 token 填到 pid；只有缺定位信息时才补查 paragraphs。读取前先按录制查询表的 transcript_state 判断：生成中或未生成时不调用本命令，也不重试。
 
 ### transcript(search) — 单文件内检索
 
@@ -193,23 +201,23 @@ tmeet record content --action transcript --record-file-id "file_abc123" --pid "<
 tmeet record content --action transcript --record-file-id "file_abc123" --text "季度目标"
 ```
 
-不接收分页或正文定位参数。命中若只有 pid/sid/offset 等位置，就按真实 pid 调 details 取正文后再引用；若已返回足够原文则直接回答，不重复取正文。未知文件时才先用 record search 跨录制定位。
+不接收分页或正文定位参数。命中若只有 pid/sid/offset 等位置，就按真实 pid 调 details 取正文后再引用；若已返回足够逐字稿则直接回答，不重复取正文。未知文件时才先用 record search 跨录制定位。
 
-### transcript(url) — 分享链接转写
+### transcript(url) — 分享链接逐字稿
 
 ```bash
 tmeet record content --action transcript --share-url "https://meeting.tencent.com/recording/xxxxx" --page-size 2
 ```
 
-链接转写不接收 lang/pwd/text/pid/limit/meeting-id。原 data 包含 record_file_id、minutes[]、has_more、next_page_token；正文层级为 `minutes[] → paragraphs[] → sentences[] → words[]`，words 含 text、start_time、end_time，sentences 含 speaker。按 CLI 实际时间表示读取，不重复转换或凭摘要补原文。
+链接逐字稿不接收 lang/pwd/text/pid/limit/meeting-id。原 data 包含 record_file_id、minutes[]、has_more、next_page_token；正文层级为 `minutes[] → paragraphs[] → sentences[] → words[]`，words 含 text、start_time、end_time，sentences 含 speaker。按 CLI 实际时间表示读取，不重复转换或凭摘要补逐字稿。
 
-### paragraphs — 转写段落列表
+### paragraphs — 逐字稿段落列表
 
 ```bash
 tmeet record content --action paragraphs --record-file-id "file_abc123"
 ```
 
-含说话人与起止时间，用于段落浏览/定位。可加 meeting-id；不作为每次正文读取的固定前置步骤，不把目录、标题或位置当作发言原话。
+含说话人与起止时间，用于段落浏览/定位。可加 meeting-id；不作为每次正文读取的固定前置步骤，不把目录、标题或位置当作发言原话。逐字稿生成中或未生成时不调用本命令，也不重试。
 
 ### timeline — 智能时间轴
 
@@ -217,7 +225,7 @@ tmeet record content --action paragraphs --record-file-id "file_abc123"
 tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 ```
 
-返回 AI 时间轴；不需要翻译时省略 lang。章节摘要不能替代逐字稿。
+返回 AI 时间轴；不需要翻译时省略 lang。章节摘要不能替代逐字稿。若读取报无权限且用户仅可查看参会期间（participants_invitees_scope 为「可查看参会期间的逐字稿」），不当作报错，给出替代：改读参会期间逐字稿（transcript/paragraphs），或引导 `record permission-apply` 申请回顾权限（未确认不提交）。
 
 ---
 
@@ -228,7 +236,7 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 | action | 返回内容 | 必填参数 | 可选参数 |
 |------|------|------|------|
 | address | 播放/下载地址 | meeting-record-id | page-token、page-size（默认/最大 30） |
-| sharing | 当前分享配置 | meeting-record-id | — |
+| sharing | 当前分享配置；含参会人/受邀人可查看范围 current.participants_invitees_scope（文案原样转述） | meeting-record-id | — |
 | members | 已授权成员 | meeting-record-id | page-token；不接收 page-size |
 | settings | 智能录制配置 | record-file-id | — |
 
@@ -275,7 +283,7 @@ tmeet record access --action settings --record-file-id "file_abc123"
 | `--expired-time-type <n>` | 否 | `0`-永久、`1`-7天、`2`-15天、`3`-30天、`4`-自定义；填枚举而非天数 |
 | `--expired-time <time>` | 按类型 | ISO 8601，自定义类型 4 时必填；仅类型 4 生效 |
 | `--download-enable` | 否 | 是否允许观看者下载；企业锁定下载时后端可能忽略，以实际结果为准 |
-| `--view-minutes-enable` | 否 | 是否允许观看者查看转写与纪要 |
+| `--view-minutes-enable` | 否 | 是否允许观看者查看逐字稿与纪要 |
 | `--rooms-enable` | 否 | 是否允许 Rooms 会议室设备查看 |
 | `--add-members <openid:perm>` | 否 | 可重复；perm 为 `0`-查看、`1`-管理，省略默认 0 |
 | `--remove-members <openid>` | 否 | 可重复，填真实 OpenId |
@@ -331,7 +339,7 @@ tmeet record share-set --meeting-record-id "record_abc123" --permission-point-id
 
 查询当前配置用 `record access --action settings --record-file-id`。只在缺少所需当前状态或写入结果未能确认时补查，已有可靠结果则复用。
 
-开关状态不等于内容已生成。当前接口说明未确认开启开关是否会为历史录制补生成转写、重新生成纪要或何时完成；不能仅凭配置修改成功作此承诺。用户需要内容时，按需用对应 content action 读取实际结果。
+开关状态不等于内容已生成。当前接口说明未确认开启开关是否会为历史录制补生成逐字稿、重新生成纪要或何时完成；不能仅凭配置修改成功作此承诺。用户需要内容时，按需用对应 content action 读取实际结果。
 
 ```bash
 # 已确认后同时开启
@@ -411,7 +419,7 @@ tmeet record content --action transcript --record-file-id "file_abc123" --text "
 tmeet record content --action transcript --record-file-id "file_abc123" --pid "<matched_pid>" --limit 1
 ```
 
-### 同时要纪要与原文
+### 同时要纪要与逐字稿
 
 分别选 minutes 和 transcript，复用相同已知目标；两条查询各自保留分页条件。一侧失败时保留另一侧成功结果，不重新执行已成功的查询。
 

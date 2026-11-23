@@ -2,9 +2,12 @@ package utils
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
+	"hash/crc64"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -50,25 +53,35 @@ func TestCalcFileInfo(t *testing.T) {
 			_ = f.Close()
 
 			// 计算期望值
+			sha1h := sha1.Sum(tt.content)
 			sha256h := sha256.Sum256(tt.content)
 			md5h := md5.Sum(tt.content)
-			wantHash := hex.EncodeToString(sha256h[:])
+			wantSHA1 := hex.EncodeToString(sha1h[:])
+			wantSHA256 := hex.EncodeToString(sha256h[:])
 			wantMD5 := hex.EncodeToString(md5h[:])
+			wantCRC64 := strconv.FormatUint(
+				crc64.Checksum(tt.content, crc64.MakeTable(crc64.ECMA)), 10)
 
 			// 调用被测函数
-			gotSize, gotHash, gotMD5, err := CalcFileInfo(f.Name())
+			got, err := CalcFileInfo(f.Name())
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if gotSize != tt.wantSize {
-				t.Errorf("size mismatch: got=%d, want=%d", gotSize, tt.wantSize)
+			if got.Size != tt.wantSize {
+				t.Errorf("size mismatch: got=%d, want=%d", got.Size, tt.wantSize)
 			}
-			if gotHash != wantHash {
-				t.Errorf("sha256 mismatch: got=%s, want=%s", gotHash, wantHash)
+			if got.SHA1 != wantSHA1 {
+				t.Errorf("sha1 mismatch: got=%s, want=%s", got.SHA1, wantSHA1)
 			}
-			if gotMD5 != wantMD5 {
-				t.Errorf("md5 mismatch: got=%s, want=%s", gotMD5, wantMD5)
+			if got.SHA256 != wantSHA256 {
+				t.Errorf("sha256 mismatch: got=%s, want=%s", got.SHA256, wantSHA256)
+			}
+			if got.MD5 != wantMD5 {
+				t.Errorf("md5 mismatch: got=%s, want=%s", got.MD5, wantMD5)
+			}
+			if got.CRC64 != wantCRC64 {
+				t.Errorf("crc64 mismatch: got=%s, want=%s", got.CRC64, wantCRC64)
 			}
 		})
 	}
@@ -76,7 +89,7 @@ func TestCalcFileInfo(t *testing.T) {
 
 // TestCalcFileInfo_FileNotFound tests that a non-existent file returns an error.
 func TestCalcFileInfo_FileNotFound(t *testing.T) {
-	_, _, _, err := CalcFileInfo("/non/existent/path/file.zip")
+	_, err := CalcFileInfo("/non/existent/path/file.zip")
 	if err == nil {
 		t.Error("expected error for non-existent file, but got none")
 	}

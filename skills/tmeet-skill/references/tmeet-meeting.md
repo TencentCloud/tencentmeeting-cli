@@ -18,6 +18,7 @@
 - [invitees-add — 添加受邀成员](#invitees-add--添加受邀成员)
 - [invitees-remove — 移除受邀成员](#invitees-remove--移除受邀成员)
 - [invitees-replace — 替换受邀成员列表](#invitees-replace--替换受邀成员列表)
+- [attachment-download — 下载会议附件](#attachment-download--下载会议附件)
 - [常见错误](#常见错误)
 - [参考](#参考)
 
@@ -32,6 +33,8 @@
 ---
 
 ## create — 创建会议
+
+> ℹ️ **附件失败语义**：任一附件上传失败 → 整单回滚，会议**不创建**；按返回错误信息修正后重试。
 
 ```bash
 # 创建普通会议（必填：主题、开始时间、结束时间）
@@ -89,6 +92,15 @@ tmeet meeting create \
   --end "2026-04-10T15:00:00+08:00" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 创建会议并附带描述文本与本地附件（多个附件必须重复 --attachment；文件名允许包含英文逗号）
+tmeet meeting create \
+  --subject "方案评审" \
+  --start "2026-04-10T14:00:00+08:00" \
+  --end "2026-04-10T15:00:00+08:00" \
+  --description "评审材料见附件" \
+  --attachment "./方案.pdf" \
+  --attachment "./数据,终版.xlsx"
 ```
 
 ### 参数
@@ -112,6 +124,8 @@ tmeet meeting create \
 | `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
 | `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
+| `--description <text>` | 否 | — | 会议描述文本                                           |
+| `--attachment <path>` | 否 | — | 本地附件路径；**多个附件必须重复 `--attachment`，不支持在单个值里用英文逗号串联**（文件名中的英文逗号会被完整保留） |
 
 ---
 
@@ -122,6 +136,12 @@ tmeet meeting create \
 > ⚠️ **`--meeting-type 1` 的使用条件**：仅当需要修改**周期规则**（`--recurring-type` / `--until-type` / `--until-count` / `--until-date`）或修改**某场子会议**（`--sub-meeting-id`）时，必须传 `--meeting-type 1`。**只修改主题、时间、密码、入会限制、水印、录制、邀请列表等与周期规则无关的字段时，不需要传 `--meeting-type`**，服务端不会因此把周期性会议改成普通会议，周期规则不会丢失。
 
 > ⚠️ **邀请变更**：`--invitees` 与 `--invitees-type` 必须同时使用。`--invitees` 单次最多 100 人。
+
+> ⚠️ **附件变更（不可逆）**：`--attachment-clear` / `--attachment-remove` 会删除会议附件，**不可恢复**；执行前须向用户列出将移除/清空的 `file_id` 与原文件名并取得明确确认。`--attachment-clear` 与 `--attachment-add` / `--attachment-remove` **互斥**，不得同传。`--description ""`（显式空串）= 清空原描述文本，与「不传 `--description`」语义不同。
+
+> ⚠️ **多附件传法（易错）**：`--attachment-add` 只接受**单个本地路径**；需要上传多个文件时**必须重复该 flag**，**禁止**用英文逗号在一个值里串联（否则含逗号的文件名会被切成不存在的路径）。`--attachment-remove` 接收的是服务端下发的 `file_id`（不含逗号），可用英文逗号分隔或重复传参。
+
+> ℹ️ **附件失败语义**：任一附件上传失败 → 整单回滚，会议**不修改**；按返回错误信息修正后重试。
 
 ```bash
 # 修改会议主题
@@ -179,6 +199,31 @@ tmeet meeting update \
   --meeting-id "100000000" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 替换会议描述文本
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --description "新的会议描述"
+
+# 清空描述文本（显式空串，与「不传」语义不同）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --description ""
+
+# 追加本地附件（在现有附件之上合并）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --attachment-add "./补充材料.pdf"
+
+# 按 file_id 移除指定附件（需先 meeting get 查到 description.attachments[].file_id）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --attachment-remove "fid_xxx,fid_yyy"
+
+# 清空全部附件（与 --attachment-add / --attachment-remove 互斥）
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --attachment-clear
 ```
 
 ### 参数
@@ -205,6 +250,10 @@ tmeet meeting update \
 | `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
 | `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
+| `--description <text>` | 否 | — | 会议描述文本；传入 `""`（空串）= 清空原描述，**与「不传」语义不同** |
+| `--attachment-add <path>` | 否 | — | 追加本地附件；**多个附件必须重复 `--attachment-add`，不支持在单个值里用英文逗号串联**（文件名中的英文逗号会被完整保留） |
+| `--attachment-remove <ids>` | 否 | — | 按 `file_id` 移除附件，可重复传参或英文逗号分隔；需先 `meeting get` 查 `file_id` |
+| `--attachment-clear` | 否 | `false` | 清空全部附件；与 `--attachment-add` / `--attachment-remove` **互斥** |
 
 ---
 
@@ -287,7 +336,7 @@ tmeet meeting get --meeting-code "123456789"
 
 > **`permission_status` 决策规则**：
 > - `can_view`：直接展示录制信息（标题、时长、播放地址），可继续获取智能纪要/转写
-> - `can_apply`：允许申请录制权限。先 `record permission-apply --action prepare` 展示申请预览并等待用户明确确认，再 `record permission-apply --action commit` 提交；录制中 / 转码中不得发起申请，申请前后用户确认不可省略。
+> - `can_apply`：有录制但无查看权限。若该条已返回 `url`（录制/回顾链接），**先把链接给用户并说明「打开后仍需向创建者申请权限才能查看」，再询问是否现在申请**；没有链接时才直接进入申请。申请时先 `record permission-apply --action prepare` 展示申请预览并等待用户明确确认，再 `record permission-apply --action commit` 提交；录制中 / 转码中不得发起申请，申请前后用户确认不可省略。
 > - `closed`：告知用户录制已被关闭，无法查看
 > - `deleted`：告知用户录制已被删除，无法查看
 > - `password_required`：告知用户需要密码，请用户提供密码后重试
@@ -412,7 +461,7 @@ tmeet meeting search \
 | `--page-token <token>` | string | 否 | — | 分页游标，首页不传；翻页时传入上一次响应的 `next_page_token` |
 | `--page-size <n>` | int | 否 | `30` | 每页大小，默认 30，最大 30 |
 
-> **`meeting search` vs `record search` 的分流**：按**会议级线索**（会议主题 / 创建人 / 会议号）找会议或其录制 → `meeting search` / `meeting get`；按**录制内容**检索（转写原文 / 纪要关键词）→ `record search`（见 [`tmeet-record.md`](tmeet-record.md)）。
+> **`meeting search` vs `record search` 的分流**：按**会议级线索**（会议主题 / 创建人 / 会议号）找会议或其录制 → `meeting search` / `meeting get`；按**录制内容**检索（逐字稿 / 纪要关键词）→ `record search`（见 [`tmeet-record.md`](tmeet-record.md)）。
 
 > **默认时间窗**：未同时提供 `--start` / `--end` 时，服务端默认返回**当前时间前后各 30 天**范围内的会议（即 `[now-30d, now+30d]`，既含最近 30 天已发生的会议，也含未来 30 天内已安排的会议）。若用户需要查询 30 天以前的历史会议（如「上季度的会」「今年 3 月的会」）或 30 天以后的未来会议，必须显式传入 `--start` / `--end`，否则会漏召回。
 
@@ -523,6 +572,38 @@ tmeet meeting invitees-replace \
 |------|------|--------|------|
 | `--meeting-id <id>` | ✅ | — | 会议 ID |
 | `--invitees <list>` | ✅ | — | 替换后的受邀成员 `open_id` 完整列表，支持英文逗号分隔或重复传入该参数，最多 100 个 |
+
+---
+
+## attachment-download — 下载会议附件
+
+> 临时下载地址由服务端签发（有限 TTL），CLI 不缓存；默认**不覆盖**同名文件。
+ 
+> 需要 `file_id` 时先 `meeting get`，从 `description.attachments[]` 按原文件名匹配，不要凭空构造 ID。
+
+```bash
+# 下载到当前目录，文件名用服务端返回的 file_name
+tmeet meeting attachment-download \
+  --meeting-id "100000000" \
+  --file-id "fid_xxx"
+
+# 指定本地目录（不存在会自动创建），并允许覆盖已有文件
+# 文件名固定使用服务端返回的 file_name
+tmeet meeting attachment-download \
+  --meeting-id "100000000" \
+  --file-id "fid_xxx" \
+  --output-dir "./downloads" \
+  --overwrite
+```
+
+### 参数
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--meeting-id <id>` | ✅ | — | 会议 ID |
+| `--file-id <fid>` | ✅ | — | 附件 `file_id`；未知时先 `meeting get` 读 `description.attachments[]` 按文件名匹配 |
+| `--output-dir <dir>` | 否 | 当前工作目录 | 本地落地目录；文件名始终使用服务端返回的 `file_name`。目录不存在时会自动创建 |
+| `--overwrite` | 否 | `false` | 目标已存在时是否覆盖；未传且文件已存在 → 直接报错，不自作主张覆盖 |
 
 ---
 

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"tmeet/internal"
 	"tmeet/internal/cmdutil"
+	"tmeet/internal/cmdutil/flagalias"
 	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -53,6 +54,10 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 		"if both --start and --end are omitted, defaults to the last 1 year (up to now)")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size, default 20, max 50")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
+
+	flagalias.Bind(cmd, []flagalias.Spec{
+		{Canonical: "query", Aliases: []string{"keyword", "keywords", "text", "subject"}},
+	})
 
 	return cmd
 }

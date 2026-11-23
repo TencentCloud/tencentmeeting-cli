@@ -35,6 +35,8 @@ type CreateOptions struct {
 	AudioWatermark    bool     // Audio watermark, true=on, false=off
 	AutoRecordType    string   // Auto record when host joins, none=off, local=local recording, cloud=cloud recording
 	AutoASR           bool     // Auto speech recognition, true=on, false=off
+	Description       string   // Meeting description text (<=2000 UTF-8 chars). Only sent when the flag is explicitly set.
+	Attachments       []string // Local attachment paths (<=20 items, aggregate <=100MB).
 }
 
 // newCreateCmd creates a meeting.
@@ -68,6 +70,11 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.AudioWatermark, "audio-watermark", false, "audio watermark")
 	cmd.Flags().StringVar(&opts.AutoRecordType, "auto-record-type", "none", "auto record when host joins: none=off, local=local recording, cloud=cloud recording")
 	cmd.Flags().BoolVar(&opts.AutoASR, "auto-asr", false, "auto speech")
+	cmd.Flags().StringVar(&opts.Description, "description", "",
+		"meeting description text (<=2000 UTF-8 chars)")
+	cmd.Flags().StringArrayVar(&opts.Attachments, "attachment", nil,
+		"local attachment path; repeat the flag for multiple files "+
+			"(max 20, aggregate 100MB)")
 
 	_ = cmd.MarkFlagRequired("subject")
 	_ = cmd.MarkFlagRequired("start")
@@ -156,6 +163,18 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 		params["invitees"] = invitees
 	}
 
+	// Description & attachments: pre-validate text length, upload all local
+	// files first, and only then attach the composed `description` object.
+	// Any upload failure aborts the request before the create call is
+	// issued, so the server never sees a partially-uploaded meeting.
+	if cmd.Flags().Changed("description") || cmd.Flags().Changed("attachment") {
+		desc, err := o.buildDescription(cmd)
+		if err != nil {
+			return err
+		}
+		params["description"] = desc
+	}
+
 	req := &thttp.Request{
 		ApiURI: "/v1/meetings",
 		Body:   params,
@@ -175,4 +194,28 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 		output.WithConvert(convertMap),
 		output.WithHints(o.Hints))
 	return nil
+}
+
+// buildDescription composes the `description` payload for create: validates
+// the text length, uploads any local attachments, and returns the merged
+// object. existingCount/existingBytes are 0 for create — only update needs
+// the merge-against-existing semantics.
+func (o *CreateOptions) buildDescription(cmd *cobra.Command) (map[string]interface{}, error) {
+	desc := map[string]interface{}{}
+	if cmd.Flags().Changed("description") {
+		if err := ValidateDescription(o.Description); err != nil {
+			return nil, err
+		}
+		desc["text"] = o.Description
+	}
+	if cmd.Flags().Changed("attachment") && len(o.Attachments) > 0 {
+		refs, err := UploadLocalAttachments(cmd.Context(), o.tmeet, o.Attachments, 0, 0)
+		if err != nil {
+			return nil, err
+		}
+		// Project to the minimal submit DTO: the server only needs
+		// file_id + file_name on description.attachments[].
+		desc["attachments"] = toSubmitAttachmentRefs(refs)
+	}
+	return desc, nil
 }

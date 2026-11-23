@@ -16,6 +16,10 @@
 > **有录制查看权限（`permission_status=can_view`）→ 取录制纪要 `record content --action minutes`（内容更全，含逐字稿）；
 > 无权限 / 无录制（`can_apply` / `closed` / 无录制文件）→ 取元宝纪要 `minutes get`。**
 > 用户明确指定纪要类型时以用户为准。**不得仅凭命令名字面匹配。**
+>
+> **无纪要权限的原因与替代（取纪要主线）**：取录制纪要报无权限时，若原因是会议将你的可见范围限制为「仅参会期间逐字稿」（可由 `record access --action sharing` 的 `participants_invitees_scope`=「可查看参会期间的逐字稿」佐证），须**如实说明这一权限设置原因**，不要只说"无权限"。随后提供替代并标注来源：①参会期间逐字稿 `record content --action transcript / paragraphs`（标注"仅参会期间"）；②元宝纪要 `minutes get`（标注来源"元宝纪要/非原话"）。如需整场内容，引导 `record permission-apply` 申请回顾权限（未确认不提交），不建议索要密码或改设置。
+>
+> **两类都取不到时**：录制纪要无权限、且元宝纪要为空（`minutes get` 返回空内容）时，**明确告知用户两类都取不到**，并说明各自原因（录制=权限设置、元宝=尚未生成/为空）；不虚构内容、不反复拉取、不把一类的空当作另一类的结果。
 
 > **参数以本文档为准**：下列 `search` / `get` 的参数表持续更新。
 > **执行前无需再跑 `tmeet minutes search --help` / `minutes get --help` 确认参数**。
@@ -46,7 +50,7 @@
 
 > **术语纪律**：对用户一律称「元宝纪要」或「会议纪要」，**严禁称为「智能纪要」**
 > ——「智能纪要」在本体系中特指录制链路产物（`record content --action minutes`），混用会让用户误判数据来源与权限要求。
-> **来源与创建人不可混填**：需标注数据来源（元宝纪要 / 录制转写）时须单独设「来源」列，
+> **来源与创建人不可混填**：需标注数据来源（元宝纪要 / 录制逐字稿）时须单独设「来源」列，
 > **不得填入「创建人」列** —— 创建人只能是真实用户名。
 
 ---
@@ -112,7 +116,7 @@ tmeet minutes search \
 | `minutes[].q_fields` | array? | 命中字段：overview/summary_points/todos/short_summaries |
 | `minutes[].snippets[]` | array? | 命中片段：`source` / `timestamp` / `text`（关键词用 `<mark>` 包裹，前后文约 150 字符，每条结果最多 3 个） |
 
-> **与 `record search` 的区别**：`minutes search` 搜元宝纪要文本（overview/summary_points/todos/short_summaries）；`record search --query-field transcript_content` 搜录制转写原文。两者检索范围不同，按用户要的纪要类型选择。
+> **与 `record search` 的区别**：`minutes search` 搜元宝纪要文本（overview/summary_points/todos/short_summaries）；`record search --query-field transcript_content` 搜录制逐字稿。两者检索范围不同，按用户要的纪要类型选择。
 
 ---
 
@@ -291,6 +295,11 @@ tmeet minutes get --short-summary --minute-id "<①返回的 minutes[].minute_id
      - 单文件内搜索原话 → `record content --action transcript --record-file-id <record_file_id> --text "关键词"`
      - 带说话人与时间戳的段落 → `record content --action paragraphs --record-file-id <record_file_id>`
      （具体分支规则见 tmeet-record.md）
+   - 仅可查看参会期间逐字稿（`record access --action sharing` 的 participants_invitees_scope 为「可查看参会期间的逐字稿」，或读取/时间轴返回无权限、仅部分内容、含 is_transcripts_complete=false / no_permission_ranges）：
+     ① 明确说「你只能查看自己参会期间的逐字稿，以下为可见部分」，列出不可见时段，不得称「完整内容」；
+     ② 搜索无命中或结论依赖不可见时段时，只说「在你可见的范围内未找到」，不得断言「会上没提到」；
+     ③ 引导「如需整场内容，可申请回顾权限 `record permission-apply`」，经用户确认后再 prepare→commit，未同意不提交；
+     ④ 不得建议索要密码或修改设置。
    - 无录制权限 → 降级取 `minutes get --minute-id --short-summary`，标注“非原话/AI 加工版”
 ```
 

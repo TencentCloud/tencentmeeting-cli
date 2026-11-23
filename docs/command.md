@@ -73,6 +73,8 @@ tmeet meeting create --subject <主题> --start <开始时间> --end <结束时�
 | `--audio-watermark` | bool | — | `false` | 音频水印：`true`-开启，`false`-关闭<br>● 个人账号：默认为false<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-record-type` | string | — | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | bool | — | `false` | 自动文字转写：`true`-开，`false`-关<br>● 个人账号：默认false<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--description` | string | — | — | 会议描述文本 |
+| `--attachment` | strings | — | — | 本地附件路径；**多个附件请重复传参**，不支持英文逗号分隔（文件名允许包含英文逗号）；任一附件上传失败则整体回滚，不创建会议 |
 
 **示例：**
 
@@ -110,6 +112,15 @@ tmeet meeting create \
   --end "2026-04-10T15:00+08:00" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 创建会议并附带描述与本地附件
+tmeet meeting create \
+  --subject "方案评审" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --description "评审材料见附件" \
+  --attachment "./方案.pdf" \
+  --attachment "./数据.xlsx"
 ```
 
 ---
@@ -163,6 +174,10 @@ tmeet meeting update --meeting-id <会议ID> [选项]
 | `--sub-meeting-id` | string | — | — | 子会议 ID（`--meeting-type=1` 时生效）：仅修改该场子会议的时间；**不可与 `--recurring-type` / `--until-type` / `--until-count` / `--until-date` 同时使用**。不填则修改整个周期性会议 |
 | `--invitees` | strings | — | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参；与 `--invitees-type` 配合使用              |
 | `--invitees-type` | string | — | — | 邀请变更策略：`replace`-全量替换邀请列表，`add`-新增邀请用户，`remove`-删除邀请用户；当指定 `--invitees` 时必填 |
+| `--description` | string | — | — | 会议描述文本；传 `""`（空串）= 清空原描述，**与「不传」语义不同** |
+| `--attachment-add` | strings | — | — | 追加本地附件；**多个附件请重复传参**，不支持英文逗号分隔（文件名允许包含英文逗号）；任一附件上传失败整体回滚，不修改会议 |
+| `--attachment-remove` | strings | — | — | 按 `file_id` 移除附件，可重复传参或英文逗号分隔；先 `meeting get` 读 `description.attachments[].file_id` 获取 |
+| `--attachment-clear` | bool | — | `false` | 清空全部附件；**与 `--attachment-add` / `--attachment-remove` 互斥** |
 
 **示例：**
 
@@ -205,6 +220,31 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 替换会议描述文本
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --description "更新后的会议说明"
+
+# 清空会议描述文本（显式空串，与不传语义不同）
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --description ""
+
+# 追加本地附件
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-add "./补充材料.pdf"
+
+# 按 file_id 移除指定附件（先用 meeting get 查到 file_id）
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-remove "fid_xxx,fid_yyy"
+
+# 清空全部附件（与 --attachment-add / --attachment-remove 互斥）
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-clear
 ```
 
 ---
@@ -449,11 +489,44 @@ tmeet meeting invitees-replace \
 
 ---
 
+#### `meeting attachment-download` — 下载会议附件
+
+```bash
+tmeet meeting attachment-download --meeting-id <会议ID> --file-id <附件ID> [--output-dir <本地目录>] [--overwrite]
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `--meeting-id` | string | ✅ | — | 会议 ID |
+| `--file-id` | string | ✅ | — | 附件 `file_id`；未知时先 `meeting get` 读 `description.attachments[]` 按文件名匹配 |
+| `--output-dir` | string | — | 当前目录 | 本地落地目录（文件名固定使用服务端返回的 `file_name`）；目录不存在时会自动创建 |
+| `--overwrite` | bool | — | `false` | 目标已存在时是否覆盖；未传且文件已存在 → 直接报错 |
+
+**示例：**
+
+```bash
+# 下载到当前目录，文件名用服务端返回的 file_name
+tmeet meeting attachment-download \
+  --meeting-id "6953553464429888300" \
+  --file-id "fid_xxx"
+
+# 指定本地目录并允许覆盖已有文件（目录不存在会自动创建）
+tmeet meeting attachment-download \
+  --meeting-id "6953553464429888300" \
+  --file-id "fid_xxx" \
+  --output-dir "./downloads" \
+  --overwrite
+```
+
+---
+
 ### record — 录制管理
 
 #### `record search` — 搜索录制
 
 按关键词、会议号、会议 ID、时间范围、文件类型等条件搜索或列出录制。所有过滤参数均为可选，可任意组合；不传 `--query` 时以“按范围列录制”语义运行。
+
+> **入口对照**：`record search` 对应腾讯会议客户端/APP 的「回顾」入口；你所说的“回顾/会议回顾”即指此处的录制搜索。命令与字段统一用 `record`/录制，二者为同一概念。
 
 ```bash
 tmeet record search [选项]
@@ -462,7 +535,7 @@ tmeet record search [选项]
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
 | `--query` | string | — | — | 搜索关键词（最大长度 50） |
-| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-录制主题；`creator`-会议创建者昵称/备注名；`transcript_content`-文件中的原始转写内容；`smart_minutes`-文件中的智能纪要内容（摘要 + 待办）；`timeline`-文件中的时间轴内容；`todo`-智能纪要待办；`all`-搜索所有字段 |
+| `--query-field` | string | — | `all` | `--query` 的搜索字段：`subject`-录制主题；`creator`-会议创建者昵称/备注名；`transcript_content`-文件中的逐字稿内容；`smart_minutes`-文件中的智能纪要内容（摘要 + 待办）；`timeline`-文件中的时间轴内容；`todo`-智能纪要待办；`all`-搜索所有字段 |
 | `--file-type` | string | — | `all` | 文件类型：`video`、`audio`、`transcript`、`upload`、`external`、`all` |
 | `--meeting-id` | string | — | — | 按会议 ID 过滤 |
 | `--meeting-code` | string | — | — | 按会议号过滤（精确匹配，仅数字，无短横线） |
@@ -481,7 +554,7 @@ tmeet record search \
   --start "2026-04-01T00:00+08:00" \
   --end "2026-04-30T23:59+08:00"
 
-# 按转写内容关键词搜索
+# 按逐字稿关键词搜索
 tmeet record search --query "季度目标" --query-field transcript_content
 
 # 按智能纪要内容搜索
@@ -506,7 +579,7 @@ tmeet record search \
 
 #### `record content` — 读录制内容（`--action` 五选一）
 
-`record content` 用于读取录制文件的各类内容，通过 `--action` 指定具体能力：`minutes`（智能纪要）/ `todos`（智能待办）/ `transcript`（转写详情 / 分享链接列表 / 文件内搜索）/ `paragraphs`（转写段落列表）/ `timeline`（智能时间轴）。
+`record content` 用于读取录制文件的各类内容，通过 `--action` 指定具体能力：`minutes`（智能纪要）/ `todos`（智能待办）/ `transcript`（逐字稿详情 / 分享链接列表 / 文件内搜索）/ `paragraphs`（逐字稿段落列表）/ `timeline`（智能时间轴）。
 
 ```bash
 tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [选项]
@@ -518,7 +591,7 @@ tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [�
 | `--record-file-id` | string | 视 action | — | 录制文件 ID。`todos` / `paragraphs` / `timeline` 必填；`minutes` / `transcript` 与 `--share-url` 二选一 |
 | `--share-url` | string | 视 action | — | 录制访问链接（分享 URL）。仅 `minutes` / `transcript` 支持，传入即走"分享链接列表"分支 |
 | `--meeting-id` | string | — | — | 会议 ID（用于 `transcript` 的详情/搜索分支、`paragraphs`） |
-| `--lang` | string | — | 视 action | 语言：`default`/空-原文，`zh`-简体中文，`en`-英文，`ja`-日语。适用于 `minutes` / `todos` / `timeline` |
+| `--lang` | string | — | 视 action | 语言：`default`/空-原始语言，`zh`-简体中文，`en`-英文，`ja`-日语。适用于 `minutes` / `todos` / `timeline` |
 | `--pwd` | string | — | — | 录制文件访问密码。适用于 `minutes` / `todos` |
 | `--pid` | string | — | — | 起始段落 ID。仅 `transcript` 详情分支 |
 | `--limit` | string | — | — | 查询段落数。仅 `transcript` 详情分支 |
@@ -529,7 +602,7 @@ tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [�
 > **参数隐式判定（`--action transcript`）**：
 > 1. 传 `--share-url` → 分享链接列表分支；
 > 2. 否则传 `--text` → 文件内搜索分支；
-> 3. 否则 → 转写详情分支。
+> 3. 否则 → 逐字稿详情分支。
 > `--share-url` 与 `--text` **不能同时传入**（CLI 会精确报错）。
 
 **示例：**
@@ -546,7 +619,7 @@ tmeet record content --action minutes \
 # todos：单独获取智能待办（省 token）
 tmeet record content --action todos --record-file-id "file_abc123" --lang zh
 
-# transcript：转写详情（默认分支）
+# transcript：逐字稿详情（默认分支）
 tmeet record content --action transcript --record-file-id "file_abc123"
 
 # transcript：指定起始段落 + 数量
@@ -559,12 +632,12 @@ tmeet record content --action transcript \
   --record-file-id "file_abc123" \
   --text "季度目标"
 
-# transcript：按分享链接分页拉取转写文字稿
+# transcript：按分享链接分页拉取逐字稿
 tmeet record content --action transcript \
   --share-url "https://meeting.tencent.com/recording/xxxxx" \
   --page-size 5
 
-# paragraphs：转写段落列表
+# paragraphs：逐字稿段落列表
 tmeet record content --action paragraphs \
   --record-file-id "file_abc123" --meeting-id "6953553464429888300"
 
@@ -576,7 +649,11 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 
 #### `record access` — 查录制访问信息（`--action` 四选一）
 
-`record access` 用于查询录制的访问相关信息，通过 `--action` 指定具体能力：`address`（播放地址）/ `sharing`（分享设置）/ `members`（已授权成员列表）/ `settings`（智能录制配置）。
+`record access` 用于查询录制的访问相关信息，通过 `--action` 指定具体能力：`address`（播放地址）/ `sharing`（分享设置，含参会人/受邀人可查看范围）/ `members`（已授权成员列表）/ `settings`（智能录制配置）。
+
+> **「参会人/受邀人能看到什么、能不能看逐字稿」用 `--action sharing`**：读响应 `current.participants_invitees_scope`，其文案（如「可查看整场会议的逐字稿」「可查看参会期间的逐字稿」）原样转述，不要改写。`record access` 只有 `address / sharing / members / settings` 四个 action，不存在 `participant-permission`，勿臆造。
+
+> **入口对照**：`record access` 查询的是录制（即腾讯会议客户端/APP「回顾」入口下的录制文件）的访问信息；命令与字段统一用 `record`/录制，与 APP 的「回顾」为同一概念。
 
 ```bash
 tmeet record access --action <address|sharing|members|settings> [选项]
@@ -601,7 +678,7 @@ tmeet record access --action address \
   --meeting-record-id "record_abc123" \
   --page-token "<next_page_token>" --page-size 30
 
-# sharing：查询当前分享配置
+# sharing：查询当前分享配置（含参会人/受邀人可查看范围 participants_invitees_scope）
 tmeet record access --action sharing --meeting-record-id "record_abc123"
 
 # members：查询已授权成员列表
@@ -637,7 +714,7 @@ tmeet record share-set --meeting-record-id <录制ID> [选项]
 | `--expired-time-type` | int | — | — | 链接有效期类型：`0`-永久，`1`-7天，`2`-15天，`3`-30天，`4`-自定义（须同时传 `--expired-time`） |
 | `--expired-time` | string | — | — | 自定义过期时间（ISO 8601，如 `2026-12-31T23:59+08:00`）；仅 `--expired-time-type=4` 时生效 |
 | `--download-enable` | bool | — | — | 是否允许观看者下载录制。企业锁定下载时后端忽略本项，变更后应以后端实际响应为准 |
-| `--view-minutes-enable` | bool | — | — | 是否允许观看者查看转写与纪要 |
+| `--view-minutes-enable` | bool | — | — | 是否允许观看者查看逐字稿与纪要 |
 | `--rooms-enable` | bool | — | — | 是否允许 Rooms 会议室设备查看本录制 |
 | `--add-members` | stringArray | — | — | 批量添加授权成员，格式 `openid:permission`（`0`=查看 `1`=管理，默认 `0`），可重复传入 |
 | `--remove-members` | stringArray | — | — | 批量移除授权成员，格式 `openid`，可重复传入 |

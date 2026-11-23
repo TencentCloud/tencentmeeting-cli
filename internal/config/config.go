@@ -21,6 +21,7 @@ type UserConfig struct {
 	RefreshToken        string `json:"refresh_token,omitempty"`         // User refreshToken (encrypted storage, plaintext never persisted)
 	Expires             int64  `json:"expires,omitempty"`               // access_token expiry time, Unix timestamp (seconds)
 	RefreshTokenExpires int64  `json:"refresh_token_expires,omitempty"` // refresh_token expiry time, Unix timestamp (seconds)
+	UserName            string `json:"user_name,omitempty"`             // User name
 }
 
 // AppMeta holds application metadata, stored in plaintext in config.json.

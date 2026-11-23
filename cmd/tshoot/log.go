@@ -4,13 +4,9 @@ import (
 	"archive/zip"
 	"bufio"
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -318,22 +314,23 @@ func (o *LogOptions) uploadToServer(ctx context.Context, zipPath string) (string
 		_ = os.Remove(zipPath)
 	}()
 
-	fileSize, fileHash, fileMD5, err := utils.CalcFileInfo(zipPath)
+	digests, err := utils.CalcFileInfo(zipPath)
 	if err != nil {
 		return "", exception.InvalidArgsError.With("failed to calc file info: %v", err)
 	}
-	md5Bytes, err := hex.DecodeString(fileMD5)
+	fileSize, fileHash, fileMD5 := digests.Size, digests.SHA256, digests.MD5
+	cosFileMD5, err := utils.HexMD5ToBase64(fileMD5)
 	if err != nil {
 		return "", exception.InvalidArgsError.With("failed to decode file md5: %v", err)
 	}
-	cosFileMD5 := base64.StdEncoding.EncodeToString(md5Bytes)
 
 	tokenData, err := o.fetchUploadToken(ctx, fileHash, cosFileMD5, uint64(fileSize))
 	if err != nil {
 		return "", err
 	}
 
-	if err = o.putFileToCOS(zipPath, tokenData.UploadURL, tokenData.UploadAuth, cosFileMD5, uint64(fileSize)); err != nil {
+	if err = utils.PutFileToCOS(ctx, zipPath, tokenData.UploadURL, tokenData.UploadAuth,
+		cosFileMD5, "application/zip", uint64(fileSize)); err != nil {
 		return "", err
 	}
 
@@ -380,51 +377,4 @@ func (o *LogOptions) notifyUploadComplete(ctx context.Context, logId string) err
 	}
 	_, err := restProxy.RequestProxy(ctx, http.MethodPost, o.tmeet, req)
 	return err
-}
-
-// putFileToCOS uploads the file at filePath to the given COS upload URL with the provided auth header.
-func (o *LogOptions) putFileToCOS(filePath, uploadURL, uploadAuth, fileMD5 string, fileSize uint64) error {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return exception.InvalidArgsError.With("failed to open zip file: %v", err)
-	}
-	defer f.Close()
-
-	decodeUrl, err := url.QueryUnescape(uploadURL)
-	if err != nil {
-		return exception.InvalidArgsError.With("failed to decode upload URL: %v", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPut, decodeUrl, f)
-	if err != nil {
-		return exception.InvalidArgsError.With("failed to build COS request: %v", err)
-	}
-
-	// Explicitly set Request.ContentLength to prevent Go's net/http from treating
-	// the length as unknown (because body is an *os.File) and falling back to
-	// Transfer-Encoding: chunked, which would break COS signature verification
-	// or trigger a 411 Length Required response.
-	req.ContentLength = int64(fileSize)
-	// Provide GetBody so the body can be re-opened on 307/308 redirects or retries.
-	req.GetBody = func() (io.ReadCloser, error) {
-		return os.Open(filePath)
-	}
-
-	req.Header.Set("Authorization", uploadAuth)
-	req.Header.Set("Content-Type", "application/zip")
-	req.Header.Set("Connection", "close")
-	req.Header.Set("Content-MD5", fileMD5)
-
-	httpClt := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := httpClt.Do(req)
-	if err != nil {
-		return exception.NetworkError.With("failed to upload zip file to COS: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return exception.UploadToCosError.With("COS upload failed, status: %d, body: %s", resp.StatusCode, string(body))
-	}
-	return nil
 }

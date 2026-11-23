@@ -11,7 +11,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 
 - 🔐 **OAuth2 Authorization** — Device code authorization flow, secure and passwordless
 - 📅 **Meeting Management** — Create, query, update, and cancel meetings; supports recurring meetings and invitee management
-- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, smart todos, transcript details and search, query transcripts and smart minutes by share link, recording permission application, sharing settings and authorized member management, smart recording config query and modification
+- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, smart todos, verbatim transcript details and search, query verbatim transcripts and smart minutes by share link, recording permission application, sharing settings and authorized member management, smart recording config query and modification
 - 📊 **Attendance Reports** — Query participant lists and waiting room member records
 - 👥 **Contacts** — Search enterprise contact members by username, job title, or department
 - 🛠️ **Troubleshooting** — Export local logs with optional time range filter, packaged as a zip file

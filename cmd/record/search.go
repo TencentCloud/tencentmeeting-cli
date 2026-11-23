@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"tmeet/internal"
 	"tmeet/internal/cmdutil"
+	"tmeet/internal/cmdutil/flagalias"
 	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
 	"tmeet/internal/exception"
@@ -66,6 +67,10 @@ func newSearchCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().StringVar(&opts.MeetingCode, "meeting-code", "", "filter by meeting code, exact match (digits only, no dashes)")
 	cmd.Flags().IntVar(&opts.PageSize, "page-size", 30, "page size, default 30, max 30")
 	cmd.Flags().StringVar(&opts.PageToken, "page-token", "", "page token for pagination")
+
+	flagalias.Bind(cmd, []flagalias.Spec{
+		{Canonical: "query", Aliases: []string{"keyword", "keywords", "text", "subject"}},
+	})
 
 	return cmd
 }
@@ -129,8 +134,12 @@ func (o *SearchOptions) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	convertMap := map[string]utils.FieldConverter{
+		"transcript_state": utils.RecordTranscriptStateConverter,
+	}
 	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
 		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
+		output.WithConvert(convertMap),
 		output.WithTotalCountLogic())
 	return nil
 }

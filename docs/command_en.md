@@ -73,6 +73,8 @@ tmeet meeting create --subject <title> --start <start-time> --end <end-time> [op
 | `--audio-watermark` | bool | — | `false` | Audio watermark: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
 | `--auto-record-type` | string | — | `none` | Auto record when host joins: `none`-off, `local`-local recording, `cloud`-cloud recording<br>● Personal account: default is none<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
 | `--auto-asr` | bool | — | `false` | Auto speech recognition: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--description` | string | — | — | Meeting description text |
+| `--attachment` | strings | — | — | Local attachment path; **repeat the flag** for multiple files (filenames may contain commas — do NOT comma-join them into a single value); if any attachment fails to upload, the meeting will NOT be created (full rollback) |
 
 **Examples:**
 
@@ -110,6 +112,15 @@ tmeet meeting create \
   --end "2026-04-10T15:00+08:00" \
   --audio-watermark=false \
   --auto-asr=false
+
+# Create a meeting with description and local attachments
+tmeet meeting create \
+  --subject "Proposal Review" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --description "See attachments for review materials" \
+  --attachment "./proposal.pdf" \
+  --attachment "./data.xlsx"
 ```
 
 ---
@@ -163,6 +174,10 @@ tmeet meeting update --meeting-id <meeting-id> [options]
 | `--sub-meeting-id` | string | — | — | Sub-meeting ID (when `--meeting-type=1`): update only that sub-meeting's time. **Cannot be combined with `--recurring-type` / `--until-type` / `--until-count` / `--until-date`.** If omitted, the whole recurring meeting is updated |
 | `--invitees` | strings | — | — | Openid list to mutate; comma-separated or repeat the flag; used together with `--invitees-type`           |
 | `--invitees-type` | string | — | — | Invitees mutation strategy: `replace` / `add` / `remove`; required when `--invitees` is set              |
+| `--description` | string | — | — | Meeting description text; pass `""` (empty string) to clear it. **Different from omitting the flag** |
+| `--attachment-add` | strings | — | — | Local attachment path to append; **repeat the flag** for multiple files (filenames may contain commas — do NOT comma-join them into a single value); any upload failure rolls back the whole update |
+| `--attachment-remove` | strings | — | — | Remove attachments by `file_id`; repeat the flag or comma-separated; use `meeting get` to read `description.attachments[].file_id` first |
+| `--attachment-clear` | bool | — | `false` | Clear ALL attachments; **mutually exclusive with `--attachment-add` / `--attachment-remove`** |
 
 **Example:**
 
@@ -205,6 +220,31 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --audio-watermark=false \
   --auto-asr=false
+
+# Replace description text
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --description "Updated meeting notes"
+
+# Clear description text (explicit empty string, different from omitting the flag)
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --description ""
+
+# Append a local attachment
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-add "./supplement.pdf"
+
+# Remove specific attachments by file_id (fetch file_ids via `meeting get` first)
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-remove "fid_xxx,fid_yyy"
+
+# Clear all attachments (mutually exclusive with --attachment-add / --attachment-remove)
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --attachment-clear
 ```
 
 ---
@@ -449,11 +489,44 @@ tmeet meeting invitees-replace \
 
 ---
 
+#### `meeting attachment-download` — Download a Meeting Attachment
+
+```bash
+tmeet meeting attachment-download --meeting-id <meeting-id> --file-id <file-id> [--output-dir <dir>] [--overwrite]
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|:--------:|---------|-------------|
+| `--meeting-id` | string | ✅ | — | Meeting ID |
+| `--file-id` | string | ✅ | — | Attachment `file_id`; look it up via `meeting get` -> `description.attachments[]` when unknown |
+| `--output-dir` | string | — | current directory | Local output directory (the file name is always taken from the server-returned `file_name`); the directory is created automatically if missing |
+| `--overwrite` | bool | — | `false` | Overwrite the target file if it already exists; otherwise the command fails fast when the target exists |
+
+**Examples:**
+
+```bash
+# Download to current directory using the server-returned file_name
+tmeet meeting attachment-download \
+  --meeting-id "6953553464429888300" \
+  --file-id "fid_xxx"
+
+# Specify local directory and allow overwrite (directory is created if missing)
+tmeet meeting attachment-download \
+  --meeting-id "6953553464429888300" \
+  --file-id "fid_xxx" \
+  --output-dir "./downloads" \
+  --overwrite
+```
+
+---
+
 ### record — Recording Management
 
 #### `record search` — Search Recordings
 
 Search or list recordings by keyword, meeting code, meeting ID, time range, or file type. All filter parameters are optional and can be combined freely. When `--query` is omitted, the command simply lists recordings by the provided range.
+
+> **Entry mapping**: `record search` corresponds to the "Recap" entry in the Tencent Meeting client/app; what you call "Review / Meeting Review" refers to this recording search. Commands and fields consistently use `record`/recording — they denote the same concept.
 
 ```bash
 tmeet record search [options]
@@ -506,7 +579,7 @@ tmeet record search \
 
 #### `record content` — Read Recording Content (`--action`, one of five)
 
-`record content` reads various types of content from a recording file, selected via `--action`: `minutes` (smart minutes) / `todos` (smart todos) / `transcript` (transcript details / share-URL list / in-file search) / `paragraphs` (transcript paragraph list) / `timeline` (smart timeline).
+`record content` reads various types of content from a recording file, selected via `--action`: `minutes` (smart minutes) / `todos` (smart todos) / `transcript` (verbatim transcript details / share-URL list / in-file search) / `paragraphs` (verbatim transcript paragraph list) / `timeline` (smart timeline).
 
 ```bash
 tmeet record content --action <minutes|todos|transcript|paragraphs|timeline> [options]
@@ -546,7 +619,7 @@ tmeet record content --action minutes \
 # todos: fetch smart todos only (saves tokens)
 tmeet record content --action todos --record-file-id "file_abc123" --lang zh
 
-# transcript: transcript details (default branch)
+# transcript: verbatim transcript details (default branch)
 tmeet record content --action transcript --record-file-id "file_abc123"
 
 # transcript: specify starting paragraph and count
@@ -559,12 +632,12 @@ tmeet record content --action transcript \
   --record-file-id "file_abc123" \
   --text "quarterly goals"
 
-# transcript: paginated transcript by share URL
+# transcript: paginated verbatim transcript by share URL
 tmeet record content --action transcript \
   --share-url "https://meeting.tencent.com/recording/xxxxx" \
   --page-size 5
 
-# paragraphs: transcript paragraph list
+# paragraphs: verbatim transcript paragraph list
 tmeet record content --action paragraphs \
   --record-file-id "file_abc123" --meeting-id "6953553464429888300"
 
@@ -577,6 +650,8 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 #### `record access` — Query Recording Access Info (`--action`, one of four)
 
 `record access` queries recording access-related information via `--action`: `address` (download URL) / `sharing` (sharing config) / `members` (authorized member list) / `settings` (smart recording config).
+
+> **Entry mapping**: `record access` queries the access info of recordings (i.e., the recording files under the "Recap" entry in the Tencent Meeting client/app); commands and fields consistently use `record`/recording, which is the same concept as the app's "Recap".
 
 ```bash
 tmeet record access --action <address|sharing|members|settings> [options]
@@ -612,7 +687,7 @@ tmeet record access --action members \
   --meeting-record-id "record_abc123" \
   --page-token "<next_page_token>"
 
-# settings: query smart recording config (subtitle switch / AI switch)
+# settings: query smart recording config (verbatim transcript switch / AI switch)
 tmeet record access --action settings --record-file-id "file_abc123"
 ```
 
@@ -680,7 +755,7 @@ Response `data` is a JSON string containing `results[]` (per-sub-operation resul
 
 #### `record settings-set` — Modify Smart Recording Config (write operation)
 
-> ⚠️ **Write operation**: Modifies the recording file's subtitle switch or AI recording switch. Show the pending changes to the user and obtain explicit confirmation before executing.
+> ⚠️ **Write operation**: Modifies the recording file's verbatim transcript switch or AI recording switch. Show the pending changes to the user and obtain explicit confirmation before executing.
 
 ```bash
 tmeet record settings-set --record-file-id <file-id> [options]
@@ -689,13 +764,13 @@ tmeet record settings-set --record-file-id <file-id> [options]
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
 | `--record-file-id` | string | ✅ | — | Recording file ID |
-| `--subtitle-switch` | int | — | — | Subtitle switch: `1`-off, `2`-on; at least one of `--subtitle-switch` / `--enable-ai-switch` is required |
+| `--subtitle-switch` | int | — | — | Verbatim transcript switch: `1`-off, `2`-on; at least one of `--subtitle-switch` / `--enable-ai-switch` is required |
 | `--enable-ai-switch` | int | — | — | Smart recording switch: `1`-off, `2`-on; at least one of `--subtitle-switch` / `--enable-ai-switch` is required |
 
 **Examples:**
 
 ```bash
-# Turn on subtitle
+# Turn on verbatim transcript
 tmeet record settings-set --record-file-id "file_abc123" --subtitle-switch 2
 
 # Turn off AI recording

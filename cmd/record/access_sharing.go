@@ -55,10 +55,11 @@ func (o *AccessOptions) runSharing(cmd *cobra.Command) error {
 		output.WithCompact(middleWare.GetCompactFields(cmd.Context())),
 		output.WithFnFilterFunc(sharingFilterFields),
 		output.WithConvert(map[string]utils.FieldConverter{
-			"permission_point_id": utils.RecordPermissionPointConverter,
-			"expired_time_type":   utils.RecordExpiredTimeTypeConverter,
-			"corp_share_scope":    utils.RecordCorpShareScopeConverter,
-			"expired_time":        utils.TimestampConverter,
+			"permission_point_id":         utils.RecordPermissionPointConverter,
+			"expired_time_type":           utils.RecordExpiredTimeTypeConverter,
+			"corp_share_scope":            utils.RecordCorpShareScopeConverter,
+			"expired_time":                utils.TimestampConverter,
+			"participants_invitees_scope": utils.ParticipantsInviteesScopeConverter,
 		}))
 	return nil
 }
