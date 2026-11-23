@@ -15,6 +15,7 @@ type AuthTokenData struct {
 	RefreshTokenExpireTime string `json:"refresh_token_expire_time,omitempty"`
 	OpenID                 string `json:"open_id,omitempty"`
 	SdkId                  string `json:"sdk_id,omitempty"`
+	UserName               string `json:"user_name,omitempty"`
 }
 
 func (w *TmeetAuth) getAuthToken(ctx context.Context, authCode string) (*AuthTokenData, error) {

@@ -113,6 +113,7 @@ func (w *TmeetAuth) RefreshToken(ctx context.Context, clearFunc config.ClearUser
 		w.tmeet.UserConfig.OpenId = tokenData.OpenID
 		w.tmeet.UserConfig.AccessToken = tokenData.AccessToken
 		w.tmeet.UserConfig.RefreshToken = tokenData.RefreshToken
+		w.tmeet.UserConfig.UserName = tokenData.UserName
 		w.tmeet.UserConfig.Expires, _ = strconv.ParseInt(tokenData.AccessTokenExpireTime, 10, 64)
 		w.tmeet.UserConfig.RefreshTokenExpires, _ = strconv.ParseInt(tokenData.RefreshTokenExpireTime, 10, 64)
 

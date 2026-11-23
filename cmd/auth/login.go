@@ -86,6 +86,7 @@ func (o *LoginOptions) Run(cmd *cobra.Command, args []string) error {
 		OpenId:       authTokenData.OpenID,
 		AccessToken:  authTokenData.AccessToken,
 		RefreshToken: authTokenData.RefreshToken,
+		UserName:     authTokenData.UserName,
 	}
 	userConfig.Expires, _ = strconv.ParseInt(authTokenData.AccessTokenExpireTime, 10, 64)
 	userConfig.RefreshTokenExpires, _ = strconv.ParseInt(authTokenData.RefreshTokenExpireTime, 10, 64)

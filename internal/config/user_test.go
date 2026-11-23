@@ -40,6 +40,7 @@ func TestSaveAndGetUserConfig(t *testing.T) {
 		AccessToken:  "access-token-xyz",
 		RefreshToken: "refresh-token-xyz",
 		Expires:      1700000000,
+		UserName:     "Alice",
 	}
 
 	if err := SaveUserConfig(cfg); err != nil {
@@ -66,6 +67,9 @@ func TestSaveAndGetUserConfig(t *testing.T) {
 	}
 	if got.Expires != cfg.Expires {
 		t.Errorf("Expires = %d, want %d", got.Expires, cfg.Expires)
+	}
+	if got.UserName != cfg.UserName {
+		t.Errorf("UserName = %q, want %q", got.UserName, cfg.UserName)
 	}
 }
 
