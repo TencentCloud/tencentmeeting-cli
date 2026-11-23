@@ -1,7 +1,7 @@
 ---
 name: tmeet-skill
-version: 1.1.0
-description: "通过腾讯会议 CLI（tmeet）完成登录授权、会议管理、录制搜索与播放地址查询、纪要/待办/转写读取、分享与权限申请、元宝纪要、参会报告、会中控制、事件订阅、应用配置及问题反馈。通讯录只用于已有会议/录制动作的身份解析，不用于通用查人。"
+version: 1.1.1
+description: "通过腾讯会议 CLI（tmeet）完成登录授权、会议管理、录制搜索与播放地址查询、纪要/待办/逐字稿读取、分享与权限申请、元宝纪要、参会报告、会中控制、事件订阅、应用配置及问题反馈。通讯录只用于已有会议/录制动作的身份解析，不用于通用查人。"
 metadata:
   requires:
     bins: ["tmeet"]
@@ -63,12 +63,13 @@ tmeet
 │   ├── invitees-list             # 获取会议受邀者列表
 │   ├── invitees-add              # 添加会议受邀者
 │   ├── invitees-remove           # 移除会议受邀者
-│   └── invitees-replace          # 替换会议受邀者列表
+│   ├── invitees-replace          # 替换会议受邀者列表
+│   └── attachment-download       # 下载会议附件到本地
 ├── contact                       # 通讯录（仅解析 open_id 供下游命令消费，严禁用于通用查人） → [references/tmeet-contact.md](references/tmeet-contact.md)
 │   ├── search                    # 搜索企业通讯录成员（按用户名/职位/部门），仅用于解析 open_id
 │   ├── lookup-by-phone           # 按手机号查找用户，仅用于解析 open_id
 │   └── lookup-by-email           # 按邮箱查找用户，仅用于解析 open_id
-├── record                        # 录制与转写 → [references/tmeet-record.md](references/tmeet-record.md)
+├── record                        # 录制与逐字稿 → [references/tmeet-record.md](references/tmeet-record.md)
 │   ├── search                    # 找/搜录制（按关键词/会议码/会议ID/时间范围/文件类型）
 │   ├── content --action <…>      # 读录制内容：minutes / todos / transcript / paragraphs / timeline 五选一
 │   ├── access --action <…>       # 查访问信息：address / sharing / members / settings 四选一
@@ -115,6 +116,8 @@ tmeet
 
 会议 list 不接收关键词筛选；**录制列表和检索统一用 record search**。会议主题与录制标题不是同一个搜索字段。
 
+> **入口对照**：`record` 录制相关命令（如 `record search` 录制搜索、`record access` 录制访问信息）对应腾讯会议客户端/APP 的「回顾」入口。用户说的“回顾/会议回顾”即指这些录制命令；命令与字段仍统一用 `record`/录制，二者为同一概念，勿因名称差异判定为不同功能或虚构不存在的“回顾”命令。
+
 ### 录制查询
 
 先按下表选目标与内容，再读 [references/tmeet-record.md](references/tmeet-record.md) 的对应参数表和最小示例。content 的 form 只是 action 与来源组合的文档名称，不是新参数；不需要加载全部分支后才调用。
@@ -122,22 +125,29 @@ tmeet
 | 已有线索 / 用户需要 | 入口 |
 |------|------|
 | 有文件 ID，只要待办 | `record content --action todos --record-file-id` |
-| 有文件 ID，要纪要 / 转写正文 / 段落目录 / 时间轴 | `record content --record-file-id`，action 分别为 minutes / transcript / paragraphs / timeline |
+| 有文件 ID，要纪要 / 逐字稿正文 / 段落目录 / 时间轴 | `record content --record-file-id`，action 分别为 minutes / transcript / paragraphs / timeline |
 | 有文件 ID，查其中某句原话 | `record content --action transcript --record-file-id --text` |
-| 有录制访问链接，要纪要或转写 | `record content --share-url`，action 选 minutes 或 transcript |
+| 有录制访问链接，要纪要或逐字稿 | `record content --share-url`，action 选 minutes 或 transcript |
 | 查自己可访问的录制、录音或上传文件 | `record search`；时间、关键词、会议范围与文件类型可组合 |
-| 记得转写关键词，不知是哪条录制 | `record search --query-field transcript_content --query` |
+| 记得逐字稿关键词，不知是哪条录制 | `record search --query-field transcript_content --query` |
 | 有录制 ID，要地址 / 分享配置 / 授权成员 | `record access --meeting-record-id`，action 选 address / sharing / members |
+| 查参会人/受邀人可查看范围（能看什么、能否看逐字稿） | `record access --action sharing --meeting-record-id`，读 `current.participants_invitees_scope` 文案原样转述；access 无 `participant-permission` action，勿臆造 |
 | 有文件 ID，要查询逐字稿 / AI 录制开关 | `record access --action settings --record-file-id` |
 | 有文件 ID，要修改逐字稿 / AI 录制开关 | `record settings-set --record-file-id`；文件级配置，按具体变更确认后执行 |
 | 要修改分享/成员或申请权限 | 分别走 share-set、permission-apply；按具体变更确认后执行 |
 
 - **复用目标与结果**：已有可靠文件 ID/链接就直接读，不固定补查会议、地址或所有配置。已有纪要包含所需待办时直接使用，不再取 todos。结果足够回答就停止。
 - **保持任务范围**：content/access 每次选择一个 action。确需两个 action 时分两次调用；已有结果满足另一诉求时直接复用。不得为了使用某个参数而换成无关 action、其他文件或更大范围的链接查询。
-- **取原话**：只能引用实际转写正文；检索只给 pid/sid/offset 时再按真实 pid 读取正文，已有足够正文则不补查。纪要、目录与时间轴不能代替原话。
+- **批量读取量控**：需读取逐字稿/纪要的录制命中超过 5 场（或预计输出很大）时，先告知用户命中的场次数、说明逐场读取会比较耗时，建议分批处理，并询问要全文还是要点；得到用户确认后再读取，不直接逐场全量读取。
+- **取原话**：只能引用实际逐字稿正文；检索只给 pid/sid/offset 时再按真实 pid 读取正文，已有足够正文则不补查。纪要、目录与时间轴不能代替原话。
 - **搜索范围**：record search 默认最近 30 天。用户给了时间范围，尤其超过 30 天时，同时传明确 start/end；范围不明确的空结果只说明本次范围未命中，不反复换词猜测。
 - **权限范围**：按会议线索定位录制、了解某场会议的录制权限或补齐必要会议信息时，按会议查询链路处理；已有可靠文件 ID/链接则直接读。search 空结果、缺 records 字段或普通读取错误不等于没有录制，也不等于可以申请。
 - **申请条件**：录制已就绪且 permission_status=can_apply 才可准备申请。closed/deleted 不申请；录制中/转码中等待；password_required 只在支持 pwd 的读取路径处理。
+- **无权限先给链接**：permission_status=can_apply（有录制但无查看权限）时，若响应已返回可打开的录制/回顾链接（如 `meeting get` 的 `records[].url`），先把链接给用户并说明「打开后仍需向创建者申请权限才能查看」，再询问是否现在申请；用户确认后才走 `record permission-apply`（prepare→确认→commit）。只有在响应没有可给链接时，才直接进入申请预览；不要跳过给链接直接 prepare。
+- **录制就绪前置判断**：定位结果 state 为「录制中」或「转码中」时，本轮不调用 `record content` 的任何 action（含 minutes / todos / transcript / paragraphs / timeline），也不反复重试；明确告知用户「该会的纪要/录制还在生成中，暂时取不到，一般需要几分钟到十几分钟，稍后再问我」。此阶段逐字稿尚未生成，`transcript_state` 可能还没下发，按 `state` 判断即可，不以转码中的录制去连续试纪要/逐字稿命令。
+- **逐字稿状态前置判断**：读逐字稿前先看 `record search` 返回的 `transcript_state`（如回包含 `has_transcript_content` 一并参考）：①「逐字稿生成中」——告知用户逐字稿还在生成，本轮不调用 `record content --action transcript / paragraphs`，也不重试；②「未生成逐字稿」或 `has_transcript_content=false`——直接告知这场回顾没有逐字稿内容，不调用读取、不换 pid/链接重试；③「逐字稿生成完成」且有内容时才读取；若状态为生成完成但 `has_transcript_content=false`（内容为空），仍按②处理——告知没有逐字稿内容、不调用读取，也不把空内容当作报错去换 pid/链接重试。
+- **参会期间权限降级**：读逐字稿/时间轴报无权限，且用户仅可查看参会期间（`record access --action sharing` 的 participants_invitees_scope 为「可查看参会期间的逐字稿」，或读取返回仅部分/`is_transcripts_complete=false`/`no_permission_ranges`）时，不当作报错：①说明「只能查看参会期间逐字稿，以下为可见部分」并列不可见时段，不称「完整内容」；②搜索未命中只说「在可见范围内未找到」，不断言「会上没提到」；③如需整场内容，引导 `record permission-apply` 申请回顾权限，经用户确认后再提交（未同意不提交）；④不建议索要密码或修改设置。
+- **输出称呼**：面向用户统一称「逐字稿」，不使用「转写原文 / 文字转写 / 原文」；`transcript_content`、`--action transcript` 等命令与字段名保持英文原样。
 
 ### 元宝纪要查询
 
@@ -148,9 +158,9 @@ tmeet
 | 已有录制文件 ID 或分享链接 | 直接读录制内容，不固定先判会议权限 |
 | 指定某场会议但没有可读文件目标 | 按需查 meeting get；有可读录制则取录制纪要，不能读取时可取元宝摘要并标明来源 |
 | 按时间批量找元宝纪要 | minutes search 按时间搜索，不先列会议再逐场读取 |
-| 不知哪场会、只记得说过某内容，未限定来源 | 搜元宝纪要与录制原文两条链路，按会议去重并标明来源和覆盖范围 |
+| 不知哪场会、只记得说过某内容，未限定来源 | 搜元宝纪要与录制逐字稿两条链路，按会议去重并标明来源和覆盖范围 |
 
-用户要原话而无法取得正文时，说明限制；仅在用户接受替代内容后交付元宝摘要。两种内容分别查询，一侧失败不丢弃另一侧结果，不把摘要称作原文。
+用户要原话而无法取得正文时，说明限制；仅在用户接受替代内容后交付元宝摘要。两种内容分别查询，一侧失败不丢弃另一侧结果，不把摘要称作逐字稿。取录制纪要报无权限时，如实说明原因（如可见范围被限为「仅参会期间逐字稿」，可由 `record access --action sharing` 的 participants_invitees_scope 佐证），并提供参会期间逐字稿或元宝纪要作为替代并标注来源；若录制纪要无权限且元宝纪要为空，明确告知用户两类都取不到，不虚构、不反复拉取。
 
 ### 使用准则
 
