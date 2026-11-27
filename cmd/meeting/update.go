@@ -13,6 +13,7 @@ import (
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
+	"tmeet/internal/utils/enumerate"
 
 	"github.com/spf13/cobra"
 )
@@ -45,36 +46,106 @@ var inviteesOperateTypeMap = map[string]int{
 
 // UpdateOptions holds the options for updating a meeting.
 type UpdateOptions struct {
-	tmeet             *internal.Tmeet
-	MeetingID         string   // Meeting ID
-	Subject           string   // Meeting subject
-	StartTime         string   // Meeting start time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	EndTime           string   // Meeting end time, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	Password          string   // Meeting password (4-6 digits)
-	Timezone          string   // Timezone, e.g. Asia/Shanghai
-	MeetingType       int      // Meeting type. 0: normal meeting, 1: recurring meeting
-	OnlyUserJoinType  int      // Member join restriction. 1: all members, 2: invited only, 3: internal only
-	AutoInWaitingRoom bool     // Whether to enable waiting room
-	RecurringType     int      // Recurring meeting config (required when meetingType=1). Recurrence type, default 0. 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly
-	UntilType         int      // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
-	UntilCount        int      // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
-	UntilDate         string   // Recurring meeting config (required when meetingType=1). End date
-	SubMeetingID      string   // Recurring meeting config (optional, when meetingType=1). Sub-meeting ID: modify a single sub-meeting's time only; mutually exclusive with recurring-rule fields (recurring-type/until-type/until-count/until-date). If empty, the whole recurring meeting is updated.
-	Invitees          []string // Invited participants (openid list).
-	InviteesType      string   // Invitees mutation strategy: replace / add / remove.
-	WaterMarkType     int      // Text watermark, 0=single row, 1=double row, 2=off
-	AudioWatermark    bool     // Audio watermark, true=on, false=off
-	AutoRecordType    string   // Auto record when host joins, none=off, local=local recording, cloud=cloud recording
-	AutoASR           bool     // Auto speech recognition, true=on, false=off
-	Description       string   // Replacement description text; explicit empty string clears existing text.
-	AttachmentsAdd    []string // Local file paths to append as new attachments.
-	AttachmentsRemove []string // File IDs to remove from the existing attachment list.
-	AttachmentsClear  bool     // Remove ALL attachments; mutually exclusive with add/remove.
+	tmeet *internal.Tmeet
+
+	// MeetingID is the meeting ID (required).
+	MeetingID string
+
+	// Subject is the meeting subject.
+	Subject string
+
+	// StartTime is the meeting start time in ISO 8601 format,
+	// e.g. 2026-03-12T15:00+08:00.
+	StartTime string
+
+	// EndTime is the meeting end time in ISO 8601 format,
+	// e.g. 2026-03-12T15:00+08:00.
+	EndTime string
+
+	// Password is the meeting password (4-6 digits).
+	Password string
+
+	// Timezone follows the Oracle-TimeZone standard, e.g. Asia/Shanghai.
+	Timezone string
+
+	// MeetingType is the meeting type.
+	// 0: normal meeting, 1: recurring meeting.
+	MeetingType int
+
+	// OnlyUserJoinType is the member join restriction.
+	// 1: all members, 2: invited only, 3: internal only.
+	OnlyUserJoinType int
+
+	// AutoInWaitingRoom controls whether the waiting room is enabled.
+	AutoInWaitingRoom bool
+
+	// RecurringType is required when meetingType=1. Recurrence type, default 0.
+	// 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly.
+	RecurringType int
+
+	// UntilType is required when meetingType=1. End type, default 0.
+	// 0: end by date, 1: end by count.
+	UntilType int
+
+	// UntilCount is required when meetingType=1. Max occurrences.
+	// Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
+	UntilCount int
+
+	// UntilDate is required when meetingType=1. End date in ISO 8601,
+	// e.g. 2026-03-12T15:00+08:00.
+	UntilDate string
+
+	// SubMeetingID is the recurring meeting sub-meeting ID (optional, when
+	// meetingType=1). When set, only that single sub-meeting's time is
+	// modified; it is mutually exclusive with the recurring-rule fields
+	// (recurring-type / until-type / until-count / until-date). If empty,
+	// the whole recurring meeting is updated.
+	SubMeetingID string
+
+	// Invitees is the list of invited participants' openids.
+	Invitees []string
+
+	// InviteesType is the invitees mutation strategy:
+	// replace / add / remove.
+	InviteesType string
+
+	// WaterMarkType is the text watermark setting.
+	// 0: single row, 1: double row, 2: off.
+	WaterMarkType int
+
+	// AudioWatermark toggles the audio watermark. true=on, false=off.
+	AudioWatermark bool
+
+	// AutoRecordType is the auto-record policy when the host joins.
+	// none=off, cloud=cloud recording.
+	AutoRecordType string
+
+	// AutoASR toggles the auto speech recognition. true=on, false=off.
+	AutoASR bool
+
+	// AllowAfterMeetingView allows participants to view the transcript
+	// after the meeting. true=allow, false=deny.
+	AllowAfterMeetingView bool
+
+	// Description is the replacement description text; an explicit empty
+	// string clears existing text.
+	Description string
+
+	// AttachmentsAdd lists local file paths to append as new attachments.
+	AttachmentsAdd []string
+
+	// AttachmentsRemove lists file IDs to remove from the existing
+	// attachment list.
+	AttachmentsRemove []string
+
+	// AttachmentsClear removes ALL attachments; mutually exclusive with
+	// AttachmentsAdd / AttachmentsRemove.
+	AttachmentsClear bool
 }
 
 // newUpdateCmd updates a meeting.
 func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
-	opts := &UpdateOptions{tmeet: tmeet}
+	opts := &UpdateOptions{tmeet: tmeet, AutoRecordType: string(enumerate.AutoRecordTypeNone)}
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "update meeting",
@@ -92,9 +163,11 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().StringVar(&opts.Password, "password", "", "meeting password (4-6 digits)")
 	cmd.Flags().StringVar(&opts.Timezone, "timezone", "", "timezone (e.g. Asia/Shanghai)")
 	cmd.Flags().IntVar(&opts.MeetingType, "meeting-type", 0, "meeting type: 0-normal, 1-recurring")
-	cmd.Flags().IntVar(&opts.OnlyUserJoinType, "join-type", 0, "join restriction: 1-all members, 2-invited only, 3-internal only")
+	cmd.Flags().IntVar(&opts.OnlyUserJoinType, "join-type", 0,
+		"join restriction: 1-all members, 2-invited only, 3-internal only")
 	cmd.Flags().BoolVar(&opts.AutoInWaitingRoom, "waiting-room", false, "enable waiting room")
-	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0, "recurring type (0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly)")
+	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0,
+		"recurring type (0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly)")
 	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0, "until type (0-date, 1-count)")
 	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7, "until count")
 	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "until date e.g. 2026-03-12T15:00+08:00)")
@@ -108,8 +181,11 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 		"invitees mutation strategy: replace | add | remove (required when --invitees is set)")
 	cmd.Flags().IntVar(&opts.WaterMarkType, "water-mark-type", 2, "text watermark: 0=single row, 1=double row, 2=off")
 	cmd.Flags().BoolVar(&opts.AudioWatermark, "audio-watermark", false, "audio watermark")
-	cmd.Flags().StringVar(&opts.AutoRecordType, "auto-record-type", "none", "auto record when host joins: none=off, local=local recording, cloud=cloud recording")
+	cmd.Flags().Var(&cmdutil.EnumValue{Value: &opts.AutoRecordType, Allowed: enumerate.AutoRecordTypeValues()},
+		"auto-record-type", "auto record when host joins: none=off, cloud=cloud recording")
 	cmd.Flags().BoolVar(&opts.AutoASR, "auto-asr", false, "auto speech recognition")
+	cmd.Flags().BoolVar(&opts.AllowAfterMeetingView, "allow-after-meeting-view", false,
+		"allow participants to view the transcript after the meeting (true=allow, false=deny); omitted = not sent to API")
 	cmd.Flags().StringVar(&opts.Description, "description", "",
 		"replacement description text (<=2000 UTF-8 chars); pass empty string to clear text")
 	cmd.Flags().StringArrayVar(&opts.AttachmentsAdd, "attachment-add", nil,
@@ -125,8 +201,8 @@ func newUpdateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	return cmd
 }
 
-// Hints implements the Hints.HintProvider interface and returns hints for meeting settings.
-// Lock detection is solely driven by the corp_lock_mask bitmask in the response.
+// Hints implements the hints.HintProvider interface. Lock detection comes from
+// the update response.
 func (o *UpdateOptions) Hints(responseData string) []string {
 	return cmdutil.GenerateMeetingSettingsHints(responseData)
 }
@@ -194,6 +270,9 @@ func (o *UpdateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	if cmd.Flags().Changed("auto-asr") {
 		settings["auto_asr"] = o.AutoASR
+	}
+	if cmd.Flags().Changed("allow-after-meeting-view") {
+		settings["allow_after_meeting_view"] = o.AllowAfterMeetingView
 	}
 	if len(settings) > 0 {
 		params["settings"] = settings
