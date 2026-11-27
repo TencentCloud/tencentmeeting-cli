@@ -2,6 +2,26 @@
 
 All notable changes to tmeet will be documented in this file, following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) convention.
 
+## [v1.1.2] - 2026-11-27
+
+### Added
+
+- **Participant / invitee viewing permission**: `record access --action participant-permission --meeting-record-id` reads the viewing tier granted to meeting participants and invitees, and `record share-set --action participant-permission --participant-perm <1~5>` sets it. Tiers 1~5 are: transcript of the attended period only / whole-meeting transcript and smart minutes / require an explicit share (authorized-member list or share link) / all recap content / whole-meeting smart minutes only. Both operations are restricted to the recording creator; `share-set` is a write operation and requires confirmation before execution.
+- **`record share-set` now dispatches via `--action`**: `sharing` (the default, retaining the existing sharing-config and authorized-member behaviour) and `participant-permission`. The two actions are mutually exclusive — a flag owned by one action is rejected by the other.
+- **New `--allow-after-meeting-view` on `meeting create` / `meeting update`**: allows participants to view the transcript after the meeting (`true` allow / `false` deny); the field is not sent to the API unless the flag is explicitly set.
+- **New enums and converters**: `RecordParticipantPerm` (tiers 1~5) plus `RecordParticipantPermConverter` for translating the `participant_perm` output field; `AutoRecordType` (`none` / `cloud`) with its own validation, and `--auto-record-type` now uses `cmdutil.EnumValue` so an invalid value fails at flag-parsing time.
+
+### Changed
+
+- **`--auto-record-type` drops the `local` value**: only `none` (off) and `cloud` (cloud recording) are accepted.
+- **`record share-set --view-minutes-enable` help text clarified**: now reads "allow members to view the recording transcript".
+- **SKILL bumped to 1.1.2**: `tmeet-record.md` gains the participant-permission routing entries, flag table and creator-only restriction; `tmeet-meeting.md` gains `--allow-after-meeting-view` examples and table rows; the confirmation table now requires explaining the tier semantics and the creator-only restriction when setting participant/invitee viewing permission.
+- **`docs/command.md` / `docs/command_en.md` and `README.md` / `README_EN.md`** updated in lock-step with the command tree and capability descriptions.
+
+### Removed
+
+- **`meeting create` / `meeting update` no longer accept `--auto-record-type local`**: the value is withdrawn; use `cloud` for auto-recording (this is the same change as the first "Changed" item).
+
 ## [v1.1.1] - 2026-11-23
 
 ### Added
