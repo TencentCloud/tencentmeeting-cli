@@ -1,6 +1,6 @@
 ---
 name: tmeet-skill
-version: 1.1.1
+version: 1.1.2
 description: "通过腾讯会议 CLI（tmeet）完成登录授权、会议管理、录制搜索与播放地址查询、纪要/待办/逐字稿读取、分享与权限申请、元宝纪要、参会报告、会中控制、事件订阅、应用配置及问题反馈。通讯录只用于已有会议/录制动作的身份解析，不用于通用查人。"
 metadata:
   requires:
@@ -72,8 +72,8 @@ tmeet
 ├── record                        # 录制与逐字稿 → [references/tmeet-record.md](references/tmeet-record.md)
 │   ├── search                    # 找/搜录制（按关键词/会议码/会议ID/时间范围/文件类型）
 │   ├── content --action <…>      # 读录制内容：minutes / todos / transcript / paragraphs / timeline 五选一
-│   ├── access --action <…>       # 查访问信息：address / sharing / members / settings 四选一
-│   ├── share-set                 # 提交录制分享设置变更与授权成员管理（写操作，执行前确认）
+│   ├── access --action <…>       # 查访问信息：address / sharing / members / settings / participant-permission 五选一（末项仅创建者可查询）
+│   ├── share-set --action <…>    # 写操作，执行前确认：sharing（默认，分享配置/授权成员）| participant-permission（参会人和受邀人查看权限，仅创建者）
 │   ├── settings-set               # 修改录制文件智能录制配置（写操作，执行前确认）
 │   └── permission-apply --action <…> # 录制权限申请：prepare（预览，默认）/ commit（提交，写操作）
 ├── report                        # 会议报告 → [references/tmeet-report.md](references/tmeet-report.md)
@@ -130,11 +130,13 @@ tmeet
 | 有录制访问链接，要纪要或逐字稿 | `record content --share-url`，action 选 minutes 或 transcript |
 | 查自己可访问的录制、录音或上传文件 | `record search`；时间、关键词、会议范围与文件类型可组合 |
 | 记得逐字稿关键词，不知是哪条录制 | `record search --query-field transcript_content --query` |
-| 有录制 ID，要地址 / 分享配置 / 授权成员 | `record access --meeting-record-id`，action 选 address / sharing / members |
-| 查参会人/受邀人可查看范围（能看什么、能否看逐字稿） | `record access --action sharing --meeting-record-id`，读 `current.participants_invitees_scope` 文案原样转述；access 无 `participant-permission` action，勿臆造 |
+| 有录制 ID，要地址 / 分享配置 / 授权成员 | `record access --meeting-record-id`，action 选 address / sharing / members（五个 action 见命令总览，另见下方两行） |
+| 查参会人/受邀人可查看范围（能看什么、能否看逐字稿） | `record access --action sharing --meeting-record-id`，读 `current.participants_invitees_scope` 文案原样转述 |
+| 要查询参会人和受邀人查看权限 | `record access --action participant-permission --meeting-record-id`；仅录制创建者可查询 |
 | 有文件 ID，要查询逐字稿 / AI 录制开关 | `record access --action settings --record-file-id` |
 | 有文件 ID，要修改逐字稿 / AI 录制开关 | `record settings-set --record-file-id`；文件级配置，按具体变更确认后执行 |
-| 要修改分享/成员或申请权限 | 分别走 share-set、permission-apply；按具体变更确认后执行 |
+| 要修改分享/成员或申请权限 | 分别走 `share-set --action sharing`（默认，可省略 `--action`）、`permission-apply`；按具体变更确认后执行 |
+| 要设置参会人和受邀人查看权限 | `record share-set --action participant-permission --participant-perm <1~5>`；仅创建者可设置，按档位确认后执行；与 sharing 参数互斥 |
 
 - **复用目标与结果**：已有可靠文件 ID/链接就直接读，不固定补查会议、地址或所有配置。已有纪要包含所需待办时直接使用，不再取 todos。结果足够回答就停止。
 - **保持任务范围**：content/access 每次选择一个 action。确需两个 action 时分两次调用；已有结果满足另一诉求时直接复用。不得为了使用某个参数而换成无关 action、其他文件或更大范围的链接查询。
@@ -180,7 +182,7 @@ tmeet
 | meeting invitees-add/remove/replace | 添加、移除或替换受邀者；添加会通知成员 |
 | control call/kick | 呼叫打扰成员；踢出使成员离会 |
 | auth logout | 清除本地凭证 |
-| record share-set/settings-set | 具体权限、成员或智能配置变更及联动 |
+| record share-set/settings-set | 具体权限、成员或智能配置变更及联动；share-set --action participant-permission 还需说明档位含义及仅创建者可设置 |
 | record permission-apply --action commit | 先展示有效 prepare 预览，再确认提交审批 |
 | event stop --force | 先查 event status，展示 consumer_count、subscribed_keys；说明会驱逐活跃消费者并清理守护进程残留 |
 

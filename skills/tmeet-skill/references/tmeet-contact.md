@@ -140,4 +140,4 @@ tmeet contact lookup-by-email --emails "zhangsan@example.com" --format json-pret
 - [tmeet](../SKILL.md) — 命令总览与详情索引；禁止用途完整定义见「安全规则」节
 - [tmeet-meeting](tmeet-meeting.md) — 会议管理，可消费本文返回的 `open_id`（如 `invitees-add`）
 - [tmeet-control](tmeet-control.md) — 会中控制，`call` 可消费本文 `open_id`
-- [tmeet-record](tmeet-record.md) — 录制管理，`share-set --add-members` 可消费本文 `open_id`
+- [tmeet-record](tmeet-record.md) — 录制管理，`share-set --action sharing --add-members`（默认 action，可省略 `--action`）可消费本文 `open_id`

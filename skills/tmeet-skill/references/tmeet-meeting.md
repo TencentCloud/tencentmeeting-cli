@@ -93,6 +93,13 @@ tmeet meeting create \
   --audio-watermark=false \
   --auto-asr=false
 
+# 允许参会成员会后查看参会期间的逐字稿
+tmeet meeting create \
+  --subject "项目复盘" \
+  --start "2026-04-10T14:00:00+08:00" \
+  --end "2026-04-10T15:00:00+08:00" \
+  --allow-after-meeting-view
+
 # 创建会议并附带描述文本与本地附件（多个附件必须重复 --attachment；文件名允许包含英文逗号）
 tmeet meeting create \
   --subject "方案评审" \
@@ -122,8 +129,9 @@ tmeet meeting create \
 | `--invitees <ids>` | 否 | — | 邀请成员的 openid 列表，逗号分隔或重复传参，最多 100 人              |
 | `--water-mark-type <n>` | 否 | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
-| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
+| `--allow-after-meeting-view` | 否 | `false` | 允许参会人会后查看逐字稿：`true`-允许，`false`-不允许。默认 `false`，不传则不向 API 传递该参数；显式关闭需使用 `--allow-after-meeting-view=false` |
 | `--description <text>` | 否 | — | 会议描述文本                                           |
 | `--attachment <path>` | 否 | — | 本地附件路径；**多个附件必须重复 `--attachment`，不支持在单个值里用英文逗号串联**（文件名中的英文逗号会被完整保留） |
 
@@ -200,6 +208,11 @@ tmeet meeting update \
   --audio-watermark=false \
   --auto-asr=false
 
+# 允许参会成员会后查看参会期间的逐字稿
+tmeet meeting update \
+  --meeting-id "100000000" \
+  --allow-after-meeting-view
+
 # 替换会议描述文本
 tmeet meeting update \
   --meeting-id "100000000" \
@@ -248,8 +261,9 @@ tmeet meeting update \
 | `--invitees-type <s>` | 同上 | — | 邀请变更策略：`add` / `remove` / `replace`                |
 | `--water-mark-type <n>` | 否 | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--audio-watermark` | 否 | `false` | 音频水印： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--audio-watermark=false` |
-| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--auto-record-type <type>` | 否 | `none` | 主持人入会后自动录制会议：`none`-关，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | 否 | `false` | 自动文字转写： ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值<br>显式关闭需使用 `--auto-asr=false` |
+| `--allow-after-meeting-view` | 否 | `false` | 允许参会人会后查看逐字稿：`true`-允许，`false`-不允许。默认 `false`，不传则不向 API 传递该参数；显式关闭需使用 `--allow-after-meeting-view=false` |
 | `--description <text>` | 否 | — | 会议描述文本；传入 `""`（空串）= 清空原描述，**与「不传」语义不同** |
 | `--attachment-add <path>` | 否 | — | 追加本地附件；**多个附件必须重复 `--attachment-add`，不支持在单个值里用英文逗号串联**（文件名中的英文逗号会被完整保留） |
 | `--attachment-remove <ids>` | 否 | — | 按 `file_id` 移除附件，可重复传参或英文逗号分隔；需先 `meeting get` 查 `file_id` |

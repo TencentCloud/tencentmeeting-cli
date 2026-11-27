@@ -277,6 +277,9 @@ var RecordExpiredTimeTypeConverter = intEnumConverter(enumerate.RecordExpiredTim
 // their human-readable names.
 var RecordCorpShareScopeConverter = intEnumConverter(enumerate.RecordCorpShareScopeName)
 
+// RecordParticipantPermConverter converts participant/invitee viewing
+var RecordParticipantPermConverter = intEnumConverter(enumerate.RecordParticipantPermName)
+
 // MeetingTypeConverter converts meeting type IDs to their human-readable meeting type names.
 var MeetingTypeConverter = intEnumConverter(enumerate.MeetingTypeName)
 

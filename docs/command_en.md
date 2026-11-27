@@ -71,8 +71,9 @@ tmeet meeting create --subject <title> --start <start-time> --end <end-time> [op
 | `--invitees` | strings | — | — | Invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. `--invitees open_id1,open_id2`) |
 | `--water-mark-type` | int | — | `2` | Text watermark: `0`-single row, `1`-double row, `2`-off<br>● Personal account: default is 2<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
 | `--audio-watermark` | bool | — | `false` | Audio watermark: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
-| `--auto-record-type` | string | — | `none` | Auto record when host joins: `none`-off, `local`-local recording, `cloud`-cloud recording<br>● Personal account: default is none<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--auto-record-type` | string | — | `none` | Auto record when host joins: `none`-off, `cloud`-cloud recording<br>● Personal account: default is none<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
 | `--auto-asr` | bool | — | `false` | Auto speech recognition: `true`-on, `false`-off<br>● Personal account: default is false<br>● Enterprise/Organization account:<br>  ✧ Enterprise forced setting - uses enterprise setting as forced state, input parameter does not take effect<br>  ✧ Enterprise not forced setting - uses enterprise setting as default value, input parameter overrides default value |
+| `--allow-after-meeting-view` | bool | — | `false` | Allow participants to view the transcript after the meeting (`true` = allow, `false` = deny). Defaults to `false`; when omitted, the parameter is not sent to the API. Use `--allow-after-meeting-view=false` to explicitly disable |
 | `--description` | string | — | — | Meeting description text |
 | `--attachment` | strings | — | — | Local attachment path; **repeat the flag** for multiple files (filenames may contain commas — do NOT comma-join them into a single value); if any attachment fails to upload, the meeting will NOT be created (full rollback) |
 
@@ -112,6 +113,13 @@ tmeet meeting create \
   --end "2026-04-10T15:00+08:00" \
   --audio-watermark=false \
   --auto-asr=false
+
+# Allow participants to view the transcript from the period they attended after the meeting
+tmeet meeting create \
+  --subject "Project Retro" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --allow-after-meeting-view
 
 # Create a meeting with description and local attachments
 tmeet meeting create \
@@ -174,6 +182,7 @@ tmeet meeting update --meeting-id <meeting-id> [options]
 | `--sub-meeting-id` | string | — | — | Sub-meeting ID (when `--meeting-type=1`): update only that sub-meeting's time. **Cannot be combined with `--recurring-type` / `--until-type` / `--until-count` / `--until-date`.** If omitted, the whole recurring meeting is updated |
 | `--invitees` | strings | — | — | Openid list to mutate; comma-separated or repeat the flag; used together with `--invitees-type`           |
 | `--invitees-type` | string | — | — | Invitees mutation strategy: `replace` / `add` / `remove`; required when `--invitees` is set              |
+| `--allow-after-meeting-view` | bool | — | `false` | Allow participants to view the transcript after the meeting (`true` = allow, `false` = deny). Defaults to `false`; when omitted, the parameter is not sent to the API. Use `--allow-after-meeting-view=false` to explicitly disable |
 | `--description` | string | — | — | Meeting description text; pass `""` (empty string) to clear it. **Different from omitting the flag** |
 | `--attachment-add` | strings | — | — | Local attachment path to append; **repeat the flag** for multiple files (filenames may contain commas — do NOT comma-join them into a single value); any upload failure rolls back the whole update |
 | `--attachment-remove` | strings | — | — | Remove attachments by `file_id`; repeat the flag or comma-separated; use `meeting get` to read `description.attachments[].file_id` first |
@@ -220,6 +229,11 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --audio-watermark=false \
   --auto-asr=false
+
+# Allow participants to view the transcript from the period they attended after the meeting
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --allow-after-meeting-view
 
 # Replace description text
 tmeet meeting update \
@@ -647,23 +661,25 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 
 ---
 
-#### `record access` — Query Recording Access Info (`--action`, one of four)
+#### `record access` — Query Recording Access Info (`--action`, one of five)
 
-`record access` queries recording access-related information via `--action`: `address` (download URL) / `sharing` (sharing config) / `members` (authorized member list) / `settings` (smart recording config).
+`record access` queries recording access-related information via `--action`: `address` (download URL) / `sharing` (sharing config) / `members` (authorized member list) / `settings` (smart recording config) / `participant-permission` (viewing permission of participants and invitees).
 
 > **Entry mapping**: `record access` queries the access info of recordings (i.e., the recording files under the "Recap" entry in the Tencent Meeting client/app); commands and fields consistently use `record`/recording, which is the same concept as the app's "Recap".
 
 ```bash
-tmeet record access --action <address|sharing|members|settings> [options]
+tmeet record access --action <address|sharing|members|settings|participant-permission> [options]
 ```
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `--action` | string | ✅ | — | Sub-type: `address` \| `sharing` \| `members` \| `settings` |
-| `--meeting-record-id` | string | depends on action | — | Meeting recording ID. Required by `address` / `sharing` / `members` |
+| `--action` | string | ✅ | — | Sub-type: `address` \| `sharing` \| `members` \| `settings` \| `participant-permission`; `participant-permission` is restricted to the recording creator (enforced by the backend) |
+| `--meeting-record-id` | string | depends on action | — | Meeting recording ID. Required by `address` / `sharing` / `members` / `participant-permission` |
 | `--record-file-id` | string | depends on action | — | Recording file ID. Required by `settings` |
 | `--page-token` | string | — | — | Pagination cursor (supported by `address` / `members`); omit on first request |
 | `--page-size` | int | — | `30` | Page size (only `address`), default 30, max 30 |
+
+`participant-permission` is backed by `GetParticipantPermissionMcp`; it shares the URL path with `record share-set --action participant-permission` (the write counterpart) but is an independent read operation.
 
 **Examples:**
 
@@ -689,33 +705,55 @@ tmeet record access --action members \
 
 # settings: query smart recording config (verbatim transcript switch / AI switch)
 tmeet record access --action settings --record-file-id "file_abc123"
+
+# participant-permission: query participant/invitee viewing permission (creator only)
+tmeet record access --action participant-permission --meeting-record-id "record_abc123"
 ```
 
 ---
 
-#### `record share-set` — Modify Sharing Config & Authorized Members (write operation)
+#### `record share-set` — Modify Sharing Config / Members, or Set Participants' and Invitees' Viewing Permission (write operation)
 
-> ⚠️ **Write operation**: Modifies the recording's sharing config (sharing master switch / sharing mode / access password / link expiration) or batch add/remove authorized members. Show the pending changes to the user and obtain explicit confirmation before executing.
+> ⚠️ **Write operation**: Modifies the recording's sharing config (sharing master switch / sharing mode / access password / link expiration), batch add/remove authorized members, or sets the viewing permission of meeting participants and invitees. Show the pending changes to the user and obtain explicit confirmation before executing. **Only the recording creator may set the participant/invitee viewing permission** (enforced by the backend).
 
-A single invocation can combine the following three types of operations. At least one type must be provided or the command errors: sharing config change (any sharing config flag), batch add members (`--add-members`), batch remove members (`--remove-members`).
+`--action` selects one of two **independent** operations; flags from the two groups must not be mixed, otherwise the command errors:
+
+| `--action` | Description | Backend API |
+|------|------|------|
+| `sharing` (default) | Commit sharing config changes and authorized member add/remove; one call may combine three sub-operations | `SetRecordPermissionConfigMcp` / `BatchAddGrantUsers` / `BatchRemoveGrantUsers` |
+| `participant-permission` | Set the viewing permission of meeting participants and invitees | `SetParticipantPermissionMcp` |
+
+`--action` defaults to `sharing`, so existing invocations without `--action` behave unchanged. For `sharing`, a single invocation can combine the following three types of operations; at least one type must be provided or the command errors: sharing config change (any sharing config flag), batch add members (`--add-members`), batch remove members (`--remove-members`).
 
 ```bash
-tmeet record share-set --meeting-record-id <record-id> [options]
+tmeet record share-set --action <sharing|participant-permission> --meeting-record-id <record-id> [options]
 ```
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|:--------:|---------|-------------|
-| `--meeting-record-id` | string | ✅ | — | Meeting recording ID |
-| `--switch-state` | bool | — | — | Sharing master switch; pass `--switch-state=false` to disable sharing; **must not be combined with `--permission-point-id`** |
-| `--permission-point-id` | int | — | — | Sharing mode id: `1`-public view, `2`-public with password, `3`-public with approval, `4`-corp view, `5`-corp with password, `6`-corp with approval |
-| `--pwd` | string | — | — | Access password (4~10 digits or letters); required when the chosen sharing mode requires a password |
-| `--expired-time-type` | int | — | — | Share link expiration type: `0`-forever, `1`-7days, `2`-15days, `3`-30days, `4`-custom (requires `--expired-time`) |
-| `--expired-time` | string | — | — | Custom expiration time (ISO 8601, e.g. `2026-12-31T23:59+08:00`); only effective when `--expired-time-type=4` |
-| `--download-enable` | bool | — | — | Whether viewers can download the recording; ignored by backend when the enterprise locks download, verify via the GET response |
-| `--view-minutes-enable` | bool | — | — | Whether viewers can view transcripts and smart minutes |
-| `--rooms-enable` | bool | — | — | Whether Rooms devices can view this recording |
-| `--add-members` | stringArray | — | — | Batch add authorized members; format `openid:permission` (`0`=view `1`=manage, default `0`); repeatable |
-| `--remove-members` | stringArray | — | — | Batch remove authorized members; format `openid`; repeatable |
+| `--action` | string | — | `sharing` | Operation: `sharing` / `participant-permission`; may be specified only once |
+| `--meeting-record-id` | string | ✅ | — | Meeting recording ID; for `participant-permission` this is the numeric `uni_record_id` |
+| `--switch-state` | bool | — | — | **`sharing` only**: sharing master switch; pass `--switch-state=false` to disable sharing; **must not be combined with `--permission-point-id`** |
+| `--permission-point-id` | int | — | — | **`sharing` only**: sharing mode id: `1`-public view, `2`-public with password, `3`-public with approval, `4`-corp view, `5`-corp with password, `6`-corp with approval |
+| `--pwd` | string | — | — | **`sharing` only**: access password (4~10 digits or letters); required when the chosen sharing mode requires a password |
+| `--expired-time-type` | int | — | — | **`sharing` only**: share link expiration type: `0`-forever, `1`-7days, `2`-15days, `3`-30days, `4`-custom (requires `--expired-time`) |
+| `--expired-time` | string | — | — | **`sharing` only**: custom expiration time (ISO 8601, e.g. `2026-12-31T23:59+08:00`); only effective when `--expired-time-type=4` |
+| `--download-enable` | bool | — | — | **`sharing` only**: whether viewers can download the recording; ignored by backend when the enterprise locks download, verify via the GET response |
+| `--view-minutes-enable` | bool | — | — | **`sharing` only**: allow members to view the recording transcript |
+| `--rooms-enable` | bool | — | — | **`sharing` only**: whether Rooms devices can view this recording |
+| `--add-members` | stringArray | — | — | **`sharing` only**: batch add authorized members; format `openid:permission` (`0`=view `1`=manage, default `0`); repeatable |
+| `--remove-members` | stringArray | — | — | **`sharing` only**: batch remove authorized members; format `openid`; repeatable |
+| `--participant-perm` | int | ✅ (`participant-permission`) | — | **`participant-permission` only**: participant/invitee viewing permission tier, `1`~`5` |
+
+`--participant-perm` tiers:
+
+| Value | Meaning |
+|------|------|
+| `1` | View the transcript of the period the participant attended |
+| `2` | View the whole-meeting transcript and smart minutes |
+| `3` | Require an explicit share via the authorized-member whitelist or share link |
+| `4` | View all recap content of the whole meeting |
+| `5` | View the whole-meeting smart minutes only (without transcript) |
 
 **Examples:**
 
@@ -747,9 +785,21 @@ tmeet record share-set \
   --permission-point-id 4 \
   --add-members "openid_c:0" \
   --remove-members "openid_d"
+
+# participant-permission: let participants/invitees view the whole-meeting review (creator only)
+tmeet record share-set \
+  --action participant-permission \
+  --meeting-record-id "1234567890" \
+  --participant-perm 4
+
+# participant-permission: no extra grant
+tmeet record share-set \
+  --action participant-permission \
+  --meeting-record-id "1234567890" \
+  --participant-perm 3
 ```
 
-Response `data` is a JSON string containing `results[]` (per-sub-operation result with `op`=`settings`/`add`/`remove`), `succeeded`, and `failed`. If any sub-operation fails, the overall exit code is non-zero.
+For `sharing`, response `data` is a JSON string containing `results[]` (per-sub-operation result with `op`=`settings`/`add`/`remove`), `succeeded`, and `failed`; if any sub-operation fails, the overall exit code is non-zero. `participant-permission` returns that API's response directly, without the `results[]` aggregation.
 
 ---
 
