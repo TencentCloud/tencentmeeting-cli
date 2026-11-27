@@ -11,7 +11,7 @@
 
 - 🔐 **OAuth2 授权登录** — 设备码授权流程，安全无密码
 - 📅 **会议管理** — 创建、查询、更新、取消会议，支持周期性会议，管理受邀成员
-- 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、智能待办、逐字稿详情与搜索、按分享链接查询逐字稿与纪要、录制权限申请、分享设置与授权成员管理、智能录制配置查询与修改
+- 🎬 **录制管理** — 查询录制列表、获取下载地址、智能纪要、智能待办、逐字稿详情与搜索、按分享链接查询逐字稿与纪要、录制权限申请、分享设置与授权成员管理、参会人和受邀人查看权限查询与设置（仅录制创建者）、智能录制配置查询与修改
 - 📊 **参会报告** — 查询参会人列表、等候室成员记录
 - 👥 **通讯录** — 按用户名/职位/部门检索企业通讯录成员
 - 🛠️ **问题排查** — 导出本地日志，支持按时间范围过滤，打包为 zip 文件
@@ -215,8 +215,8 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── record
 │   ├── search         # 按关键词/会议号/会议ID/时间范围/文件类型搜索或列出录制
 │   ├── content        # 读内容：--action minutes|todos|transcript|paragraphs|timeline
-│   ├── access         # 查访问：--action address|sharing|members|settings
-│   ├── share-set      # 修改录制分享设置与授权成员（写操作，执行前确认）
+│   ├── access         # 查访问：--action address|sharing|members|settings|participant-permission（末项仅创建者可查询）
+│   ├── share-set      # --action sharing（默认）改分享设置与授权成员 | participant-permission 设置参会人和受邀人查看权限（仅创建者；写操作，执行前确认）
 │   ├── settings-set   # 修改录制文件智能录制配置（写操作，执行前确认）
 │   └── permission-apply # 录制权限申请：--action prepare|commit（默认 prepare 预览）
 ├── report

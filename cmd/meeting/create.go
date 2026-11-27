@@ -11,37 +11,93 @@ import (
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
+	"tmeet/internal/utils/enumerate"
 
 	"github.com/spf13/cobra"
 )
 
 // CreateOptions holds the options for creating a meeting.
 type CreateOptions struct {
-	tmeet             *internal.Tmeet
-	Subject           string   // Meeting subject (required)
-	StartTime         string   // Meeting start time, ISO 8601, e.g. 2026-03-12T14:00+08:00 (required)
-	EndTime           string   // Meeting end time, ISO 8601, e.g. 2026-03-12T15:00+08:00 (required)
-	Password          string   // Meeting password (4-6 digits), optional
-	Timezone          string   // Timezone, see Oracle-TimeZone standard, e.g. Asia/Shanghai
-	MeetingType       int      // Meeting type, default 0. 0: normal meeting, 1: recurring meeting
-	OnlyUserJoinType  int      // Member join restriction. 1: all members, 2: invited only, 3: internal only
-	AutoInWaitingRoom bool     // Whether to enable waiting room, default false.
-	RecurringType     int      // Recurring meeting config (required when meetingType=1). Recurrence type, default 0. 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly
-	UntilType         int      // Recurring meeting config (required when meetingType=1). End type, default 0. 0: end by date, 1: end by count
-	UntilCount        int      // Recurring meeting config (required when meetingType=1). Max occurrences. Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
-	UntilDate         string   // Recurring meeting config (required when meetingType=1). End date, ISO 8601, e.g. 2026-03-12T15:00+08:00
-	Invitees          []string // Invited participants (openid list). Up to 100 users.
-	WaterMarkType     int      // Text watermark, 0=single row, 1=double row, 2=off
-	AudioWatermark    bool     // Audio watermark, true=on, false=off
-	AutoRecordType    string   // Auto record when host joins, none=off, local=local recording, cloud=cloud recording
-	AutoASR           bool     // Auto speech recognition, true=on, false=off
-	Description       string   // Meeting description text (<=2000 UTF-8 chars). Only sent when the flag is explicitly set.
-	Attachments       []string // Local attachment paths (<=20 items, aggregate <=100MB).
+	tmeet *internal.Tmeet
+
+	// Subject is the meeting subject (required).
+	Subject string
+
+	// StartTime is the meeting start time in ISO 8601 format,
+	// e.g. 2026-03-12T14:00+08:00 (required).
+	StartTime string
+
+	// EndTime is the meeting end time in ISO 8601 format,
+	// e.g. 2026-03-12T15:00+08:00 (required).
+	EndTime string
+
+	// Password is the meeting password (4-6 digits), optional.
+	Password string
+
+	// Timezone follows the Oracle-TimeZone standard, e.g. Asia/Shanghai.
+	Timezone string
+
+	// MeetingType is the meeting type, default 0.
+	// 0: normal meeting, 1: recurring meeting.
+	MeetingType int
+
+	// OnlyUserJoinType is the member join restriction.
+	// 1: all members, 2: invited only, 3: internal only.
+	OnlyUserJoinType int
+
+	// AutoInWaitingRoom controls whether the waiting room is enabled,
+	// default false.
+	AutoInWaitingRoom bool
+
+	// RecurringType is required when meetingType=1. Recurrence type, default 0.
+	// 0: daily, 1: weekdays, 2: weekly, 3: biweekly, 4: monthly.
+	RecurringType int
+
+	// UntilType is required when meetingType=1. End type, default 0.
+	// 0: end by date, 1: end by count.
+	UntilType int
+
+	// UntilCount is required when meetingType=1. Max occurrences.
+	// Daily/weekday/weekly max 500; biweekly/monthly max 50. Default 7.
+	UntilCount int
+
+	// UntilDate is required when meetingType=1. End date in ISO 8601,
+	// e.g. 2026-03-12T15:00+08:00.
+	UntilDate string
+
+	// Invitees is the list of invited participants' openids. Up to 100 users.
+	Invitees []string
+
+	// WaterMarkType is the text watermark setting.
+	// 0: single row, 1: double row, 2: off.
+	WaterMarkType int
+
+	// AudioWatermark toggles the audio watermark. true=on, false=off.
+	AudioWatermark bool
+
+	// AutoRecordType is the auto-record policy when the host joins.
+	// none=off, cloud=cloud recording.
+	AutoRecordType string
+
+	// AutoASR toggles the auto speech recognition. true=on, false=off.
+	AutoASR bool
+
+	// AllowAfterMeetingView allows participants to view the transcript
+	// after the meeting. true=allow, false=deny.
+	AllowAfterMeetingView bool
+
+	// Description is the meeting description text (<=2000 UTF-8 chars).
+	// Only sent when the flag is explicitly set.
+	Description string
+
+	// Attachments is the list of local attachment paths
+	// (<=20 items, aggregate <=100MB).
+	Attachments []string
 }
 
 // newCreateCmd creates a meeting.
 func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
-	opts := &CreateOptions{tmeet: tmeet}
+	opts := &CreateOptions{tmeet: tmeet, AutoRecordType: string(enumerate.AutoRecordTypeNone)}
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create meeting",
@@ -53,23 +109,35 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 
 	// Fill in parameters.
 	cmd.Flags().StringVar(&opts.Subject, "subject", "", "meeting subject (required)")
-	cmd.Flags().StringVar(&opts.StartTime, "start", "", "meeting start time (ISO 8601, e.g. 2026-03-12T14:00+08:00) (required)")
-	cmd.Flags().StringVar(&opts.EndTime, "end", "", "meeting end time (ISO 8601, e.g. 2026-03-12T15:00+08:00) (required)")
+	cmd.Flags().StringVar(&opts.StartTime, "start", "",
+		"meeting start time (ISO 8601, e.g. 2026-03-12T14:00+08:00) (required)")
+	cmd.Flags().StringVar(&opts.EndTime, "end", "",
+		"meeting end time (ISO 8601, e.g. 2026-03-12T15:00+08:00) (required)")
 	cmd.Flags().StringVar(&opts.Password, "password", "", "meeting password (4-6 digits)")
 	cmd.Flags().StringVar(&opts.Timezone, "timezone", "", "timezone (e.g. Asia/Shanghai)")
 	cmd.Flags().IntVar(&opts.MeetingType, "meeting-type", 0, "meeting type: 0-normal, 1-recurring")
-	cmd.Flags().IntVar(&opts.OnlyUserJoinType, "join-type", 0, "join restriction: 1-all members, 2-invited only, 3-internal only")
+	cmd.Flags().IntVar(&opts.OnlyUserJoinType, "join-type", 0,
+		"join restriction: 1-all members, 2-invited only, 3-internal only")
 	cmd.Flags().BoolVar(&opts.AutoInWaitingRoom, "waiting-room", false, "enable waiting room")
-	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0, "recurring type (meeting-type=1): 0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly")
-	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0, "recurring end type (meeting-type=1): 0-by date, 1-by count")
-	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7, "recurring count (meeting-type=1, max: 500 for daily/weekdays/weekly, 50 for biweekly/monthly)")
-	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "", "recurring end date (meeting-type=1) e.g. 2026-03-12T15:00+08:00)")
+	cmd.Flags().IntVar(&opts.RecurringType, "recurring-type", 0,
+		"recurring type (meeting-type=1): "+
+			"0-daily, 1-weekdays, 2-weekly, 3-biweekly, 4-monthly")
+	cmd.Flags().IntVar(&opts.UntilType, "until-type", 0,
+		"recurring end type (meeting-type=1): 0-by date, 1-by count")
+	cmd.Flags().IntVar(&opts.UntilCount, "until-count", 7,
+		"recurring count (meeting-type=1, max: "+
+			"500 for daily/weekdays/weekly, 50 for biweekly/monthly)")
+	cmd.Flags().StringVar(&opts.UntilDate, "until-date", "",
+		"recurring end date (meeting-type=1) e.g. 2026-03-12T15:00+08:00)")
 	cmd.Flags().StringSliceVar(&opts.Invitees, "invitees", nil,
 		"invited participants' openid list, comma-separated or repeat the flag (max 100, e.g. --invitees open_id1,open_id2)")
 	cmd.Flags().IntVar(&opts.WaterMarkType, "water-mark-type", 2, "text watermark: 0=single row, 1=double row, 2=off")
 	cmd.Flags().BoolVar(&opts.AudioWatermark, "audio-watermark", false, "audio watermark")
-	cmd.Flags().StringVar(&opts.AutoRecordType, "auto-record-type", "none", "auto record when host joins: none=off, local=local recording, cloud=cloud recording")
+	cmd.Flags().Var(&cmdutil.EnumValue{Value: &opts.AutoRecordType, Allowed: enumerate.AutoRecordTypeValues()},
+		"auto-record-type", "auto record when host joins: none=off, cloud=cloud recording")
 	cmd.Flags().BoolVar(&opts.AutoASR, "auto-asr", false, "auto speech")
+	cmd.Flags().BoolVar(&opts.AllowAfterMeetingView, "allow-after-meeting-view", false,
+		"allow participants to view the transcript after the meeting (true=allow, false=deny); omitted = not sent to API")
 	cmd.Flags().StringVar(&opts.Description, "description", "",
 		"meeting description text (<=2000 UTF-8 chars)")
 	cmd.Flags().StringArrayVar(&opts.Attachments, "attachment", nil,
@@ -82,8 +150,8 @@ func newCreateCmd(tmeet *internal.Tmeet) *cobra.Command {
 	return cmd
 }
 
-// Hints implements the Hints.HintProvider interface and returns hints for meeting settings.
-// Lock detection is solely driven by the corp_lock_mask bitmask in the response.
+// Hints implements the hints.HintProvider interface. Lock detection comes from
+// the create response.
 func (o *CreateOptions) Hints(responseData string) []string {
 	return cmdutil.GenerateMeetingSettingsHints(responseData)
 }
@@ -149,6 +217,9 @@ func (o *CreateOptions) Run(cmd *cobra.Command, args []string) error {
 	}
 	if cmd.Flags().Changed("auto-asr") {
 		settings["auto_asr"] = o.AutoASR
+	}
+	if cmd.Flags().Changed("allow-after-meeting-view") {
+		settings["allow_after_meeting_view"] = o.AllowAfterMeetingView
 	}
 	if len(settings) > 0 {
 		params["settings"] = settings

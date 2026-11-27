@@ -295,7 +295,7 @@ tmeet minutes get --short-summary --minute-id "<①返回的 minutes[].minute_id
      - 单文件内搜索原话 → `record content --action transcript --record-file-id <record_file_id> --text "关键词"`
      - 带说话人与时间戳的段落 → `record content --action paragraphs --record-file-id <record_file_id>`
      （具体分支规则见 tmeet-record.md）
-   - 仅可查看参会期间逐字稿（`record access --action sharing` 的 participants_invitees_scope 为「可查看参会期间的逐字稿」，或读取/时间轴返回无权限、仅部分内容、含 is_transcripts_complete=false / no_permission_ranges）：
+   - 仅可查看参会期间的逐字稿（`record access --action sharing` 的 participants_invitees_scope 为「可查看参会期间的逐字稿」，或读取/时间轴返回无权限、仅部分内容、含 is_transcripts_complete=false / no_permission_ranges）：
      ① 明确说「你只能查看自己参会期间的逐字稿，以下为可见部分」，列出不可见时段，不得称「完整内容」；
      ② 搜索无命中或结论依赖不可见时段时，只说「在你可见的范围内未找到」，不得断言「会上没提到」；
      ③ 引导「如需整场内容，可申请回顾权限 `record permission-apply`」，经用户确认后再 prepare→commit，未同意不提交；

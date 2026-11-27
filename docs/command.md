@@ -71,8 +71,9 @@ tmeet meeting create --subject <主题> --start <开始时间> --end <结束时�
 | `--invitees` | strings | — | — | 邀请成员的 openid 列表，逗号分隔或重复传参（最多 100 人，例如 `--invitees open_id1,open_id2`）          |
 | `--water-mark-type` | int | — | `2` | 文字水印：`0`-单排，`1`-双排，`2`-关闭<br>● 个人账号：默认为2<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--audio-watermark` | bool | — | `false` | 音频水印：`true`-开启，`false`-关闭<br>● 个人账号：默认为false<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
-| `--auto-record-type` | string | — | `none` | 主持人入会后自动录制会议：`none`-关，`local`-本地，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--auto-record-type` | string | — | `none` | 主持人入会后自动录制会议：`none`-关，`cloud`-云录制<br>● 个人账号：默认none<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
 | `--auto-asr` | bool | — | `false` | 自动文字转写：`true`-开，`false`-关<br>● 个人账号：默认false<br>● 企业/组织账号：<br>  ✧ 企业设置强制态-使用企业设置作为强制态，入参不生效<br>  ✧ 企业未设置强制态-使用企业设置作为默认值，入参覆盖默认值 |
+| `--allow-after-meeting-view` | bool | — | `false` | 允许参会人会后查看逐字稿：`true`-允许，`false`-不允许。默认 `false`，不传则不向 API 传递该参数；显式关闭需使用 `--allow-after-meeting-view=false` |
 | `--description` | string | — | — | 会议描述文本 |
 | `--attachment` | strings | — | — | 本地附件路径；**多个附件请重复传参**，不支持英文逗号分隔（文件名允许包含英文逗号）；任一附件上传失败则整体回滚，不创建会议 |
 
@@ -112,6 +113,13 @@ tmeet meeting create \
   --end "2026-04-10T15:00+08:00" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 允许参会成员会后查看参会期间的逐字稿
+tmeet meeting create \
+  --subject "项目复盘" \
+  --start "2026-04-10T14:00+08:00" \
+  --end "2026-04-10T15:00+08:00" \
+  --allow-after-meeting-view
 
 # 创建会议并附带描述与本地附件
 tmeet meeting create \
@@ -174,6 +182,7 @@ tmeet meeting update --meeting-id <会议ID> [选项]
 | `--sub-meeting-id` | string | — | — | 子会议 ID（`--meeting-type=1` 时生效）：仅修改该场子会议的时间；**不可与 `--recurring-type` / `--until-type` / `--until-count` / `--until-date` 同时使用**。不填则修改整个周期性会议 |
 | `--invitees` | strings | — | — | 待变更的邀请成员 openid 列表，逗号分隔或重复传参；与 `--invitees-type` 配合使用              |
 | `--invitees-type` | string | — | — | 邀请变更策略：`replace`-全量替换邀请列表，`add`-新增邀请用户，`remove`-删除邀请用户；当指定 `--invitees` 时必填 |
+| `--allow-after-meeting-view` | bool | — | `false` | 允许参会人会后查看逐字稿：`true`-允许，`false`-不允许。默认 `false`，不传则不向 API 传递该参数；显式关闭需使用 `--allow-after-meeting-view=false` |
 | `--description` | string | — | — | 会议描述文本；传 `""`（空串）= 清空原描述，**与「不传」语义不同** |
 | `--attachment-add` | strings | — | — | 追加本地附件；**多个附件请重复传参**，不支持英文逗号分隔（文件名允许包含英文逗号）；任一附件上传失败整体回滚，不修改会议 |
 | `--attachment-remove` | strings | — | — | 按 `file_id` 移除附件，可重复传参或英文逗号分隔；先 `meeting get` 读 `description.attachments[].file_id` 获取 |
@@ -220,6 +229,11 @@ tmeet meeting update \
   --meeting-id "6953553464429888300" \
   --audio-watermark=false \
   --auto-asr=false
+
+# 允许参会成员会后查看参会期间的逐字稿
+tmeet meeting update \
+  --meeting-id "6953553464429888300" \
+  --allow-after-meeting-view
 
 # 替换会议描述文本
 tmeet meeting update \
@@ -647,22 +661,22 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 
 ---
 
-#### `record access` — 查录制访问信息（`--action` 四选一）
+#### `record access` — 查录制访问信息（`--action` 五选一）
 
-`record access` 用于查询录制的访问相关信息，通过 `--action` 指定具体能力：`address`（播放地址）/ `sharing`（分享设置，含参会人/受邀人可查看范围）/ `members`（已授权成员列表）/ `settings`（智能录制配置）。
+`record access` 用于查询录制的访问相关信息，通过 `--action` 指定具体能力：`address`（播放地址）/ `sharing`（分享设置，含参会人/受邀人可查看范围）/ `members`（已授权成员列表）/ `settings`（智能录制配置）/ `participant-permission`（参会人和受邀人查看权限）。
 
 > **「参会人/受邀人能看到什么、能不能看逐字稿」用 `--action sharing`**：读响应 `current.participants_invitees_scope`，其文案（如「可查看整场会议的逐字稿」「可查看参会期间的逐字稿」）原样转述，不要改写。`record access` 只有 `address / sharing / members / settings` 四个 action，不存在 `participant-permission`，勿臆造。
 
 > **入口对照**：`record access` 查询的是录制（即腾讯会议客户端/APP「回顾」入口下的录制文件）的访问信息；命令与字段统一用 `record`/录制，与 APP 的「回顾」为同一概念。
 
 ```bash
-tmeet record access --action <address|sharing|members|settings> [选项]
+tmeet record access --action <address|sharing|members|settings|participant-permission> [选项]
 ```
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `--action` | string | ✅ | — | 子类型：`address` \| `sharing` \| `members` \| `settings` |
-| `--meeting-record-id` | string | 视 action | — | 会议录制 ID。`address` / `sharing` / `members` 必填 |
+| `--action` | string | ✅ | — | 子类型：`address` \| `sharing` \| `members` \| `settings` \| `participant-permission`；`participant-permission` 仅录制创建者可查询（后端校验） |
+| `--meeting-record-id` | string | 视 action | — | 会议录制 ID。`address` / `sharing` / `members` / `participant-permission` 必填 |
 | `--record-file-id` | string | 视 action | — | 录制文件 ID。`settings` 必填 |
 | `--page-token` | string | — | — | 分页游标（`address` / `members` 支持），首页不传 |
 | `--page-size` | int | — | `30` | 每页数量（仅 `address`），默认 30，最大 30 |
@@ -691,33 +705,55 @@ tmeet record access --action members \
 
 # settings：查询智能录制配置（逐字稿开关 / AI 录制开关）
 tmeet record access --action settings --record-file-id "file_abc123"
+
+# participant-permission：查询参会人和受邀人查看权限（仅录制创建者可查询）
+tmeet record access --action participant-permission --meeting-record-id "record_abc123"
 ```
 
 ---
 
-#### `record share-set` — 提交分享配置与授权成员变更（写操作）
+#### `record share-set` — 提交分享配置 / 成员变更，或设置参会人和受邀人查看权限（写操作）
 
-> ⚠️ **写操作**：修改录制的分享配置（分享总开关 / 分享模式 / 访问密码 / 链接有效期）或批量增删授权成员。执行前必须向用户展示将要变更的内容，并在获得明确确认后再执行。
+> ⚠️ **写操作**：修改录制的分享配置（分享总开关 / 分享模式 / 访问密码 / 链接有效期）、批量增删授权成员，或设置参会人和受邀人查看权限。执行前必须向用户展示将要变更的内容，并在获得明确确认后再执行。**设置参会人和受邀人查看权限仅录制创建者可执行**（由后端校验）。
 
-单次调用可同时组合以下三类操作，至少提供其中一类，否则报错：分享配置变更（任意分享配置 flag）、批量添加成员（`--add-members`）、批量移除成员（`--remove-members`）。
+通过 `--action` 选择两个**互相独立**的操作，两组参数不可混用，否则报错：
+
+| `--action` | 说明 | 底层接口 |
+|------|------|------|
+| `sharing`（默认） | 提交分享配置变更与授权成员增删；一次调用可组合三类子操作 | `SetRecordPermissionConfigMcp` / `BatchAddGrantUsers` / `BatchRemoveGrantUsers` |
+| `participant-permission` | 设置参会人和受邀人查看权限 | `SetParticipantPermissionMcp` |
+
+`--action` 默认 `sharing`，因此原有不带 `--action` 的调用行为不变。`sharing` 单次调用可同时组合以下三类操作，至少提供其中一类，否则报错：分享配置变更（任意分享配置 flag）、批量添加成员（`--add-members`）、批量移除成员（`--remove-members`）。
 
 ```bash
-tmeet record share-set --meeting-record-id <录制ID> [选项]
+tmeet record share-set --action <sharing|participant-permission> --meeting-record-id <录制ID> [选项]
 ```
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `--meeting-record-id` | string | ✅ | — | 会议录制 ID |
-| `--switch-state` | bool | — | — | 分享总开关；传 `--switch-state=false` 关闭分享；**不可与 `--permission-point-id` 同时传** |
-| `--permission-point-id` | int | — | — | 分享模式 ID：`1`-所有人可查看，`2`-所有人需输入密码查看，`3`-所有人需申请权限查看，`4`-同企业可查看，`5`-同企业需输入密码查看，`6`-同企业需申请权限查看 |
-| `--pwd` | string | — | — | 访问密码（4~10 位字母或数字）；所选分享模式要求密码时必填 |
-| `--expired-time-type` | int | — | — | 链接有效期类型：`0`-永久，`1`-7天，`2`-15天，`3`-30天，`4`-自定义（须同时传 `--expired-time`） |
-| `--expired-time` | string | — | — | 自定义过期时间（ISO 8601，如 `2026-12-31T23:59+08:00`）；仅 `--expired-time-type=4` 时生效 |
-| `--download-enable` | bool | — | — | 是否允许观看者下载录制。企业锁定下载时后端忽略本项，变更后应以后端实际响应为准 |
-| `--view-minutes-enable` | bool | — | — | 是否允许观看者查看逐字稿与纪要 |
-| `--rooms-enable` | bool | — | — | 是否允许 Rooms 会议室设备查看本录制 |
-| `--add-members` | stringArray | — | — | 批量添加授权成员，格式 `openid:permission`（`0`=查看 `1`=管理，默认 `0`），可重复传入 |
-| `--remove-members` | stringArray | — | — | 批量移除授权成员，格式 `openid`，可重复传入 |
+| `--action` | string | — | `sharing` | 操作类型：`sharing` / `participant-permission`；只能传一次 |
+| `--meeting-record-id` | string | ✅ | — | 会议录制 ID；`participant-permission` 下为纯数字 `uni_record_id` |
+| `--switch-state` | bool | — | — | **仅 `sharing`**：分享总开关；传 `--switch-state=false` 关闭分享；**不可与 `--permission-point-id` 同时传** |
+| `--permission-point-id` | int | — | — | **仅 `sharing`**：分享模式 ID：`1`-所有人可查看，`2`-所有人需输入密码查看，`3`-所有人需申请权限查看，`4`-同企业可查看，`5`-同企业需输入密码查看，`6`-同企业需申请权限查看 |
+| `--pwd` | string | — | — | **仅 `sharing`**：访问密码（4~10 位字母或数字）；所选分享模式要求密码时必填 |
+| `--expired-time-type` | int | — | — | **仅 `sharing`**：链接有效期类型：`0`-永久，`1`-7天，`2`-15天，`3`-30天，`4`-自定义（须同时传 `--expired-time`） |
+| `--expired-time` | string | — | — | **仅 `sharing`**：自定义过期时间（ISO 8601，如 `2026-12-31T23:59+08:00`）；仅 `--expired-time-type=4` 时生效 |
+| `--download-enable` | bool | — | — | **仅 `sharing`**：是否允许观看者下载录制。企业锁定下载时后端忽略本项，变更后应以后端实际响应为准 |
+| `--view-minutes-enable` | bool | — | — | **仅 `sharing`**：允许成员查看录制转写 |
+| `--rooms-enable` | bool | — | — | **仅 `sharing`**：是否允许 Rooms 会议室设备查看本录制 |
+| `--add-members` | stringArray | — | — | **仅 `sharing`**：批量添加授权成员，格式 `openid:permission`（`0`=查看 `1`=管理，默认 `0`），可重复传入 |
+| `--remove-members` | stringArray | — | — | **仅 `sharing`**：批量移除授权成员，格式 `openid`，可重复传入 |
+| `--participant-perm` | int | ✅（`participant-permission`） | — | **仅 `participant-permission`**：参会人和受邀人查看权限档位，取值 `1`~`5` |
+
+`--participant-perm` 档位：
+
+| 值 | 含义 |
+|------|------|
+| `1` | 可查看参会期间的逐字稿 |
+| `2` | 可查看整场会议的逐字稿和纪要 |
+| `3` | 需指定分享或者链接分享 |
+| `4` | 可查看全部回顾内容 |
+| `5` | 可查看整场会议的纪要 |
 
 **示例：**
 
@@ -749,9 +785,21 @@ tmeet record share-set \
   --permission-point-id 4 \
   --add-members "openid_c:0" \
   --remove-members "openid_d"
+
+# participant-permission：设置参会人和受邀人可查看整场会议回顾（仅创建者）
+tmeet record share-set \
+  --action participant-permission \
+  --meeting-record-id "1234567890" \
+  --participant-perm 4
+
+# participant-permission：不额外授权
+tmeet record share-set \
+  --action participant-permission \
+  --meeting-record-id "1234567890" \
+  --participant-perm 3
 ```
 
-响应 `data` 为 JSON 字符串，含 `results[]`（各子操作结果，`op`=`settings`/`add`/`remove`）/ `succeeded` / `failed`。若多个子操作中有部分失败，命令整体返回非零退出码。
+`sharing` 的响应 `data` 为 JSON 字符串，含 `results[]`（各子操作结果，`op`=`settings`/`add`/`remove`）/ `succeeded` / `failed`；若多个子操作中有部分失败，命令整体返回非零退出码。`participant-permission` 直接透传该接口的响应，不产生 `results[]` 聚合结构。
 
 ---
 

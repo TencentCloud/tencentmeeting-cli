@@ -11,7 +11,7 @@ A command-line interface (CLI) tool for Tencent Meeting, based on Tencent Meetin
 
 - 🔐 **OAuth2 Authorization** — Device code authorization flow, secure and passwordless
 - 📅 **Meeting Management** — Create, query, update, and cancel meetings; supports recurring meetings and invitee management
-- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, smart todos, verbatim transcript details and search, query verbatim transcripts and smart minutes by share link, recording permission application, sharing settings and authorized member management, smart recording config query and modification
+- 🎬 **Recording Management** — Query recording lists, get download URLs, smart minutes, smart todos, verbatim transcript details and search, query verbatim transcripts and smart minutes by share link, recording permission application, sharing settings and authorized member management, participant/invitee viewing permission query and setting (recording creator only),smart recording config query and modification
 - 📊 **Attendance Reports** — Query participant lists and waiting room member records
 - 👥 **Contacts** — Search enterprise contact members by username, job title, or department
 - 🛠️ **Troubleshooting** — Export local logs with optional time range filter, packaged as a zip file
@@ -215,8 +215,8 @@ tmeet [--format json|json-pretty] [--compact] [-V]
 ├── record
 │   ├── search           # Search or list recordings by keyword/code/meeting-id/time range/file type
 │   ├── content          # Read content: --action minutes|todos|transcript|paragraphs|timeline
-│   ├── access           # Query access info: --action address|sharing|members|settings
-│   ├── share-set        # Modify sharing settings & authorized members (write; confirm before executing)
+│   ├── access           # Query access info: --action address|sharing|members|settings|participant-permission (last one: creator only)
+│   ├── share-set        # --action sharing (default) modify sharing & members | participant-permission set participants' and invitees' viewing permission (creator only; write; confirm first)
 │   ├── settings-set     # Modify smart recording config of a record file (write; confirm before executing)
 │   └── permission-apply # Apply for record permission: --action prepare|commit (default prepare = preview)
 ├── report

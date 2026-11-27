@@ -11,6 +11,7 @@ import (
 	"tmeet/internal/cmdutil/apicmdctx"
 	middleWare "tmeet/internal/cmdutil/middleware"
 	"tmeet/internal/core/thttp"
+	"tmeet/internal/exception"
 	"tmeet/internal/output"
 	restProxy "tmeet/internal/proxy/rest-proxy"
 	"tmeet/internal/utils"
@@ -18,16 +19,66 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ShareSetOptions holds the options for committing sharing changes. A single
-// invocation may combine a permission-point update, batch add of members and
-// batch remove of members; the backend dispatches to the relevant downstream
-// APIs as needed.
+// Share-set sub-action values.
+const (
+	// shareSetActionSharing is the default action and preserves the legacy
+	// behaviour: one invocation may combine a permission-point update, batch
+	// add of members and batch remove of members.
+	shareSetActionSharing = "sharing"
+	// shareSetActionParticipantPermission sets the viewing permission granted
+	// to meeting participants and invitees. Only the recording creator can set it.
+	shareSetActionParticipantPermission = "participant-permission"
+)
+
+// shareSetLongDoc is the --help long description of `tmeet record share-set`.
+// The two actions are independent operations: their flags must not be mixed.
+const shareSetLongDoc = "Commit recording sharing changes. Pick one of the two independent operations via --action.\n" +
+	"\n" +
+	"Actions:\n" +
+	"  --action sharing (default)      - update sharing config and/or batch add/remove authorized members.\n" +
+	"  --action participant-permission - set the viewing permission of meeting participants and invitees\n" +
+	"                                    (only the recording creator may do this).\n" +
+	"\n" +
+	"Actions and their flags (required = <>, optional = []):\n" +
+	"  --action sharing <--meeting-record-id> [--switch-state] [--permission-point-id] [--pwd]\n" +
+	"                   [--expired-time-type] [--expired-time] [--download-enable]\n" +
+	"                   [--view-minutes-enable] [--rooms-enable] [--add-members] [--remove-members]\n" +
+	"  --action participant-permission <--meeting-record-id> <--participant-perm>\n" +
+	"\n" +
+	"--participant-perm tiers:\n" +
+	"  1 - view the transcript of the attended period only\n" +
+	"  2 - view the transcript and smart minutes of the whole meeting\n" +
+	"  3 - require an explicit share via the authorized-member list or share link\n" +
+	"  4 - view all recap content of the whole meeting\n" +
+	"\n" +
+	"The two actions are mutually exclusive: a flag owned by one action is rejected by the other.\n" +
+	"For --action participant-permission, --meeting-record-id is the numeric uni_record_id."
+
+// sharingOnlyFlags lists the flags that belong exclusively to --action sharing.
+// Declaring them in one table keeps the two --action operations independent and
+// keeps the rejection contract in sync with registerShareSetFlags.
+var sharingOnlyFlags = []string{
+	"switch-state", "permission-point-id", "pwd",
+	"expired-time-type", "expired-time",
+	"download-enable", "view-minutes-enable", "rooms-enable",
+	"add-members", "remove-members",
+}
+
+// ShareSetOptions holds the union of options for `tmeet record share-set`.
+// Which flags are used depends on --action; per-action semantics are enforced
+// by each ActionHandler (FlagRules / Validate / Run).
+//
+// For the default `sharing` action, a single invocation may combine a
+// permission-point update, batch add of members and batch remove of members;
+// the backend dispatches to the relevant downstream APIs as needed.
 type ShareSetOptions struct {
 	tmeet *internal.Tmeet
 
-	MeetingRecordID string // Meeting record ID (required)
+	Action string // sharing (default) | participant-permission
 
-	// permission config fields
+	MeetingRecordID string // Meeting record ID (required by both actions)
+
+	// permission config fields (--action sharing only)
 	SwitchState       bool
 	PermissionPointID int
 	Pwd               string
@@ -37,26 +88,67 @@ type ShareSetOptions struct {
 	ViewMinutesEnable bool   // whether viewers can view transcripts and minutes
 	RoomsEnable       bool   // whether Rooms devices can view this recording
 
-	// add_members (batch add grant users)
+	// add_members (batch add grant users, --action sharing only)
 	// format: "openid:permission" (permission optional, default 0; 0=view 1=manage)
 	AddMembers []string
 
-	// remove_members (batch remove grant users)
+	// remove_members (batch remove grant users, --action sharing only)
 	// format: "openid"
 	RemoveMembers []string
+
+	// ParticipantPerm is the participant/invitee viewing permission tier
+	// (--action participant-permission only), see shareSetLongDoc for 1..4.
+	ParticipantPerm int
 }
 
-// newShareSetCmd commits sharing settings and member changes in one call.
+// newShareSetCmd builds the `tmeet record share-set` command. It is a command
+// shell: it wires the union of flags, assembles the ActionRegistry and hands
+// dispatch off to cmdutil.ActionRegistry.Dispatch, following the same pattern
+// as `record content` / `record access` / `record permission-apply`.
+//
+// Unlike those read commands, no WithCompact middleware is mounted here: the
+// `sharing` action renders a CLI-aggregated payload (results/succeeded/failed)
+// rather than a single downstream response, so a server-side compact schema
+// does not apply to it. WithApiCmd still resolves per action so that the
+// participant-permission request carries the correct Tmeet-Cli-Name header.
 func newShareSetCmd(tmeet *internal.Tmeet) *cobra.Command {
 	opts := &ShareSetOptions{tmeet: tmeet}
+	registry := newShareSetRegistry(opts)
+
 	cmd := &cobra.Command{
-		Use:   "share-set",
-		Short: "set record sharing config and member changes (write operation, confirm before executing)",
+		Use: "share-set",
+		Short: "set sharing config/members or participant/invitee viewing permission " +
+			"(--action sharing|participant-permission; write operation, confirm before executing)",
+		Long: shareSetLongDoc,
 		RunE: middleWare.Chain(
-			opts.Run,
-			middleWare.WithApiCmd(cmdutil.StaticApiCmd(cmdutil.ApiCmdRecordModifySharingConfig)),
+			func(cmd *cobra.Command, args []string) error {
+				return registry.Dispatch(cmd, opts.Action, "action")
+			},
+			middleWare.WithApiCmd(registry.BuildApiCmdResolver("action")),
 		),
 	}
+
+	registerShareSetFlags(cmd, opts)
+	return cmd
+}
+
+// newShareSetRegistry assembles the two independent --action handlers. Keeping
+// this as a separate function makes the action-to-ApiCmd mapping directly
+// testable without going through the network-calling Run stage.
+func newShareSetRegistry(opts *ShareSetOptions) cmdutil.ActionRegistry {
+	return cmdutil.ActionRegistry{
+		shareSetActionSharing:               opts.buildSharingHandler(),
+		shareSetActionParticipantPermission: opts.buildParticipantPermissionHandler(),
+	}
+}
+
+// registerShareSetFlags declares the union of flags consumed by either action.
+// Per-action rules on which flags are required / forbidden are enforced by each
+// handler's Validate + FlagRules.
+func registerShareSetFlags(cmd *cobra.Command, opts *ShareSetOptions) {
+	// --action defaults to `sharing` so all existing invocations keep working.
+	cmdutil.SingleStringVar(cmd.Flags(), &opts.Action, "action", shareSetActionSharing,
+		"operation: sharing (default) | participant-permission")
 
 	cmd.Flags().StringVar(&opts.MeetingRecordID, "meeting-record-id", "", "meeting record id (required)")
 
@@ -75,7 +167,7 @@ func newShareSetCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.DownloadEnable, "download-enable", false,
 		"whether viewers can download the recording; ignored by backend when the enterprise locks download")
 	cmd.Flags().BoolVar(&opts.ViewMinutesEnable, "view-minutes-enable", false,
-		"whether viewers can view transcripts and smart minutes")
+		"allow members to view the recording transcript")
 	cmd.Flags().BoolVar(&opts.RoomsEnable, "rooms-enable", false,
 		"whether Rooms devices can view this recording")
 
@@ -88,9 +180,75 @@ func newShareSetCmd(tmeet *internal.Tmeet) *cobra.Command {
 	cmd.Flags().StringArrayVar(&opts.RemoveMembers, "remove-members", nil,
 		"members to remove, format: \"openid\", repeatable; e.g. --remove-members openid_a --remove-members openid_b")
 
-	_ = cmd.MarkFlagRequired("meeting-record-id")
+	// participant-permission flags
+	cmd.Flags().IntVar(&opts.ParticipantPerm, "participant-perm", 0,
+		"participant/invitee viewing permission tier; "+
+			"required by and only valid with --action participant-permission. Values:\n"+
+			"  1 - transcript of the attended period only\n"+
+			"  2 - whole-meeting transcript and smart minutes\n"+
+			"  3 - require an explicit share (authorized-member list or share link)\n"+
+			"  4 - all whole-meeting recap content\n"+
+			"  5 - whole-meeting smart minutes only (without transcript)")
 
-	return cmd
+	_ = cmd.MarkFlagRequired("meeting-record-id")
+}
+
+// buildSharingHandler declares the `--action sharing` branch (default). It
+// keeps the legacy aggregated write behaviour and rejects the flag owned by
+// the participant-permission action so the two operations stay independent.
+func (o *ShareSetOptions) buildSharingHandler() *cmdutil.ActionHandler {
+	return &cmdutil.ActionHandler{
+		ApiCmd: cmdutil.ApiCmdRecordModifySharingConfig,
+		FlagRules: []cmdutil.FlagRule{
+			{Reject: []string{"participant-perm"}},
+		},
+		Run: o.runSharing,
+	}
+}
+
+// buildParticipantPermissionHandler
+func (o *ShareSetOptions) buildParticipantPermissionHandler() *cmdutil.ActionHandler {
+	return &cmdutil.ActionHandler{
+		ApiCmd: cmdutil.ApiCmdRecordSetParticipantPermission,
+		FlagRules: []cmdutil.FlagRule{
+			{Reject: sharingOnlyFlags},
+		},
+		Validate: func(cmd *cobra.Command) error {
+			if !cmd.Flags().Changed("participant-perm") {
+				return exception.InvalidArgsError.With(
+					"--action participant-permission requires --participant-perm")
+			}
+			if o.ParticipantPerm < 1 || o.ParticipantPerm > 5 {
+				return exception.InvalidArgsError.With(
+					"invalid --participant-perm %d, expected one of: 1, 2, 3, 4, 5", o.ParticipantPerm)
+			}
+			return nil
+		},
+		Run: o.runParticipantPermission,
+	}
+}
+
+// runParticipantPermission viewing permission of meeting participants and invitees.
+func (o *ShareSetOptions) runParticipantPermission(cmd *cobra.Command) error {
+	body := map[string]interface{}{
+		"operator_id":      o.tmeet.UserConfig.OpenId,
+		"operator_id_type": 2, // OpenId
+		"participant_perm": o.ParticipantPerm,
+	}
+	req := &thttp.Request{
+		ApiURI: "/v1/mcp/records/participant-permission/{meeting_record_id}",
+		Body:   body,
+		PathParams: thttp.PathParams{
+			"meeting_record_id": o.MeetingRecordID,
+		},
+	}
+	rsp, err := restProxy.RequestProxy(cmd.Context(), http.MethodPost, o.tmeet, req)
+	if err != nil {
+		return err
+	}
+	output.FormatPrint(cmd, rsp.TraceId, rsp.Message, rsp.Data,
+		output.WithCompact(middleWare.GetCompactFields(cmd.Context())))
+	return nil
 }
 
 // commitResult records the outcome of a single downstream sub-operation.
@@ -103,10 +261,10 @@ type commitResult struct {
 	Err     string `json:"error,omitempty"`
 }
 
-// Run executes the share-set command, dispatching to the downstream APIs
-// that are relevant for this invocation, then aggregates the results so that
-// partial success / partial failure is reported clearly.
-func (o *ShareSetOptions) Run(cmd *cobra.Command, args []string) error {
+// runSharing executes the legacy `sharing` action, dispatching to the
+// downstream APIs that are relevant for this invocation, then aggregates the
+// results so that partial success / partial failure is reported clearly.
+func (o *ShareSetOptions) runSharing(cmd *cobra.Command) error {
 	results := make([]commitResult, 0, 3)
 
 	if o.hasPermissionConfig(cmd) {

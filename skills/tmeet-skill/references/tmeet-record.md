@@ -19,7 +19,7 @@
   - [paragraphs — 逐字稿段落列表](#paragraphs--逐字稿段落列表)
   - [timeline — 智能时间轴](#timeline--智能时间轴)
 - [access — 查访问信息与配置](#access--查访问信息与配置)
-- [share-set — 修改分享与授权成员](#share-set--修改分享与授权成员)
+- [share-set — 修改分享、授权成员与参会人和受邀人查看权限](#share-set--修改分享授权成员与参会人和受邀人查看权限)
 - [settings-set — 修改智能录制配置](#settings-set--修改智能录制配置)
 - [permission-apply — 预览与提交权限申请](#permission-apply--预览与提交权限申请)
 - [输出与分页](#输出与分页)
@@ -38,6 +38,7 @@
 | 文件 ID，要纪要/待办/逐字稿 | `content --record-file-id`，选择对应 action | 直接读，不固定补查地址或会议权限 |
 | 录制 ID，要地址/分享配置/成员 | `access --meeting-record-id`，选择对应 action | 不把录制 ID 当文件 ID |
 | 查参会人/受邀人可查看范围（能看什么、能否看逐字稿） | `access --action sharing --meeting-record-id`，读 current.participants_invitees_scope | access 无 participant-permission，勿臆造；文案原样转述 |
+| 录制 ID，要查询参会人和受邀人查看权限 | `access --action participant-permission --meeting-record-id` | 仅录制创建者可查询 |
 | 录制访问链接，要纪要或逐字稿 | `content --share-url`，选 minutes 或 transcript | 无需先补文件 ID 或查询会议 |
 | 查自己已有权限的录制、录音或上传文件 | `record search` | 时间、关键词、会议范围和文件类型可组合 |
 | 记得逐字稿关键词，不知哪条录制 | `record search --query-field transcript_content --query` | 跨录制检索，仅覆盖已有访问权的录制 |
@@ -239,15 +240,19 @@ tmeet record content --action timeline --record-file-id "file_abc123" --lang zh
 | sharing | 当前分享配置；含参会人/受邀人可查看范围 current.participants_invitees_scope（文案原样转述） | meeting-record-id | — |
 | members | 已授权成员 | meeting-record-id | page-token；不接收 page-size |
 | settings | 智能录制配置 | record-file-id | — |
+| participant-permission | 参会人和受邀人查看权限档位（仅录制创建者可查询） | meeting-record-id | — |
 
 ```bash
 tmeet record access --action address --meeting-record-id "record_abc123"
 tmeet record access --action sharing --meeting-record-id "record_abc123"
 tmeet record access --action members --meeting-record-id "record_abc123"
 tmeet record access --action settings --record-file-id "file_abc123"
+tmeet record access --action participant-permission --meeting-record-id "record_abc123"
 ```
 
-以上四条是互相独立的用法示例，不是执行清单。录制 ID 可来自 search 或会议录制信息；文件 ID 用于 settings。address 也支持非会议场景，已有录制 ID 时无需先查会议。view_address 用于录制访问，其他媒体地址按实际用途使用，不承诺永久有效。
+以上五条是互相独立的用法示例，不是执行清单。录制 ID 可来自 search 或会议录制信息；文件 ID 用于 settings。address 也支持非会议场景，已有录制 ID 时无需先查会议。view_address 用于录制访问，其他媒体地址按实际用途使用，不承诺永久有效。
+
+`participant-permission` 仅录制创建者可查询（后端校验），与 `share-set --action participant-permission`（写入档位）是两个方向的独立操作；已有可靠的当前档位就复用，不重复查询。非创建者被后端拒绝时说明限制，不反复重试。
 
 修改分享、成员或智能配置前，只在缺少必要当前状态时查询对应 action；已有足够且有效的结果就复用。settings 中的未知状态不能自动解释成关闭。
 
@@ -255,13 +260,18 @@ tmeet record access --action settings --record-file-id "file_abc123"
 
 ---
 
-## share-set — 修改分享与授权成员
+## share-set — 修改分享、授权成员与参会人和受邀人查看权限
 
 > ⚠️ **写操作**：展示目标、具体变更及影响，取得真实确认后执行。已有明确确认覆盖同一目标和变更时复用，不把一般读取需求当作写授权。
 
-至少提供一项配置或成员变更；支持在一次调用中组合配置修改、批量添加成员与批量移除成员。content/access 的单查限制不适用于此命令。
+`--action` 选择两个**互相独立**的操作，专属参数不可混用；省略时默认 `sharing`，原有调用行为不变。content/access 的单查限制不适用于 `sharing`（可组合三类变更），但两个 action 之间不能组合。
 
-### 分享模式
+| --action | 用途 | 底层接口 |
+|------|------|------|
+| `sharing`（默认） | 改分享配置、批量增删授权成员；至少提供一项变更；一次可组合配置修改、加成员、删成员 | SetRecordPermissionConfigMcp / BatchAddGrantUsers / BatchRemoveGrantUsers |
+| `participant-permission` | 设置参会人和受邀人查看权限；**仅录制创建者可设置**（后端校验） | SetParticipantPermissionMcp |
+
+### sharing：分享模式
 
 | permission-point-id | 含义 | 需要 pwd |
 |------|------|------|
@@ -272,10 +282,11 @@ tmeet record access --action settings --record-file-id "file_abc123"
 | 5 | 同企业需密码查看 | 是 |
 | 6 | 同企业需申请权限 | 否 |
 
-### 参数
+### sharing：参数
 
 | 参数 | 必填 | 说明 |
 |------|------|------|
+| `--action sharing` | 否 | 省略即默认；两个操作只能选一个，不能重复传 `--action` |
 | `--meeting-record-id <id>` | ✅ | 目标录制 ID |
 | `--switch-state` | 否 | 分享总开关；关闭显式传 `--switch-state=false`；与 permission-point-id 互斥 |
 | `--permission-point-id <n>` | 否 | 分享模式 1～6；模式 2/5 必须提供 pwd |
@@ -288,9 +299,27 @@ tmeet record access --action settings --record-file-id "file_abc123"
 | `--add-members <openid:perm>` | 否 | 可重复；perm 为 `0`-查看、`1`-管理，省略默认 0 |
 | `--remove-members <openid>` | 否 | 可重复，填真实 OpenId |
 
+### participant-permission：参数与档位
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--action participant-permission` | ✅ | 选择该独立操作 |
+| `--meeting-record-id <id>` | ✅ | 目标录制 ID，**纯数字** `uni_record_id` |
+| `--participant-perm <n>` | ✅ | 档位 1～5，见下表；只传一个值 |
+
+| participant-perm | 含义 |
+|------|------|
+| 1 | 可查看参会期间的逐字稿 |
+| 2 | 可查看整场会议的逐字稿和纪要 |
+| 3 | 需指定分享或者链接分享 |
+| 4 | 可查看全部回顾内容 |
+| 5 | 可查看整场会议的纪要 |
+
+两个 action 的专属参数互斥：`participant-permission` 带任何 sharing 参数，或 `sharing` 带 `--participant-perm`，都会报 `--<flag> is not supported by --action <action>`；按目标删掉对方参数，不换 action 试探。仅创建者可设置该权限，非创建者被后端拒绝时说明限制，不反复重试。
+
 ```bash
 # 以下写示例只在具体变更已确认后执行
-# 所有人凭密码查看
+# 所有人凭密码查看（省略 --action 即默认 sharing）
 tmeet record share-set --meeting-record-id "record_abc123" --permission-point-id 2 --pwd "ab1234"
 
 # 关闭分享；不同时传分享模式
@@ -304,20 +333,26 @@ tmeet record share-set --meeting-record-id "record_abc123" --expired-time-type 4
 
 # 同企业查看，并变更已确认的成员
 tmeet record share-set --meeting-record-id "record_abc123" --permission-point-id 4 --add-members "openid_a:0" --remove-members "openid_b"
+
+# participant-permission：参会人和受邀人可查看整场会议回顾（仅创建者）
+tmeet record share-set --action participant-permission --meeting-record-id "1234567890" --participant-perm 4
+
+# participant-permission：不额外授权
+tmeet record share-set --action participant-permission --meeting-record-id "1234567890" --participant-perm 3
 ```
 
 只传用户要改的项目；布尔关闭显式传 false，不把省略解释成关闭。成员优先使用已知 OpenId；需要按姓名完成授权动作时，可按主 SKILL 的通讯录规则解析，不能用 ms_open_id 替代或用于通用查人。
 
 ### 响应结构
 
-响应中的 data 为 JSON 字符串，解析这一层后读取以下字段；若实际类型不同，保留原输出并记录差异，不强制重复解析。
+`sharing` 的响应 data 为 JSON 字符串，解析这一层后读取以下字段；若实际类型不同，保留原输出并记录差异，不强制重复解析。`participant-permission` 直接透传该接口响应，没有 results[] 聚合结构。
 
 | 字段 | 说明 |
 |------|------|
-| results[] | 各项包含 op（settings/add/remove）、ok、message、trace_id、原始 data，失败时含 error |
-| succeeded / failed | 成功/失败子操作数 |
+| results[] | 仅 `sharing`；各项包含 op（settings/add/remove）、ok、message、trace_id、原始 data，失败时含 error |
+| succeeded / failed | 仅 `sharing`；成功/失败子操作数 |
 
-整体非零退出不代表全部失败。逐项报告结果，不整批重跑；超时或结果未知时先核对状态，不盲目重复写入。需要重试时只针对确认范围内、已核实失败的操作。
+`sharing` 整体非零退出不代表全部失败。逐项报告结果，不整批重跑；超时或结果未知时先核对状态，不盲目重复写入。需要重试时只针对确认范围内、已核实失败的操作。
 
 ---
 
@@ -425,7 +460,7 @@ tmeet record content --action transcript --record-file-id "file_abc123" --pid "<
 
 ### 变更分享或申请权限
 
-分享变更：按需读取当前状态 → 解析/确认目标成员 → 展示具体变更 → 真实确认 → 写入并核对。权限申请：可申请且已就绪 → prepare → 展示有效预览 → 确认 → commit；两条流程不能因读取失败互相替代。
+分享变更：按需读取当前状态 → 解析/确认目标成员 → 展示具体变更 → 真实确认 → 写入并核对。权限申请：可申请且已就绪 → prepare → 展示有效预览 → 确认 → commit；两条流程不能因读取失败互相替代。参会人和受邀人查看权限：确认创建者身份与档位 → 展示具体变更 → 真实确认 → `share-set --action participant-permission` → 需要核对时 `access --action participant-permission`（仅创建者可查询）；与 sharing 参数互斥，不混传。
 
 真实账号的相依写测应先记录可恢复原值并确认变更及恢复范围，同一目标串行执行，检查后恢复并读回核对，再开始下一轮；恢复失败或状态被并发修改时停止，不覆盖他人变更。
 
@@ -444,6 +479,10 @@ tmeet record content --action transcript --record-file-id "file_abc123" --pid "<
 | 链接无效、过期或不支持 | 核对原链接或请求可用链接，不切换无关 action 试探 |
 | token 缺失、不前进或结束信号冲突 | 按分页规则停止核对，不宣称已读完 |
 | share-set 部分成功或写结果未知 | 检查各项/当前状态，不整批重跑或重复提交 |
+| share-set 两个 action 的专属参数混传 | 按 `--<flag> is not supported by --action <action>` 定位并删掉另一操作的参数，不猜值、不换 action 试探 |
+| share-set participant-permission 缺 `--participant-perm` 或值不在 1～5 | 按用户目标选定 1～5 中的一个档位，不填 0、不沿用旧分享参数 |
+| share-set participant-permission 报非创建者无权限 | 说明仅录制创建者可设置，请创建者操作，不反复重试 |
+| access participant-permission 报非创建者无权限 | 说明仅录制创建者可查询，请创建者操作，不反复重试 |
 | 分享参数不识别 | 核对 v1.0.20-internal.3 帮助；不回退到旧 enable-sharing/password 等参数碰运气 |
 
 ## 参考
