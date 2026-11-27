@@ -10,10 +10,11 @@ import (
 
 // Access sub-action values.
 const (
-	accessActionAddress  = "address"
-	accessActionSharing  = "sharing"
-	accessActionMembers  = "members"
-	accessActionSettings = "settings"
+	accessActionAddress               = "address"
+	accessActionSharing               = "sharing"
+	accessActionMembers               = "members"
+	accessActionSettings              = "settings"
+	accessActionParticipantPermission = "participant-permission"
 )
 
 // accessLongDoc is the --help long description of `tmeet record access`.
@@ -31,12 +32,15 @@ const accessLongDoc = "Query record access-related information. Choose one of th
 	"             --page-token), typically used to audit access grants.\n" +
 	"  settings - Query the smart recording config of a record file (subtitle switch /\n" +
 	"             AI switch / support flag).\n" +
+	"  participant-permission - Query the viewing permission granted to meeting\n" +
+	"                           participants and invitees (only the recording creator may query it).\n" +
 	"\n" +
 	"Actions and their flags (required = <>, optional = []):\n" +
-	"  --action address  <--meeting-record-id> [--page-token] [--page-size]\n" +
-	"  --action sharing  <--meeting-record-id>\n" +
-	"  --action members  <--meeting-record-id> [--page-token]\n" +
-	"  --action settings <--record-file-id>"
+	"  --action address               <--meeting-record-id> [--page-token] [--page-size]\n" +
+	"  --action sharing               <--meeting-record-id>\n" +
+	"  --action members               <--meeting-record-id> [--page-token]\n" +
+	"  --action settings              <--record-file-id>\n" +
+	"  --action participant-permission <--meeting-record-id>"
 
 // AccessOptions holds the union of options for `tmeet record access`. The
 // meaning of each flag depends on --action; per-action semantics are enforced
@@ -44,9 +48,9 @@ const accessLongDoc = "Query record access-related information. Choose one of th
 type AccessOptions struct {
 	tmeet *internal.Tmeet
 
-	Action string // required: address | sharing | members | settings
+	Action string // required: address | sharing | members | settings | participant-permission
 
-	MeetingRecordID string // required for address / sharing / members
+	MeetingRecordID string // required for address / sharing / members / participant-permission
 	RecordFileID    string // required for settings
 
 	PageSize  int    // used by address
@@ -61,15 +65,16 @@ func newAccessCmd(tmeet *internal.Tmeet) *cobra.Command {
 	opts := &AccessOptions{tmeet: tmeet}
 
 	registry := cmdutil.ActionRegistry{
-		accessActionAddress:  opts.buildAddressHandler(),
-		accessActionSharing:  opts.buildSharingHandler(),
-		accessActionMembers:  opts.buildMembersHandler(),
-		accessActionSettings: opts.buildSettingsHandler(),
+		accessActionAddress:               opts.buildAddressHandler(),
+		accessActionSharing:               opts.buildSharingHandler(),
+		accessActionMembers:               opts.buildMembersHandler(),
+		accessActionSettings:              opts.buildSettingsHandler(),
+		accessActionParticipantPermission: opts.buildParticipantPermissionHandler(),
 	}
 
 	cmd := &cobra.Command{
 		Use:   "access",
-		Short: "query record access-related info (--action address|sharing|members|settings)",
+		Short: "query record access-related info (--action address|sharing|members|settings|participant-permission)",
 		Long:  accessLongDoc,
 		RunE: middleWare.Chain(
 			func(cmd *cobra.Command, args []string) error {
@@ -89,11 +94,11 @@ func newAccessCmd(tmeet *internal.Tmeet) *cobra.Command {
 // enforced by each handler's Validate + FlagRules.
 func registerAccessFlags(cmd *cobra.Command, opts *AccessOptions) {
 	cmdutil.SingleStringVar(cmd.Flags(), &opts.Action, "action", "",
-		"access type: address | sharing | members | settings (required)")
+		"access type: address | sharing | members | settings | participant-permission (required)")
 	_ = cmd.MarkFlagRequired("action")
 
 	cmd.Flags().StringVar(&opts.MeetingRecordID, "meeting-record-id", "",
-		"meeting record id (required for address/sharing/members)")
+		"meeting record id (required for address/sharing/members/participant-permission)")
 	cmd.Flags().StringVar(&opts.RecordFileID, "record-file-id", "",
 		"record file id (required for settings)")
 

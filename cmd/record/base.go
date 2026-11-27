@@ -13,7 +13,8 @@ import (
 //   - search           : find / search records (list + search merged)
 //   - content          : read record content, dispatched via --action
 //   - access           : query access info, dispatched via --action
-//   - share-set        : modify sharing config & members (write)
+//   - share-set        : modify sharing config & members, or set the viewing
+//     permission of participants / invitees, dispatched via --action (write)
 //   - settings-set     : modify subtitle / AI switches (write)
 //   - permission-apply : apply for record permission (--action prepare|commit)
 func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
@@ -27,9 +28,10 @@ func NewBaseCmd(tmeet *internal.Tmeet) *cobra.Command {
 		newSearchCmd(tmeet),
 		// 2. Read record content: --action minutes|todos|transcript|paragraphs|timeline.
 		newContentCmd(tmeet),
-		// 3. Query access info: --action address|sharing|members|settings.
+		// 3. Query access info: --action address|sharing|members|settings|participant-permission.
 		newAccessCmd(tmeet),
-		// 4. Modify sharing config & members (write op, confirm before executing).
+		// 4. Modify sharing config & members, or set the participant/invitee
+		//    viewing permission, dispatched via --action (write op, confirm first).
 		newShareSetCmd(tmeet),
 		// 5. Modify subtitle / AI switches (write op, confirm before executing).
 		newSettingsSetCmd(tmeet),

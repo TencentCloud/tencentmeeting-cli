@@ -49,7 +49,6 @@ const (
 	// ApiCmdMeetingAttachmentDownload is the attachment download-address
 	// endpoint backing `tmeet meeting attachment-download`.
 	ApiCmdMeetingAttachmentDownload = "meeting_attachment_download"
-
 	// ApiCmdRecordAddress apiCmd record_address
 	ApiCmdRecordAddress = "record_address"
 	// ApiCmdRecordList apiCmd record_list
@@ -85,6 +84,10 @@ const (
 	ApiCmdRecordBatchRemGrantUsers = "record_batch_rem_grant_users"
 	// ApiCmdRecordGetGrantedUserList apiCmd record_get_granted_user_list
 	ApiCmdRecordGetGrantedUserList = "record_get_granted_user_list"
+	// ApiCmdRecordSetParticipantPermission apiCmd record_set_participant_permission
+	ApiCmdRecordSetParticipantPermission = "record_set_participant_permission"
+	// ApiCmdRecordGetParticipantPermission apiCmd record_get_participant_permission
+	ApiCmdRecordGetParticipantPermission = "record_get_participant_permission"
 
 	// ApiCmdRecordQuerySmartConfig apiCmd record_query_smart_config
 	ApiCmdRecordQuerySmartConfig = "record_query_smart_config"
